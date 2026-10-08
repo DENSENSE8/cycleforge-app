@@ -172,10 +172,10 @@ export function typeClassifyOptions(args: {
   return args.catalogOptions
     .filter((o) => o.value !== 'PICKUP')
     .map((o) => {
-      const meta = receivingTypeMeta(o.value);
       // Org accent (`types.color_hex`) beats the built-in registry tone — the
-      // same ladder platforms use, and the only answer for a CUSTOM type, which
-      // `receivingTypeMeta` can only resolve to the neutral tag face.
+      // same ladder platforms use, and the only answer for a CUSTOM type.
+      // No letter `shortLabel`: the compact face is the catalog display name
+      // ("Return"), never a registry abbreviation or the sticker word ("RTR").
       const { className: dotClass, style: dotStyle } = catalogIdentityDot({
         kind: 'type',
         value: o.value,
@@ -185,7 +185,6 @@ export function typeClassifyOptions(args: {
       return {
         value: o.value,
         label: o.label,
-        shortLabel: meta.short,
         title: o.label,
         face: (
           <span

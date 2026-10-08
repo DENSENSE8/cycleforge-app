@@ -1,30 +1,29 @@
 'use client';
 
-import { AlertCircle, ExternalLink, Image as ImageIcon, Paperclip, Plus, Reply, Send, TicketHelp, X } from '@/components/Icons';
-import { MediaLibraryPickerContent } from '@/components/photos/MediaLibraryPickerContent';
-import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
+import { AlertCircle, Paperclip, Send, TicketHelp, X } from '@/components/Icons';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { Button, IconButton } from '@/design-system/primitives';
 import { ClaimComposer } from './ClaimComposer';
+import { ClaimModeSwitch } from './ClaimModeSwitch';
 import { ClaimSuccessView } from './ClaimSuccessView';
+import { ClaimTicketReply } from './ClaimTicketReply';
 import { useZendeskClaimController } from './useZendeskClaimController';
 import type { ZendeskClaimModalProps } from './claim-types';
 
-const MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'update', label: 'Update existing', icon: Reply },
-  { id: 'create', label: 'New ticket', icon: Plus },
-];
-
 /**
- * Reusable Zendesk claim modal. Step 1 selects library photos; step 2 turns them
- * into a new ticket or a reply on an existing one. Uses the same
- * {@link RightPaneOverlay} shell as the receiving claim modal.
+ * Reusable Zendesk claim modal: the photos already selected in the library
+ * become a new ticket or a reply on an existing one — the library selection is
+ * the only way photos are chosen. Both modes share ONE overlay box, so
+ * switching Link ↔ New never resizes or moves it; Link is
+ * {@link ClaimTicketReply} — the split display the unbox "Link existing
+ * ticket" uses, in its compact panel face.
  */
 export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
   const c = useZendeskClaimController(props);
-  const submitLabel = c.mode === 'create' ? 'Create ticket' : c.replyPublic ? 'Send' : 'Add note';
   const lockedToTicket = Boolean(props.defaultTicketId);
-  const onPickStep = c.wizardStep === 'pick';
+  const replying = !c.result && c.mode === 'update';
 
   return (
     <RightPaneOverlay
@@ -33,28 +32,27 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
       align="center"
       resizable
       storageKey="zendesk-claim-modal-size"
-      minWidth={480}
+      minWidth={720}
       minHeight={520}
-      className="flex h-[min(88vh,46rem)] w-[min(94vw,40rem)] -mt-6 flex-col"
+      className={cn(
+        'flex h-[min(88vh,46rem)] w-[min(94vw,56rem)] -mt-6 flex-col overflow-hidden',
+        cornerClass('canvas'),
+      )}
       aria-label="Create or update a support ticket"
     >
+      {replying ? (
+        <ClaimTicketReply c={c} />
+      ) : (
+      <>
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border-hairline px-5 py-4">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-100">
-            {onPickStep ? <ImageIcon className="h-5 w-5" /> : <TicketHelp className="h-5 w-5" />}
+            <TicketHelp className="h-5 w-5" />
           </span>
           <div>
-            <p className="text-role-micro text-rose-500">
-              {onPickStep ? 'Step 1 · Photos' : 'Support'}
-            </p>
+            <p className="text-role-micro text-rose-500">Support</p>
             <h2 className="text-role-body font-semibold tracking-tight text-text-default">
-              {c.result
-                ? 'Done'
-                : onPickStep
-                  ? 'Select photos'
-                  : c.mode === 'create'
-                    ? 'New support ticket'
-                    : 'Update ticket'}
+              {c.result ? 'Done' : 'New support ticket'}
             </h2>
           </div>
         </div>
@@ -68,47 +66,11 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
 
       {c.result ? (
         <ClaimSuccessView result={c.result} onClose={c.onClose} />
-      ) : onPickStep ? (
-        <>
-          <MediaLibraryPickerContent
-            ticketId={props.defaultTicketId ?? undefined}
-            selected={c.libraryPhotos}
-            onSelectedChange={c.setLibraryPhotos}
-            showScopeToggle={Boolean(props.defaultTicketId)}
-          />
-          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border-hairline px-5 py-3.5">
-            <a
-              href="/ops/photos"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-role-caption font-semibold text-blue-600 hover:text-blue-800"
-            >
-              Open full library <ExternalLink className="h-3 w-3" />
-            </a>
-            <div className="flex items-center gap-2">
-              <span className="text-role-caption text-text-soft">{c.libraryPhotos.length} selected</span>
-              <Button variant="ghost" onClick={c.onClose}>
-                Cancel
-              </Button>
-              <Button variant="primary" disabled={!c.canContinuePick} onClick={c.continueFromPick}>
-                Continue
-              </Button>
-            </div>
-          </div>
-        </>
       ) : (
         <>
           {!lockedToTicket ? (
-            <div className="shrink-0 overflow-visible border-b border-border-hairline px-5 pb-3 pt-3">
-              <HorizontalButtonSlider
-                items={MODE_ITEMS}
-                value={c.mode}
-                onChange={(v) => c.setMode(v as typeof c.mode)}
-                variant="nav"
-                dense
-                overlay
-                aria-label="Ticket mode"
-              />
+            <div className="shrink-0 border-b border-border-hairline px-5 py-3">
+              <ClaimModeSwitch value={c.mode} onChange={c.setMode} />
             </div>
           ) : null}
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -126,9 +88,6 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
                   <AlertCircle className="h-3.5 w-3.5" /> {c.error}
                 </span>
               ) : null}
-              <Button variant="ghost" onClick={() => c.setWizardStep('pick')}>
-                Back
-              </Button>
               <Button variant="ghost" onClick={c.onClose}>
                 Cancel
               </Button>
@@ -139,11 +98,13 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
                 onClick={c.submit}
                 icon={<Send className="h-4 w-4" />}
               >
-                {submitLabel}
+                Create ticket
               </Button>
             </div>
           </div>
         </>
+      )}
+      </>
       )}
     </RightPaneOverlay>
   );

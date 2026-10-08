@@ -1,5 +1,5 @@
 /**
- * The three QC verdicts every surface offers — the desk record's header verbs
+ * The three QC verdicts every surface offers — the desk record's Actions panel verbs
  * (keys P / T / F) and the phone's verdict buttons — and their one writer,
  * `POST /api/serial-units/{id}/test` (`recordTestVerdict`).
  */

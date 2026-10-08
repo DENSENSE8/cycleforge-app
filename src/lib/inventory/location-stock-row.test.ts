@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  locationStockNeverCounted,
+  locationStockInAddress,
   locationStockRoomId,
   locationStockPositionFace,
   locationStockRackFace,
   locationStockRackGroups,
   locationStockWalkRows,
-  parseLocationStockAisles,
+  parseLocationStockAddressScope,
   parseLocationStockRoomIds,
   resolveExplicitStockRoom,
   type LocationStockTableRow,
@@ -108,13 +108,6 @@ test('longest since count leads with a rack that has no cycle count', () => {
   );
 });
 
-test('never counted is a bin pair with no cycle count', () => {
-  assert.equal(locationStockNeverCounted(row(1, 'A-01-01-1-00', 1, 1, 1, 0, 'BIN')), true);
-  assert.equal(locationStockNeverCounted({ ...row(1, 'A-01-01-1-00', 1, 1, 1, 0, 'BIN'), last_counted: '2026-01-01T00:00:00.000Z' }), false);
-  assert.equal(locationStockNeverCounted({ ...row(1, 'A-01-01-1-00', 1, 1, 1, 0, 'UNIT'), source: 'unit' }), false);
-  assert.equal(locationStockNeverCounted({ ...row(1, 'A-01-01-1-00', 1, 1, 1, 0, ''), source: 'empty' }), false);
-});
-
 test('comma-bearing room names survive the comma-list room wire', () => {
   const room = 'Zone 4 - Wall Mounts, Claims, RS';
   const id = locationStockRoomId({ room });
@@ -122,11 +115,20 @@ test('comma-bearing room names survive the comma-list room wire', () => {
   assert.deepEqual(parseLocationStockRoomIds(`${id},Zone 3 - Parts`), [room, 'Zone 3 - Parts']);
 });
 
-test('an empty aisle filter selects no aisles instead of aisle zero', () => {
-  assert.deepEqual(parseLocationStockAisles(null), []);
-  assert.deepEqual(parseLocationStockAisles(''), []);
-  assert.deepEqual(parseLocationStockAisles('  '), []);
-  assert.deepEqual(parseLocationStockAisles('2, 1,2'), [2, 1]);
+test('the address drill drops a deeper part whose parent is missing, and never reads empty as 0', () => {
+  assert.deepEqual(parseLocationStockAddressScope(true, { aisle: '', bay: '2' }), { aisle: null, bay: null, level: null, position: null });
+  // An aisle with no room is not an address: aisle numbers repeat per room.
+  assert.deepEqual(parseLocationStockAddressScope(false, { aisle: '2', bay: '3' }), { aisle: null, bay: null, level: null, position: null });
+  assert.deepEqual(parseLocationStockAddressScope(true, { aisle: '2', bay: '3', level: 'x', position: '4' }), { aisle: 2, bay: 3, level: null, position: null });
+  assert.deepEqual(parseLocationStockAddressScope(true, { aisle: '0', bay: '1', level: '2', position: '3' }), { aisle: 0, bay: 1, level: 2, position: 3 });
+});
+
+test('a row is in the address only when every picked part matches', () => {
+  const at = row(1, 'A-02-03-1-04', 2, 3, 1, 4, 'BIN');
+  assert.equal(locationStockInAddress(at, { aisle: 2, bay: 3, level: 1, position: 4 }), true);
+  assert.equal(locationStockInAddress(at, { aisle: 2, bay: 3, level: null, position: null }), true);
+  assert.equal(locationStockInAddress(at, { aisle: 2, bay: 4, level: null, position: null }), false);
+  assert.equal(locationStockInAddress({ ...at, aisle: null, bay: null }, { aisle: 2, bay: null, level: null, position: null }), false);
 });
 
 test('bare Stock has no implicit room while explicit room labels canonicalize to ids', () => {

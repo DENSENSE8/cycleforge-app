@@ -21,7 +21,16 @@ export const STAFF_PRINT_OPTIONS_PATCH_EVENT = 'staff_print_options_patch';
 /** Sender → station: pause, resume or cancel a job it sent, by request id. */
 export const STAFF_PRINT_CONTROL_EVENT = 'staff_print_control';
 
-export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote' | 'repair' | 'fnsku' | 'documents' | 'qc_label';
+export type StaffPrintGrain =
+  | 'rack'
+  | 'bin'
+  | 'papers'
+  | 'tote'
+  | 'repair'
+  | 'fnsku'
+  | 'documents'
+  | 'qc_label'
+  | 'stock_label';
 export type StaffPrintRole = 'label' | 'paper';
 
 export type StaffPrintLocationPayload = {
@@ -122,6 +131,77 @@ export function qcLabelWireKey(unit: {
 }
 
 /**
+ * One 4×6 product label off Inventory › Stock (`grain: 'stock_label'`): the
+ * record's Print label, or one per selected card from the list's selection
+ * bar. The station draws each face itself: the words ride as plain text, the
+ * photo as one same-origin photo / item-image path — never a URL to another
+ * host.
+ */
+export type StaffPrintStockLabelFace = {
+  sku: string;
+  title: string;
+  /** The operator's free text, line breaks kept; '' prints no Notes block. */
+  notes: string;
+  /** `/api/photos/<id>/content` or `/api/zoho/items/<id>/image`, or null for no photo. */
+  image: string | null;
+};
+
+/** A run of stock labels for one station: one page each, in order. */
+export type StaffPrintStockLabelPayload = { labels: StaffPrintStockLabelFace[] };
+
+/** Longest notes a stock label carries — about what fits under the photo on 4×6. */
+export const STOCK_LABEL_NOTES_MAX = 400;
+/** Most labels one station job carries — kept well under one Ably message (a sender splits a bigger run). */
+export const STOCK_LABELS_PER_JOB = 100;
+const STOCK_LABEL_SKU_MAX = 100;
+const STOCK_LABEL_TITLE_MAX = 300;
+const STOCK_LABEL_IMAGE_PATH_RE = /^\/api\/(?:photos\/\d+\/content|zoho\/items\/[A-Za-z0-9._-]+\/image)$/;
+
+/** Whether a stock label may name this image: a same-origin photo or item image, full size. */
+export function isStockLabelImagePath(path: string): boolean {
+  return STOCK_LABEL_IMAGE_PATH_RE.test(path);
+}
+
+/** Wire text: control characters dropped, one line (or line breaks kept), trimmed and capped. */
+function wireText(raw: unknown, max: number, multiline = false): string {
+  const text = typeof raw === 'string' ? raw : '';
+  const clean = multiline
+    ? text.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, '')
+    : text.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ');
+  return clean.trim().slice(0, max);
+}
+
+/** One stock label face off the wire, or null when its SKU or image is junk. */
+function parseStockLabelFace(raw: unknown): StaffPrintStockLabelFace | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const rec = raw as Record<string, unknown>;
+  const sku = wireText(rec.sku, STOCK_LABEL_SKU_MAX);
+  if (!sku) return null;
+  const image = rec.image == null ? null : wireText(rec.image, 200);
+  if (image != null && !isStockLabelImagePath(image)) return null;
+  return {
+    sku,
+    title: wireText(rec.title, STOCK_LABEL_TITLE_MAX) || sku,
+    notes: wireText(rec.notes, STOCK_LABEL_NOTES_MAX, true),
+    image,
+  };
+}
+
+/** A run of 1–{@link STOCK_LABELS_PER_JOB} faces, or null when the list or any face is junk. */
+function parseStockLabelPayload(raw: unknown): StaffPrintStockLabelPayload | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const list = (raw as Record<string, unknown>).labels;
+  if (!Array.isArray(list) || list.length === 0 || list.length > STOCK_LABELS_PER_JOB) return null;
+  const labels: StaffPrintStockLabelFace[] = [];
+  for (const row of list) {
+    const face = parseStockLabelFace(row);
+    if (!face) return null;
+    labels.push(face);
+  }
+  return { labels };
+}
+
+/**
  * One desk document a station prints, by id only: the station rebuilds its
  * same-origin bytes URL from the id and never trusts a sender's URL.
  * Label → `ingestionId` (ledger label) or `documentId` (a shipping-label
@@ -164,6 +244,7 @@ export type StaffPrintJob = {
   repair?: StaffPrintRepairPayload;
   fnsku?: StaffPrintFnskuPayload;
   qcLabel?: StaffPrintQcLabelPayload;
+  stockLabel?: StaffPrintStockLabelPayload;
   documents?: StaffPrintDocumentsPayload;
 };
 
@@ -328,7 +409,8 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     grain !== 'repair' &&
     grain !== 'fnsku' &&
     grain !== 'documents' &&
-    grain !== 'qc_label'
+    grain !== 'qc_label' &&
+    grain !== 'stock_label'
   ) {
     return null;
   }
@@ -358,6 +440,12 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     const unitKey = String((payload as Record<string, unknown>).unitKey ?? '').trim();
     if (!QC_UNIT_KEY_WIRE_RE.test(unitKey)) return null;
     return { type: 'staff.print_job', request_id: requestId, targetStationId, grain, role: 'label', qcLabel: { unitKey } };
+  }
+
+  if (grain === 'stock_label') {
+    const stockLabel = parseStockLabelPayload(rec.stockLabel);
+    if (!stockLabel) return null;
+    return { type: 'staff.print_job', request_id: requestId, targetStationId, grain, role: 'label', stockLabel };
   }
 
   if (grain === 'repair') {

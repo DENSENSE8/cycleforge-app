@@ -14,8 +14,10 @@
  *   staff, Movement). A `TMP-` placeholder swaps its work column for the
  *   SKU exception's own (`SkuExceptionEvidence`: title + description) and
  *   leads the aside with its facts (`SkuExceptionFacts`), kept live by the
- *   SKU-exception realtime feed. Pair to SKU (the header verb, or the pencil
- *   on the temporary SKU) opens `SkuPairSheet`, never a block in the record.
+ *   SKU-exception realtime feed. Pair to SKU (an Actions panel verb, or the
+ *   pencil on the temporary SKU) opens `SkuPairSheet`, never a block in the record.
+ * - The record's verbs paint in the Actions panel under Movement
+ *   (`StockRecordActions`, operator 2026-10-08), never the header.
  *
  * `DeskRecordLayout` stacks main then aside below its container breakpoint,
  * so the phone reads it as one column.
@@ -28,6 +30,7 @@ import { StockAddForm } from '@/components/inventory/stock/StockAddForm';
 import { StockEvidence } from '@/components/inventory/stock/StockEvidence';
 import { StockRecordActions } from '@/components/inventory/stock/StockRecordActions';
 import { StockTemporarySku } from '@/components/inventory/stock/StockTemporarySku';
+import { StockPhotoVerbs } from '@/components/inventory/stock/StockPhotoTile';
 
 export interface StockRecordViewProps {
   /** The open pair, or null when the link names a pair no longer listed. */
@@ -40,11 +43,9 @@ export interface StockRecordViewProps {
   onOpenKey: (key: string, sku: string) => void;
   /** Leave the record (a completed pair merged it away). */
   onClose: () => void;
-  /** Desk paints the verbs in the title row. Phone keeps them here. */
-  showActions?: boolean;
 }
 
-export function StockRecordView({ record, rows, onChanged, onOpenKey, onClose, showActions = true }: StockRecordViewProps) {
+export function StockRecordView({ record, rows, onChanged, onOpenKey, onClose }: StockRecordViewProps) {
   const provisional = useProvisionalSku(record?.is_provisional ? record.sku : null);
   useSkuExceptionsRealtime();
 
@@ -75,15 +76,10 @@ export function StockRecordView({ record, rows, onChanged, onOpenKey, onClose, s
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      {showActions ? (
-        <StockRecordActions
-          record={record}
-          onPaired={paired}
-        />
-      ) : null}
       <StockEvidence
       record={record}
       onCounted={onChanged}
+      actions={<StockRecordActions record={record} onPaired={paired} />}
       placeholder={
         record?.is_provisional
           ? {
@@ -102,7 +98,18 @@ export function StockRecordView({ record, rows, onChanged, onOpenKey, onClose, s
                   }}
                 />
               ),
-              aside: provisional.data ? <SkuExceptionFacts item={provisional.data} /> : null,
+              aside: provisional.data ? (
+                <SkuExceptionFacts
+                  item={provisional.data}
+                  photoActions={
+                    record.cover_photo_url != null ? (
+                      <span className="flex items-center gap-1.5">
+                        <StockPhotoVerbs stockId={record.stock_id} sku={record.sku} onChanged={onChanged} face="header" />
+                      </span>
+                    ) : undefined
+                  }
+                />
+              ) : null,
               skuContent: <StockTemporarySku sku={record.sku} item={provisional.data ?? null} onPaired={paired} />,
             }
           : undefined

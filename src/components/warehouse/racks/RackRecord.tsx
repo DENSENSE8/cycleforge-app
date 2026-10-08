@@ -39,23 +39,42 @@ type RackPanel = 'print' | 'move';
 export interface RackRecordSlot {
   title: ReactNode;
   subtitle: ReactNode;
-  actions: ReactNode;
   view: ReactNode;
 }
 
-/** A verb's flow in place of the body: Back + its name over the phone-width column. */
-export function RackFlowFrame({ title, onBack, testId, children }: { title: string; onBack: () => void; testId: string; children: ReactNode }) {
+/**
+ * A verb's flow in place of the body: Back + its name over the phone-width
+ * column, the rack's Actions panel beside it (operator 2026-10-08).
+ */
+export function RackFlowFrame({
+  title,
+  onBack,
+  testId,
+  actions,
+  children,
+}: {
+  title: string;
+  onBack: () => void;
+  testId: string;
+  actions: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div className={RACK_RECORD_ROOT_CLASS} data-testid={testId}>
-      <div className={RACK_FLOW_COLUMN_CLASS}>
-        <div className="flex min-h-mode-hit items-center gap-2">
-          <Button variant="ghost" size="sm" icon={<ChevronLeft aria-hidden />} onClick={onBack} data-testid={`${testId}-back`}>
-            Back
-          </Button>
-          <h3 className={RECORD_GROUP_TITLE_CLASS}>{title}</h3>
-        </div>
-        {children}
-      </div>
+      <DeskRecordLayout
+        main={
+          <div className={RACK_FLOW_COLUMN_CLASS}>
+            <div className="flex min-h-mode-hit items-center gap-2">
+              <Button variant="ghost" size="sm" icon={<ChevronLeft aria-hidden />} onClick={onBack} data-testid={`${testId}-back`}>
+                Back
+              </Button>
+              <h3 className={RECORD_GROUP_TITLE_CLASS}>{title}</h3>
+            </div>
+            {children}
+          </div>
+        }
+        aside={actions}
+      />
     </div>
   );
 }
@@ -162,21 +181,24 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void, on
 
   const title = rack ? `${rack.name} · ${rack.code}` : code;
   const subtitle = rack ? rackPlacementText(rack) : undefined;
+  // The rack's verbs paint in the Actions panel under Placement (its movement
+  // block), never the header (operator 2026-10-08); it stays beside a verb's flow.
   const actions = rack ? (
-    <div className="flex min-w-0 items-center gap-2">
-      <RecordActionStrip key={rack.code} face="header" verbs={verbs} label={`${rack.name} actions`} testId="rack-record-actions" />
-      <ArmedDangerButton
-        size="sm"
-        icon={<Trash2 aria-hidden />}
-        iconOnlyUntilArmed
-        label="Delete rack"
-        confirmLabel={`Delete ${rack.code}?`}
-        title="Delete rack"
-        loading={deleting}
-        onConfirm={() => void removeRack()}
-        data-testid="rack-record-delete"
-      />
-    </div>
+    <RecordGroup title="Actions" testId="rack-record-actions-panel">
+      <RecordActionStrip face="panel" verbs={verbs} label={`${rack.name} actions`} testId="rack-record-actions" />
+      <div className="px-2 pb-2">
+        <ArmedDangerButton
+          size="sm"
+          icon={<Trash2 aria-hidden />}
+          label="Delete rack"
+          confirmLabel={`Delete ${rack.code}?`}
+          title="Delete rack"
+          loading={deleting}
+          onConfirm={() => void removeRack()}
+          data-testid="rack-record-delete"
+        />
+      </div>
+    </RecordGroup>
   ) : null;
 
   let view: ReactNode;
@@ -194,24 +216,34 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void, on
     );
   } else if (active === 'print') {
     view = (
-      <RackFlowFrame title="Print labels" onBack={closePanel} testId="rack-record-print">
+      <RackFlowFrame title="Print labels" onBack={closePanel} testId="rack-record-print" actions={actions}>
         <RackPrintPanel key={rack.code} rack={rack} />
       </RackFlowFrame>
     );
   } else if (active === 'move') {
     view = (
-      <RackFlowFrame title="Move rack" onBack={closePanel} testId="rack-record-move">
+      <RackFlowFrame title="Move rack" onBack={closePanel} testId="rack-record-move" actions={actions}>
         <RackMovePanel key={rack.code} rack={rack} onMoved={changed} />
       </RackFlowFrame>
     );
   } else {
-    view = <RackRecordBody rack={rack} removing={removing} onRemove={(shelf) => void removeShelf(shelf)} />;
+    view = <RackRecordBody rack={rack} removing={removing} onRemove={(shelf) => void removeShelf(shelf)} actions={actions} />;
   }
 
-  return { title, subtitle, actions, view };
+  return { title, subtitle, view };
 }
 
-function RackRecordBody({ rack, removing, onRemove }: { rack: RackDetail; removing: string | null; onRemove: (shelf: RackShelf) => void }) {
+function RackRecordBody({
+  rack,
+  removing,
+  onRemove,
+  actions,
+}: {
+  rack: RackDetail;
+  removing: string | null;
+  onRemove: (shelf: RackShelf) => void;
+  actions: ReactNode;
+}) {
   const shelves = [...rack.shelves].sort((a, b) => a.shelf - b.shelf);
   return (
     <div className={RACK_RECORD_ROOT_CLASS} data-testid="rack-record">
@@ -253,21 +285,24 @@ function RackRecordBody({ rack, removing, onRemove }: { rack: RackDetail; removi
           </RecordGroup>
         }
         aside={
-          <RecordGroup title="Placement" testId="rack-record-placement">
-            <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
-              <EvidenceFactRow label="Stands at">
-                {rack.placement.name}
-                {rack.placement.kind === 'STAGING' ? ' · floor spot' : ''}
-              </EvidenceFactRow>
-              {rack.room?.id !== rack.placement.id ? (
-                <EvidenceFactRow label="Room">{rack.room?.name ?? 'No room above this spot'}</EvidenceFactRow>
-              ) : null}
-              <EvidenceFactRow label="Last moved">{formatDateTimePST(rack.lastMovedAt)} PT</EvidenceFactRow>
-              <EvidenceFactRow label="Placard">
-                <span className="font-mono">{rack.code}</span>
-              </EvidenceFactRow>
-            </div>
-          </RecordGroup>
+          <div className="flex flex-col gap-4">
+            <RecordGroup title="Placement" testId="rack-record-placement">
+              <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
+                <EvidenceFactRow label="Stands at">
+                  {rack.placement.name}
+                  {rack.placement.kind === 'STAGING' ? ' · floor spot' : ''}
+                </EvidenceFactRow>
+                {rack.room?.id !== rack.placement.id ? (
+                  <EvidenceFactRow label="Room">{rack.room?.name ?? 'No room above this spot'}</EvidenceFactRow>
+                ) : null}
+                <EvidenceFactRow label="Last moved">{formatDateTimePST(rack.lastMovedAt)} PT</EvidenceFactRow>
+                <EvidenceFactRow label="Placard">
+                  <span className="font-mono">{rack.code}</span>
+                </EvidenceFactRow>
+              </div>
+            </RecordGroup>
+            {actions}
+          </div>
         }
       />
     </div>

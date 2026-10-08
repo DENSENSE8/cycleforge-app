@@ -18,7 +18,7 @@ import { Spinner } from '@/design-system/primitives/Spinner';
 import { LIVE_FEED_QUERY_ROOT, liveFeedFindQuery } from '@/lib/live-feed/query';
 import type { PackageCard } from '@/lib/live-feed/types';
 import { PackageMiniRow } from './PackageMiniRow';
-import { SendReplacementPopover } from './SendReplacementPopover';
+import { SendReplacementPopover } from '@/components/outbound/labels/SendReplacementPopover';
 
 export function FindResults({
   q,
@@ -94,7 +94,7 @@ export function FindResults({
       ) : null}
       {sole ? (
         <SendReplacementPopover
-          card={sole}
+          order={sole}
           open={replaceOpen}
           onOpenChange={setReplaceOpen}
           onChange={() => void queryClient.invalidateQueries({ queryKey: LIVE_FEED_QUERY_ROOT })}

@@ -10,7 +10,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus } from '@/components/Icons';
+import { Plus, Printer, Trash2 } from '@/components/Icons';
 import { CopyChip } from '@/components/ui/CopyChip';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { RecordLedgerSummaryPane, RecordLedgerTally } from '@/design-system/components/record-ledger/RecordLedgerSummary';
@@ -24,22 +24,20 @@ import { triageFamily } from '@/design-system/components/triage-card-list/triage
 import { recordRowFace } from '@/design-system/components/triage-card-list/record-row-face';
 import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { TriageRow } from '@/design-system/components/triage-card-list/TriageRow';
-import { Button } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { StockRecordView } from '@/features/stock-record/StockRecordView';
-import { StockRecordActions } from '@/components/inventory/stock/StockRecordActions';
 import type { RowGroup } from '@/lib/group-rows';
 import { isStockDeltaActivity } from '@/lib/inventory/stock-live-refresh';
 import {
-  locationStockNeverCounted,
   locationStockRowId,
+  locationStockScopeKey,
   resolveLocationStockRow,
   locationStockRackFace,
   locationStockRackGroups,
-  parseLocationStockAisles,
-  parseLocationStockRoomIds,
   parseLocationStockSort,
   type LocationStockRoomFacet,
   type LocationStockTableRow,
@@ -59,6 +57,7 @@ import { postStockTransfer } from '@/lib/inventory/stock-transfer-client';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { recallStockPlace, rememberStockPlace, useStockPlaceOptions } from '@/hooks/useStockPlaceOptions';
 import { StockAddForm } from './StockAddForm';
+import { StockBulkLabelPopover } from './StockBulkLabelPopover';
 import { stockSummary } from './StockEvidence';
 import { StockRackPeek } from './StockRackPeek';
 import { stockRackTotal, stockRecordCard, type StockRowModel } from './stock-card-model';
@@ -111,20 +110,14 @@ function stockPairId(key: string): number {
 const stockRowId = (row: LocationStockTableRow): number => stockPairId(locationStockRowId(row));
 
 interface StockLedgerProps {
-  /** Pairs loaded for the selected server-side room/aisle scope. */
+  /** Pairs loaded for the server-side room / address scope. */
   rows: LocationStockTableRow[];
   /** Rooms across those pairs, with counts. */
   rooms: LocationStockRoomFacet[];
+  /** `locationStockScopeKey` of the URL this server payload answered. */
+  loadedScopeKey: string;
   /** Room value used for this server payload. */
   loadedRoomFilter: string | null;
-  /** Aisle value used for this server payload. */
-  loadedAisleFilter: string | null;
-  /** Omitted rooms used for this server payload. */
-  loadedExcludedRoomFilter: string | null;
-  /** Omitted aisles used for this server payload. */
-  loadedExcludedAisleFilter: string | null;
-  /** Sort value used while producing this server payload. */
-  loadedSortFilter: string | null;
   /** Pairs matching `?q=` across the selected room, before the row cap. */
   totalCount: number;
   /** Health counts over the loaded scope — server truth, uncapped. */
@@ -136,11 +129,8 @@ interface StockLedgerProps {
 export function StockLedger({
   rows,
   rooms,
+  loadedScopeKey,
   loadedRoomFilter,
-  loadedAisleFilter,
-  loadedExcludedRoomFilter,
-  loadedExcludedAisleFilter,
-  loadedSortFilter,
   totalCount,
   counts,
   capped,
@@ -148,37 +138,19 @@ export function StockLedger({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
-  const roomFilter = searchParams.get('room')?.trim() || null;
-  const aisleFilter = searchParams.get('aisle')?.trim() || null;
-  const excludedRoomFilter = searchParams.get('excludeRoom')?.trim() || null;
-  const excludedAisleFilter = searchParams.get('excludeAisle')?.trim() || null;
-  const sortFilter = searchParams.get('sort')?.trim() || null;
+  const scopeKey = locationStockScopeKey({
+    room: searchParams.get('room'),
+    aisle: searchParams.get('aisle'),
+    bay: searchParams.get('bay'),
+    level: searchParams.get('level'),
+    position: searchParams.get('position'),
+    sort: searchParams.get('sort'),
+  });
   useEffect(() => {
     // Contextual controls update the native URL first. Refresh that exact URL
     // when this payload trails it; replacing an identical URL is a Next no-op.
-    if (
-      roomFilter !== loadedRoomFilter ||
-      aisleFilter !== loadedAisleFilter ||
-      excludedRoomFilter !== loadedExcludedRoomFilter ||
-      excludedAisleFilter !== loadedExcludedAisleFilter ||
-      sortFilter !== loadedSortFilter
-    ) {
-      startTransition(() => router.refresh());
-    }
-  }, [
-    aisleFilter,
-    loadedAisleFilter,
-    loadedExcludedAisleFilter,
-    loadedExcludedRoomFilter,
-    loadedRoomFilter,
-    loadedSortFilter,
-    roomFilter,
-    excludedAisleFilter,
-    excludedRoomFilter,
-    router,
-    sortFilter,
-    startTransition,
-  ]);
+    if (scopeKey !== loadedScopeKey) startTransition(() => router.refresh());
+  }, [loadedScopeKey, router, scopeKey, startTransition]);
 
   /** A server-read change (Find, State, a new temp SKU): the loader re-reads, params in the route's declared order. */
   const replace = useCallback(
@@ -201,40 +173,13 @@ export function StockLedger({
     [searchParams],
   );
 
-  // ── Location walk: sidebar room/aisle scope, then middle health status ────
+  // ── Location walk: the server read the sidebar's room/address scope; health cuts the rows here ────
   const cut = useTriageCut({ statusKeys: STOCK_HEALTH_KEYS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   const { filterBands } = cut;
-  const selectedRooms = useMemo(
-    () => new Set(parseLocationStockRoomIds(loadedRoomFilter)),
-    [loadedRoomFilter],
-  );
-  const selectedAisles = useMemo(
-    () => new Set(parseLocationStockAisles(loadedAisleFilter)),
-    [loadedAisleFilter],
-  );
-  const excludedHealth = useMemo(
-    () =>
-      new Set(
-        (searchParams.get('excludeStatus') ?? '')
-          .split(',')
-          .filter((value): value is StockHealth => STOCK_HEALTH_KEYS.includes(value as StockHealth)),
-      ),
-    [searchParams],
-  );
-  const locationWalkActive = selectedRooms.size > 0 || selectedAisles.size > 0;
-  const neverCountedOnly = searchParams.get('counted') === 'never';
   const locationSort = parseLocationStockSort(searchParams.get('sort'));
-  const scopedRows = useMemo(
-    () => rows.filter((row) => (
-      (selectedRooms.size === 0 || selectedRooms.has(row.room?.trim() || '(none)')) &&
-      (selectedAisles.size === 0 || (row.aisle != null && selectedAisles.has(row.aisle))) &&
-      (!neverCountedOnly || locationStockNeverCounted(row))
-    )),
-    [neverCountedOnly, rows, selectedAisles, selectedRooms],
-  );
   const locationGroups = useMemo(
-    () => locationStockRackGroups(scopedRows, locationSort),
-    [locationSort, scopedRows],
+    () => locationStockRackGroups(rows, locationSort),
+    [locationSort, rows],
   );
   const walkRows = useMemo(() => locationGroups.flatMap((group) => group.rows), [locationGroups]);
   const allBands = useMemo<[string, RowGroup<LocationStockTableRow>[]][]>(
@@ -242,13 +187,8 @@ export function StockLedger({
     [locationGroups],
   );
   const bands = useMemo(
-    () =>
-      filterBands(allBands, (group) => group.key, (row) =>
-        excludedHealth.size > 0 && stockHealth(row).some((health) => excludedHealth.has(health))
-          ? []
-          : stockHealth(row),
-      ),
-    [filterBands, allBands, excludedHealth],
+    () => filterBands(allBands, (group) => group.key, stockHealth),
+    [filterBands, allBands],
   );
   const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
 
@@ -473,33 +413,14 @@ export function StockLedger({
     () => selectedRows.filter((row) => row.qty > 0 && row.location_barcode && row.sku),
     [selectedRows],
   );
+  // Cards that still hold stock — the trash skips them and names them in its confirm.
+  const held = useMemo(() => selectedRows.filter((row) => row.qty > 0), [selectedRows]);
   const [moveChoice, setMoveChoice] = useState<string | null>(null);
   const [moveArmed, setMoveArmed] = useState(false);
   const placePicker = useStockPlaceOptions({ enabled: selectedRows.length > 0 });
-  const bulkDeleteBins = useCallback(async () => {
-    if (bulkBusy || deletableBins.length === 0) return;
-    const label = deletableBins.length === 1 ? deletableBins[0]!.face : `${deletableBins.length} empty bins`;
-    if (!window.confirm(`Delete ${label}? They stop appearing in the walk and pickers.`)) return;
-    setBulkBusy(true);
-    let failed = 0;
-    for (const bin of deletableBins) {
-      try {
-        const res = await fetch(`/api/locations/${encodeURIComponent(bin.barcode)}`, {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-        if (!res.ok) failed += 1;
-      } catch {
-        failed += 1;
-      }
-    }
-    setBulkBusy(false);
-    const done = deletableBins.length - failed;
-    if (done > 0) toast.success(`Deleted ${done} empty bin${done === 1 ? '' : 's'}`);
-    if (failed > 0) toast.error(`${failed} bin${failed === 1 ? '' : 's'} could not be deleted (not empty or in use).`);
-    selection.setAll(false);
-    router.refresh();
-  }, [bulkBusy, deletableBins, router, selection]);
+  // Bulk Print label: open for the selection it was pressed on; any change to the check-set closes it.
+  const [labelsFor, setLabelsFor] = useState<ReadonlySet<number> | null>(null);
+  const labelsRef = useRef<HTMLButtonElement>(null);
   const bulkMove = useCallback(async () => {
     if (bulkBusy || movable.length === 0 || !moveChoice) return;
     const face = placePicker.faceOf(moveChoice);
@@ -537,35 +458,71 @@ export function StockLedger({
     router.refresh();
   }, [bulkBusy, movable, moveChoice, placePicker, router, selection]);
 
-  const bulkDelete = useCallback(async () => {
-    if (bulkBusy || deletable.length === 0) return;
-    const label = deletable.length === 1 ? deletable[0]!.sku : `${deletable.length} placeholders`;
-    if (!window.confirm(`Delete ${label}? This removes the placeholder pairings — it cannot be undone.`)) return;
+  /**
+   * The bar's one trash: every deletable card in the selection — empty bins
+   * (DELETE refuses one that still holds stock) and zero-stock TMP
+   * placeholders — after ONE confirm with the breakdown and the cards skipped.
+   */
+  const bulkTrash = useCallback(async () => {
+    if (bulkBusy || deletableBins.length + deletable.length === 0) return;
+    const breakdown = [
+      deletableBins.length > 0 ? `${deletableBins.length} empty ${deletableBins.length === 1 ? 'bin' : 'bins'}` : null,
+      deletable.length > 0 ? `${deletable.length} TMP ${deletable.length === 1 ? 'placeholder' : 'placeholders'}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    const heldFaces = held.map((row) => `${stockLocationFace(row) ?? row.location_name ?? 'No location'} · ${row.sku}`);
+    const skipped =
+      heldFaces.length > 0
+        ? ` Skipped — still holds stock: ${heldFaces.slice(0, 5).join(', ')}${heldFaces.length > 5 ? ` and ${heldFaces.length - 5} more` : ''}.`
+        : '';
+    const confirmed = await requestConfirm({
+      title: 'Delete selected',
+      description: `Delete ${breakdown}? Empty bins stop appearing in the walk and pickers; placeholder pairings are removed. This cannot be undone.${skipped}`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setBulkBusy(true);
-    let failed = 0;
+    let binsFailed = 0;
+    for (const bin of deletableBins) {
+      try {
+        const res = await fetch(`/api/locations/${encodeURIComponent(bin.barcode)}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (!res.ok) binsFailed += 1;
+      } catch {
+        binsFailed += 1;
+      }
+    }
+    let placeholdersFailed = 0;
     for (const row of deletable) {
       try {
         const res = await fetch(`/api/sku-catalog/provisional/${encodeURIComponent(row.sku)}`, {
           method: 'DELETE',
           credentials: 'include',
         });
-        if (!res.ok) failed += 1;
+        if (!res.ok) placeholdersFailed += 1;
       } catch {
-        failed += 1;
+        placeholdersFailed += 1;
       }
     }
     setBulkBusy(false);
-    const done = deletable.length - failed;
-    if (done > 0) toast.success(`Deleted ${done} placeholder${done === 1 ? '' : 's'}`);
-    if (failed > 0) toast.error(`${failed} could not be deleted (they hold stock — pair those instead).`);
+    const binsDone = deletableBins.length - binsFailed;
+    const placeholdersDone = deletable.length - placeholdersFailed;
+    if (binsDone > 0) toast.success(`Deleted ${binsDone} empty bin${binsDone === 1 ? '' : 's'}`);
+    if (binsFailed > 0) toast.error(`${binsFailed} bin${binsFailed === 1 ? '' : 's'} could not be deleted (not empty or in use).`);
+    if (placeholdersDone > 0) toast.success(`Deleted ${placeholdersDone} placeholder${placeholdersDone === 1 ? '' : 's'}`);
+    if (placeholdersFailed > 0) toast.error(`${placeholdersFailed} could not be deleted (they hold stock — pair those instead).`);
     selection.setAll(false);
     router.refresh();
-  }, [bulkBusy, deletable, router, selection]);
+  }, [bulkBusy, deletable, deletableBins, held, router, selection]);
 
   // The list read as a whole: server counts over the SAME matched set — the
   // numbers never move when the health filter narrows the rows on screen.
   const summary = useMemo(() => stockSummary(totalCount, counts, rooms), [counts, rooms, totalCount]);
-  const narrowed = Boolean(searchParams.get('q')?.trim()) || selectedRooms.size > 0 || selectedAisles.size > 0 || cut.url.statusFilter.size > 0 || excludedHealth.size > 0 || neverCountedOnly;
+  const narrowed = Boolean(searchParams.get('q')?.trim()) || loadedRoomFilter != null || cut.url.statusFilter.size > 0;
 
   return (
     <>
@@ -583,7 +540,7 @@ export function StockLedger({
         summaryInline
         bulk={
           selectedRows.length > 0 ? (
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               {movable.length > 0 ? (
                 moveArmed ? (
                   <>
@@ -621,37 +578,42 @@ export function StockLedger({
                   </Button>
                 )
               ) : null}
-              {deletableBins.length > 0 ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={bulkBusy && deletable.length === 0}
-                  onClick={() => void bulkDeleteBins()}
-                  data-testid="stock-bulk-delete-bins"
-                >
-                  Delete {deletableBins.length} {deletableBins.length === 1 ? 'bin' : 'bins'}
-                </Button>
+              <Button
+                ref={labelsRef}
+                variant="secondary"
+                size="sm"
+                icon={<Printer />}
+                aria-expanded={labelsFor === selection.ids}
+                onClick={() => setLabelsFor((open) => (open === selection.ids ? null : selection.ids))}
+                data-testid="stock-bulk-print-label"
+              >
+                Print label
+              </Button>
+              {labelsFor === selection.ids ? (
+                <StockBulkLabelPopover rows={selectedRows} anchorRef={labelsRef} onClose={() => setLabelsFor(null)} />
               ) : null}
-              {deletable.length > 0 || selectedRows.some((row) => row.is_provisional) ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={bulkBusy && deletableBins.length === 0}
-                  disabled={deletable.length === 0}
-                  title={deletable.length === 0 ? 'Only zero-stock TMP placeholders can be deleted here — pair real stock instead.' : undefined}
-                  onClick={() => void bulkDelete()}
-                  data-testid="stock-bulk-delete"
-                >
-                  Delete {deletable.length > 0 ? `${deletable.length} TMP` : 'TMP'}
-                </Button>
-              ) : null}
+              <IconButton
+                icon={<Trash2 className="size-4" />}
+                ariaLabel="Delete selected"
+                title={
+                  deletableBins.length + deletable.length > 0
+                    ? 'Delete the empty bins and zero-stock TMP placeholders selected'
+                    : 'Nothing selected can be deleted — only empty bins and zero-stock TMP placeholders'
+                }
+                size="md"
+                radius="control"
+                disabled={bulkBusy || deletableBins.length + deletable.length === 0}
+                onClick={() => void bulkTrash()}
+                className="ml-auto"
+                data-testid="stock-bulk-trash"
+              />
             </div>
           ) : (
             <span className="truncate text-sm text-text-muted">Open one to count it</span>
           )
         }
         banner={
-          capped && (!locationWalkActive || walkRows.length === rows.length) ? (
+          capped ? (
             <p className="truncate pb-2 pl-4 text-sm text-text-warning" data-testid="stock-capped">
               First {rows.length} of {totalCount} pairs — narrow the search
             </p>
@@ -676,11 +638,7 @@ export function StockLedger({
                 size="sm"
                 onClick={() =>
                   replace((params) => {
-                    params.delete('q');
-                    params.delete('room');
-                    params.delete('aisle');
-                    params.delete('status');
-                    params.delete('counted');
+                    for (const param of ['q', 'room', 'aisle', 'bay', 'level', 'position', 'status']) params.delete(param);
                   })
                 }
               >
@@ -701,16 +659,6 @@ export function StockLedger({
           ) : (
             'Not in this list'
           ),
-          actions:
-            openRecord && openRecord.source !== 'empty' ? (
-              <StockRecordActions
-                record={openRecord}
-                onPaired={() => {
-                  closeRecord();
-                  router.refresh();
-                }}
-              />
-            ) : null,
           noun: openRecord?.is_provisional ? 'SKU exception' : VIEW.noun.one,
           testId: 'stock-record',
           summary: <RecordLedgerSummaryPane summary={summary} />,
@@ -719,7 +667,6 @@ export function StockLedger({
             <StockRecordView
               record={openRecord}
               rows={rows}
-              showActions={false}
               onChanged={() => router.refresh()}
               onOpenKey={(key, sku) =>
                 replace((params) => {

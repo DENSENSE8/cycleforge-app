@@ -36,14 +36,14 @@ export function PhotoFlatGrid({
         const allGroupSelected =
           groupIds.length > 0 && groupIds.every((id) => selected.has(id));
         const someGroupSelected = groupIds.some((id) => selected.has(id));
-        const ticketNumber = group.key.startsWith('ticket:')
-          ? group.key.slice('ticket:'.length)
-          : null;
+        const { ticketNumber } = group;
 
         return (
           <section key={group.key} data-testid="photo-entity-group">
             <PhotoEntityGroupHeader
               title={group.label}
+              kind={group.kind}
+              dateLabel={group.dateLabel}
               count={group.photos.length}
               allSelected={allGroupSelected}
               someSelected={someGroupSelected && !allGroupSelected}
@@ -58,7 +58,6 @@ export function PhotoFlatGrid({
                     ticketNumber={ticketNumber}
                     size="sm"
                     label="Sync to NAS"
-                    className="ml-auto"
                   />
                 ) : null
               }

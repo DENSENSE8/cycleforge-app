@@ -5,6 +5,7 @@ import { AnimatePresence } from '@/design-system/motion';
 import { Collapse } from '@/design-system/components/Collapse';
 import { MapPin, Package, Plus, RotateCcw, Search, X } from '@/components/Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { getLast8 } from '@/components/ui/CopyChip';
 import { FbaTrackingBundleCard } from '@/components/fba/sidebar/FbaTrackingBundleCard';
 import { FbaQtySplitPopover } from '@/components/fba/sidebar/FbaQtySplitPopover';
@@ -165,7 +166,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
         <Collapse open={c.visibleUndos.length > 0} appear>
           <div className="space-y-1">
             {c.visibleUndos.map((entry) => (
-              <div key={entry.item_id} className="flex items-center gap-2 border border-border-warning bg-surface-warning px-2.5 py-1.5">
+              <div key={entry.item_id} className={`${PHONE_CARD_FACE} flex items-center gap-2 border border-border-warning bg-surface-warning px-2.5 py-1.5`}>
                 <RotateCcw className="h-3 w-3 shrink-0 text-text-warning" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-role-eyebrow text-text-muted">{entry.display_title || entry.fnsku}</p>

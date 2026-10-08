@@ -83,6 +83,7 @@ describe('orderInspectorOrderUpdateActions', () => {
       showDispatchExtras: true,
       showAssign: true,
       isUrgent: false,
+      isShipped: false,
     });
     assert.deepEqual(
       items.map((i) => i.key),
@@ -90,11 +91,22 @@ describe('orderInspectorOrderUpdateActions', () => {
     );
   });
 
+  test('a shipped order offers no urgent toggle', () => {
+    const items = orderInspectorOrderUpdateActions({
+      showDispatchExtras: true,
+      showAssign: true,
+      isUrgent: true,
+      isShipped: true,
+    });
+    assert.ok(!items.some((i) => i.key === 'urgent'));
+  });
+
   test('observe-only lanes get no update CTAs', () => {
     const items = orderInspectorOrderUpdateActions({
       showDispatchExtras: false,
       showAssign: false,
       isUrgent: false,
+      isShipped: false,
     });
     assert.deepEqual(items, []);
   });

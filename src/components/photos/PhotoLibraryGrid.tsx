@@ -10,6 +10,10 @@ import type { PhotoGridDensity } from '@/lib/photos/photo-grid-density';
 import { PhotoEmptyState, PhotoGridSkeleton } from './photo-library-grid/PhotoGridStates';
 import { usePhotoGridLightbox } from './photo-library-grid/usePhotoGridLightbox';
 import { usePhotoGridKeyboardNav } from './photo-library-grid/usePhotoGridKeyboardNav';
+import {
+  PhotoDateWindowReveal,
+  usePhotoDateWindowRevealKey,
+} from './photo-library-grid/PhotoDateWindowReveal';
 import { PhotoListView } from './photo-library-grid/PhotoListView';
 import { PhotoTicketGrid } from './photo-library-grid/PhotoTicketGrid';
 import { PhotoFlatGrid } from './photo-library-grid/PhotoFlatGrid';
@@ -61,8 +65,11 @@ export function PhotoLibraryGrid({
 }: PhotoLibraryGridProps) {
   const { openAt, lightbox } = usePhotoGridLightbox({ photos, sourceScope, onPhotoDeleted });
   // Roving arrow-key navigation across tiles (←/→/↑/↓/Home/End + Space to select).
-  // Attached per-view below so it only fires while focus is inside the grid.
+  // Attached to the wall wrapper below so it only fires while focus is inside the grid.
   const onGridKeyDown = usePhotoGridKeyboardNav({ onSelect: onSelectTile });
+  // Called before the early returns so a window that passes through an empty
+  // state still animates in when its photos land.
+  const revealKey = usePhotoDateWindowRevealKey(photos);
 
   // Only skeleton when we have nothing to show — keepPreviousData keeps prior tiles up.
   if (isLoading && photos.length === 0) {
@@ -86,45 +93,31 @@ export function PhotoLibraryGrid({
     return <PhotoEmptyState searchQuery={searchQuery} />;
   }
 
-  if (view === 'list') {
-    return (
-      <div onKeyDown={onGridKeyDown} className="outline-none">
-        <PhotoListView
-          photos={photos}
-          scope={sourceScope}
-          selectionActive={selectionActive}
-          selected={selected}
-          onSelectTile={onSelectTile}
-          onToggleGroupSelection={onToggleGroupSelection}
-          onPhotoContextMenu={onPhotoContextMenu}
-          openAt={openAt}
-        />
-        {lightbox}
-      </div>
-    );
-  }
-
-  if (view === 'grid-ticket') {
-    return (
-      <div onKeyDown={onGridKeyDown} className="outline-none">
-        <PhotoTicketGrid
-          photos={photos}
-          scope={sourceScope}
-          gridDensity={gridDensity}
-          selectionActive={selectionActive}
-          selected={selected}
-          onSelectTile={onSelectTile}
-          onToggleGroupSelection={onToggleGroupSelection}
-          onPhotoContextMenu={onPhotoContextMenu}
-          openAt={openAt}
-        />
-        {lightbox}
-      </div>
-    );
-  }
-
-  return (
-    <div onKeyDown={onGridKeyDown} className="outline-none">
+  const wall =
+    view === 'list' ? (
+      <PhotoListView
+        photos={photos}
+        scope={sourceScope}
+        selectionActive={selectionActive}
+        selected={selected}
+        onSelectTile={onSelectTile}
+        onToggleGroupSelection={onToggleGroupSelection}
+        onPhotoContextMenu={onPhotoContextMenu}
+        openAt={openAt}
+      />
+    ) : view === 'grid-ticket' ? (
+      <PhotoTicketGrid
+        photos={photos}
+        scope={sourceScope}
+        gridDensity={gridDensity}
+        selectionActive={selectionActive}
+        selected={selected}
+        onSelectTile={onSelectTile}
+        onToggleGroupSelection={onToggleGroupSelection}
+        onPhotoContextMenu={onPhotoContextMenu}
+        openAt={openAt}
+      />
+    ) : (
       <PhotoFlatGrid
         view={view}
         gridDensity={gridDensity}
@@ -137,6 +130,11 @@ export function PhotoLibraryGrid({
         onPhotoContextMenu={onPhotoContextMenu}
         openAt={openAt}
       />
+    );
+
+  return (
+    <div onKeyDown={onGridKeyDown} className="outline-none">
+      <PhotoDateWindowReveal revealKey={revealKey}>{wall}</PhotoDateWindowReveal>
       {lightbox}
     </div>
   );

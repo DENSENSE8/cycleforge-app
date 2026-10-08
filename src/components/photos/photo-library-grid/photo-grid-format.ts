@@ -10,17 +10,42 @@ import {
   photoRefLabel,
   UNLINKED_PHOTO_GROUP_KEY,
 } from '@/lib/photos/display-names';
+import { formatDateKeyMedium, formatStageClockTimePST, getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 
 /** @deprecated Use {@link UNLINKED_PHOTO_GROUP_KEY} from display-names. */
 const UNLINKED_TICKET_KEY = UNLINKED_PHOTO_GROUP_KEY;
 
+/** What a group band identifies — a claims ticket, a PO / order / unit ref, or nothing. */
+export type PhotoGroupKind = 'ticket' | 'ref' | 'unlinked';
+
 interface TicketGroup {
   key: string;
-  /** Display label for the ticket header (the ticket number, or "Unlinked"). */
+  kind: PhotoGroupKind;
+  /** Zendesk ticket number for `ticket:` groups (drives Sync to NAS); null otherwise. */
+  ticketNumber: string | null;
+  /** Display label for the band (last-8 face of the ticket / ref, or "Unlinked"). */
   label: string;
+  /** PST capture date and time (or first – last span) of the group's photos. */
+  dateLabel: string;
   photos: LibraryPhoto[];
-  /** Most-recent capture in the group, for the header timestamp. */
-  latestAt: string;
+}
+
+/**
+ * `Oct 7, 2:14 PM` for one moment, `Oct 7, 9:02 AM – 2:14 PM` within a day,
+ * `Oct 3, 9:02 AM – Oct 7, 2:14 PM` across days. The year joins only outside
+ * the current PST year; the clock follows the staffer's 12/24-hour setting.
+ */
+function photoGroupDateLabel(firstAt: string, lastAt: string): string {
+  const first = toPSTDateKey(firstAt);
+  const last = toPSTDateKey(lastAt);
+  if (!first || !last) return '';
+  const thisYear = getCurrentPSTDateKey().slice(0, 4);
+  const day = (dateKey: string) =>
+    formatDateKeyMedium(dateKey, { weekday: 'none', withYear: !dateKey.startsWith(thisYear) });
+  const firstTime = formatStageClockTimePST(firstAt);
+  const lastTime = formatStageClockTimePST(lastAt);
+  if (first !== last) return `${day(first)}, ${firstTime} – ${day(last)}, ${lastTime}`;
+  return firstTime === lastTime ? `${day(first)}, ${firstTime}` : `${day(first)}, ${firstTime} – ${lastTime}`;
 }
 
 /** Group photos by ticket# (claims) or PO#/order ref; oldest→newest within each group. */
@@ -35,20 +60,26 @@ export function groupPhotosByTicket(
     let group = map.get(key);
     if (!group) {
       const raw = key.startsWith('po:') ? key.slice('po:'.length) : undefined;
+      const ticketNumber = key.startsWith('ticket:') ? key.slice('ticket:'.length) : null;
       group = {
         key,
+        kind: ticketNumber ? 'ticket' : key === UNLINKED_PHOTO_GROUP_KEY ? 'unlinked' : 'ref',
+        ticketNumber,
         label: photoGroupHeaderLabel(key, scope, raw),
+        dateLabel: '',
         photos: [],
-        latestAt: photo.createdAt,
       };
       map.set(key, group);
       order.push(key);
     }
     group.photos.push(photo);
-    if (photo.createdAt > group.latestAt) group.latestAt = photo.createdAt;
   }
   for (const group of map.values()) {
     group.photos.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    group.dateLabel = photoGroupDateLabel(
+      group.photos[0]!.createdAt,
+      group.photos[group.photos.length - 1]!.createdAt,
+    );
   }
   return order.map((key) => map.get(key)!);
 }

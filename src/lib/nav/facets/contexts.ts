@@ -122,6 +122,12 @@ export interface NavFacetGroupDecl {
   inline?: boolean;
   /** A long open option set (vendors): a filter field narrows the options by name. */
   searchable?: boolean;
+  /**
+   * Drill step: the group id this group narrows. It paints only once that
+   * parent holds a value; changing the parent clears it (owner 2026-10-08: an
+   * Aisle with no Room picked is misleading — aisle numbers repeat per room).
+   */
+  parent?: string;
 }
 
 const STAGE: NavFacetGroupDecl = { id: 'stage', label: 'Stage', param: 'stage', multi: false };
@@ -162,11 +168,16 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     { id: 'carrier', label: 'Carrier', param: 'carrier', multi: true },
     { id: 'channel', label: 'Platform', param: 'channel', multi: true },
   ],
+  // Inventory › Stock: health, then the address walked one part at a time —
+  // Room › Aisle › Bay › Level › Position, each single-pick, each shown only
+  // under its picked parent (owner 2026-10-08). No include/exclude switch.
   'stock.all': [
-    { id: 'health', label: 'Stock health', param: 'status', excludeParam: 'excludeStatus', multi: true },
-    { id: 'count', label: 'Cycle count', param: 'counted', multi: false, inline: true },
-    { id: 'room', label: 'Room', param: 'room', excludeParam: 'excludeRoom', multi: false },
-    { id: 'aisle', label: 'Aisle', param: 'aisle', excludeParam: 'excludeAisle', multi: true, inline: true },
+    { id: 'health', label: 'Stock health', param: 'status', multi: true },
+    { id: 'room', label: 'Room', param: 'room', multi: false },
+    { id: 'aisle', label: 'Aisle', param: 'aisle', multi: false, parent: 'room' },
+    { id: 'bay', label: 'Bay', param: 'bay', multi: false, parent: 'aisle' },
+    { id: 'level', label: 'Level', param: 'level', multi: false, parent: 'bay' },
+    { id: 'position', label: 'Position', param: 'position', multi: false, parent: 'level' },
   ],
   // Inventory › Locations › Racks: the room each rack stands in (`?room=<room location id>`, `inventory-racks.ts`).
   'inventory.racks': [{ id: 'room', label: 'Room', param: 'room', multi: false }],

@@ -11,10 +11,27 @@ export interface StationTaskController {
   activeDisplay: string | null;
   ticketActive: boolean;
   photosActive: boolean;
+  pairActive: boolean;
   displaysActive: boolean;
   selectTask: (task: StationTask) => void;
+  /** Show a contextual tab without switching to it (Link existing ticket pressed). */
+  revealTask: (task: StationTask) => void;
   openDisplay: (displayId: string) => void;
   closeDisplays: () => void;
+}
+
+/**
+ * What the open record says about its contextual tabs (operator 2026-10-08):
+ * Photos shows only once the carton has photos, Ticket only once a ticket is
+ * linked or Claim / Link existing ticket was pressed, Pair only while the
+ * carton is unmatched or `# Pair` was pressed (and only on stations that pass
+ * `pair`). A tab the operator opened stays for that record.
+ */
+export interface StationTaskContext {
+  hasPhotos: boolean;
+  hasTicket: boolean;
+  /** Omit on stations without a Pair tab. */
+  pair?: { needed: boolean };
 }
 
 /**
@@ -25,32 +42,39 @@ export function useStationTaskController({
   owner,
   workLabel,
   workIcon,
+  workTone,
   scopeKey,
   initialTask = 'work',
+  context,
 }: {
   owner: string;
   workLabel: string;
   workIcon: ComponentType<{ className?: string }>;
+  /** The station's `SCAN_STATION_TONES` icon class. */
+  workTone: string;
   scopeKey: string | number;
   initialTask?: StationTask;
+  context: StationTaskContext;
 }): StationTaskController {
   const { setMode: setComposerMode } = useStationComposerMode();
   const [activeTask, setActiveTask] = useState<StationTask>(initialTask);
   const [activeDisplay, setActiveDisplay] = useState<string | null>(
     initialTask === 'displays' ? STATION_DISPLAY_INDEX : null,
   );
-  const tasks = useMemo(
-    () => stationHeaderTasks({ workLabel, workIcon }),
-    [workIcon, workLabel],
-  );
+  const [revealed, setRevealed] = useState<ReadonlySet<StationTask>>(() => new Set([initialTask]));
+
+  const revealTask = useCallback((task: StationTask) => {
+    setRevealed((current) => (current.has(task) ? current : new Set(current).add(task)));
+  }, []);
 
   const selectTask = useCallback(
     (task: StationTask) => {
+      revealTask(task);
       setActiveTask(task);
       setActiveDisplay(task === 'displays' ? STATION_DISPLAY_INDEX : null);
       setComposerMode(task === 'ticket' ? 'ticket' : 'unbox');
     },
-    [setComposerMode],
+    [revealTask, setComposerMode],
   );
 
   const openDisplay = useCallback(
@@ -71,10 +95,29 @@ export function useStationTaskController({
     setActiveTask(initialTask);
     setActiveDisplay(initialTask === 'displays' ? STATION_DISPLAY_INDEX : null);
     setComposerMode(initialTask === 'ticket' ? 'ticket' : 'unbox');
+    setRevealed(new Set([initialTask]));
     // The open record owns the reset. `initialTask` is its captured arrival policy,
     // not a live preference that may override an operator's task selection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeKey]);
+
+  const { hasPhotos, hasTicket } = context;
+  const offersPair = context.pair != null;
+  const pairNeeded = context.pair?.needed ?? false;
+  const visible = useMemo(() => {
+    const shown = new Set<StationTask>(['work', 'displays', activeTask]);
+    for (const task of revealed) shown.add(task);
+    if (hasPhotos) shown.add('photos');
+    if (hasTicket) shown.add('ticket');
+    if (pairNeeded) shown.add('pair');
+    if (!offersPair) shown.delete('pair');
+    return shown;
+  }, [activeTask, revealed, hasPhotos, hasTicket, pairNeeded, offersPair]);
+
+  const tasks = useMemo(
+    () => stationHeaderTasks({ workLabel, workIcon, workTone, visible }),
+    [workIcon, workLabel, workTone, visible],
+  );
 
   const registration = useMemo(
     () => ({
@@ -104,8 +147,10 @@ export function useStationTaskController({
     activeDisplay,
     ticketActive: activeTask === 'ticket',
     photosActive: activeTask === 'photos',
+    pairActive: activeTask === 'pair',
     displaysActive: activeTask === 'displays',
     selectTask,
+    revealTask,
     openDisplay,
     closeDisplays,
   };

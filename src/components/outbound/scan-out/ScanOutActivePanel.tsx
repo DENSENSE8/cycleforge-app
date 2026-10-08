@@ -259,7 +259,7 @@ export function ScanOutActivePanel({
     <span
       className={cn(
         'inline-flex max-w-[14rem] items-center gap-1 truncate px-1.5 py-0.5 text-role-micro font-semibold',
-        cornerClass('flush'),
+        cornerClass('pill'),
         STATUS_TONE[pane.status],
       )}
       data-testid="scan-out-status-chip"

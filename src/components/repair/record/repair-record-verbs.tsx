@@ -45,7 +45,7 @@ import {
   printPage,
 } from './repair-record-verb-panels';
 
-/** A header verb; `panel` verbs swap the record body for their panel, with Back. */
+/** An Actions panel verb; `panel` verbs swap the record body for their panel, with Back. */
 export interface RepairRecordVerb extends RecordActionVerb {
   panel?: (done: () => void) => ReactNode;
 }

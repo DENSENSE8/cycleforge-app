@@ -13,6 +13,7 @@ import { focusRing } from '../../tokens/focus-ring';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { PHONE_CARD_FACE } from '../../tokens/phone-card';
 import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP, FLOATING_ACTION_DISABLED_FACE } from '../../tokens/dock-clearance';
 import { RECORD_HIT_CLASS } from './record-ledger-geometry';
 import { EvidenceDisclosure } from './EvidenceDisclosure';
@@ -151,17 +152,25 @@ export function EvidenceFact({ label, children, mono = false }: { label: string;
   );
 }
 
-/** A notice at the head of the column (paired, missing, failed). */
+/**
+ * A notice at the head of the column (paired, missing, failed) — a phone card
+ * inset in the column, never a full-width tinted band (operator 2026-10-08).
+ */
 export function EvidenceNotice({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'warn' }) {
   return (
-    <div
-      role="status"
-      className={cn(
-        'border-b border-mode-rule px-4 py-2 text-role-data',
-        tone === 'warn' ? 'bg-surface-warning font-medium text-mode-warn' : 'text-mode-ink',
-      )}
-    >
-      {children}
+    <div className="px-3 py-2">
+      <div
+        role="status"
+        className={cn(
+          'border px-4 py-2.5 text-role-data',
+          PHONE_CARD_FACE,
+          tone === 'warn'
+            ? 'border-border-warning bg-surface-warning font-medium text-mode-warn'
+            : 'border-border-soft bg-surface-card text-mode-ink',
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

@@ -289,7 +289,7 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
       { label: 'Still open', value: inProgress },
       { label: 'Closed', value: repairs.length - inProgress },
     ],
-    note: 'Open a repair to work it from its record — status, labels, paperwork and tickets are its header verbs. Stage and Sort live in the sidebar.',
+    note: 'Open a repair to work it from its record — status, labels, paperwork and tickets are in its Actions panel. Stage and Sort live in the sidebar.',
   };
   const narrowed = Boolean(search) || needsLabel || searchParams.has('tab');
 
@@ -303,7 +303,6 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
         record={{
           title: slot?.title ?? 'Repair',
           subtitle: slot?.subtitle || undefined,
-          actions: slot?.actions,
           noun: VIEW.noun.one,
           showIndex: false,
           testId: 'repair-record',

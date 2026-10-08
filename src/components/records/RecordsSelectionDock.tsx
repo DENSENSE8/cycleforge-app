@@ -45,6 +45,7 @@ import { toast } from '@/lib/toast';
 import { postRecordWrite, type RecordWrite } from './records-actions-client';
 import { orderNumberTargets, recordTargetOf, recordTargets, recordsEntryKey, refsOfLines, summarizeRecordResults } from './records-grain';
 import { ValueCard } from './RecordsValueCard';
+import { DELETE_HOTKEY } from '@/lib/keyboard/key-registry';
 
 const BUSY_REASON = 'Working on the last action…';
 const OUTBOUND_ONLY = 'Outbound lines only';
@@ -365,6 +366,7 @@ export function RecordsSelectionDock({
         label: 'Delete…',
         icon: <Trash2 className="size-4" />,
         tone: 'danger',
+        hotkey: DELETE_HOTKEY,
         ...needsLines,
         run: async () => {
           if (targets.length > 1) {

@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Download, ExternalLink, Link2, Loader2, Tag, TicketHelp, Trash2 } from '@/components/Icons';
+import { Loader2, Trash2 } from '@/components/Icons';
 import { usePhotoInspectorParam } from '@/hooks/usePhotoInspectorParam';
-import { usePhotoLibrary, photoLibraryFilterParams } from '@/hooks/usePhotoLibrary';
+import { usePhotoLibrary } from '@/hooks/usePhotoLibrary';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
-import { usePhotoShareLinks } from '@/hooks/usePhotoShareLinks';
 import {
   resolvePhotoLibraryFolderLeafLabel,
 } from '@/lib/photos/library-context-label';
@@ -24,12 +23,9 @@ import { cn } from '@/utils/_cn';
 import { useMediaLibraryShortcuts } from '@/hooks/useMediaLibraryShortcuts';
 import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
 import { getCurrentPSTDateKey } from '@/utils/date';
-import type { SelectionAction } from '@/lib/selection/selection-actions';
-import { toast } from '@/lib/toast';
+import { resolveSelectionAction } from '@/lib/selection/selection-actions';
 import { requestConfirm } from '@/design-system/components/confirm';
-import { dispatchReceivingPhotoChanged } from '@/utils/events';
 import { usePackerPhotosRealtimeRefresh } from '@/hooks/usePackerPhotosRealtimeRefresh';
-import { useAuth } from '@/contexts/AuthContext';
 import { ZendeskClaimModal } from '@/components/support/zendesk/claim/ZendeskClaimModal';
 import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-types';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
@@ -43,11 +39,13 @@ import {
   type MediaUploadTarget,
 } from './PhotoLibraryDeskActions';
 import { PhotoLibraryGrid } from './PhotoLibraryGrid';
-import { PhotoBatchInspectorPanel } from './photo-inspector/PhotoBatchInspectorPanel';
+import { PhotoSelectionDock } from './PhotoSelectionDock';
+import { PhotoShareSheet } from './PhotoShareSheet';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
-import { PhotoInspectorPanel } from './photo-inspector/PhotoInspectorPanel';
+import { LightboxPortal } from './photo-library-grid/LightboxPortal';
+import { toGalleryInputs } from './photo-library-grid/photo-grid-format';
 import { photoLibraryShowsGridControls } from '@/lib/photos/photo-grid-density';
 import { TableStatusBar } from '@/components/tables/TableStatusBar';
 import type { PhotoLinkRole } from '@/lib/photos/types';
@@ -60,20 +58,15 @@ function photoCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'photo' : 'photos'}`;
 }
 
-const DEFAULT_SHARE_TTL_SECONDS = 24 * 60 * 60;
-
-/** Server cap on ids per share / share-pack request (share-links.ts MAX_PHOTOS_PER_REQUEST). */
-const MAX_SHARE_PHOTOS = 200;
-
 // `LibraryPhoto` moved to ./photo-library-types so the grid + hook can share it
 // without importing this page (cycle). Re-exported here for compatibility.
 export type { LibraryPhoto } from './photo-library-types';
 import type { LibraryPhoto } from './photo-library-types';
-import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
+import { usePhotoVerbs, type PhotoVerbTarget } from './usePhotoVerbs';
 
 /** Right pane: workbench chrome + the flat photo stream. Filters live in the left sidebar (`NAV_PAGE_DECLS['ops-photos']`). */
 export function PhotoLibraryPage() {
-  const { filters, display, setView, patch, applyView } = usePhotoLibraryUrlState();
+  const { filters, display, setView, patch } = usePhotoLibraryUrlState();
   const { view } = display;
 
   // Always fetch photos. The folder drill used to gate this query behind
@@ -146,17 +139,14 @@ export function PhotoLibraryPage() {
       ? { ...next, dateFrom: photoDaySpan.from, dateTo: photoDaySpan.to }
       : next;
   }, [filters, resolvedPoRef, resolvedTicketId, photoDaySpan]);
-  const { has } = useAuth();
-  const canZendesk = has('integrations.zendesk');
-  const canManagePhotos = has('photos.manage');
-  const canShare = has('photos.share');
-
   // Photos staged for the "Create support ticket" modal (null = closed).
   const [claimPhotos, setClaimPhotos] = useState<ClaimPhotoInput[] | null>(null);
   // Photos staged for the label editor (null = closed; 1 = single PUT, N = bulk).
   const [labelEditorPhotos, setLabelEditorPhotos] = useState<LibraryPhoto[] | null>(null);
   // Right-click context menu target (null = closed).
   const [ctxMenu, setCtxMenu] = useState<{ photo: LibraryPhoto; x: number; y: number } | null>(null);
+  // Selected photos open in the fullscreen viewer from the action control (null = closed).
+  const [viewerPhotos, setViewerPhotos] = useState<LibraryPhoto[] | null>(null);
 
   // Live-refresh when a packer's phone commits a GCS upload (station channel),
   // mirroring how receiving photos already propagate into the library.
@@ -166,32 +156,25 @@ export function PhotoLibraryPage() {
   }, [queryClient]);
   usePackerPhotosRealtimeRefresh(null, refreshLibraryOnPackerPhoto);
 
-  // `selectMode` is the explicit pencil toggle; selection can also start via a
-  // modifier-click / hover checkmark even when it's off (Google-Photos model).
-  const [selectMode, setSelectMode] = useState(false);
-  // Selection persists across the client pages (see usePhotoSelection): a bulk
-  // action carries the whole set, not just the visible page.
-  const { selected, selectedPhotos, isActive, selectTile, selectAll, selectIds, toggleGroupSelection, clear } =
+  // Selection starts from a tile's checkmark or a modifier-click (Google-Photos
+  // model) — the one selection method. It persists across the client pages
+  // (see usePhotoSelection): a bulk action carries the whole set.
+  const { selected, selectedPhotos, isActive: selectionActive, selectTile, selectAll, selectIds, toggleGroupSelection, clear } =
     usePhotoSelection(photos);
-  const selectionActive = selectMode || isActive;
 
-  const shareLinks = usePhotoShareLinks();
-
-  // ── The desk inspector ────────────────────────────────────────────────────
-  // fullscreen viewer (operator ruling 2026-08-09).
+  // ── `?photoId=` — a single selection survives a reload / deep link ─────────
   const { photoId: openPhotoId, setPhotoId } = usePhotoInspectorParam();
   /** `?photoId=` as it stood on first paint — the reload / deep-link seed. */
   const [seedPhotoId] = useState(() => openPhotoId);
   const [inspectorHydrated, setInspectorHydrated] = useState(() => openPhotoId === null);
 
-  const inspectorPhoto = useMemo(() => {
+  // Resolved against the LOADED stream: "select all matching" can hold ids that
+  // were never fetched, and an id we do not have is not worth a URL.
+  const soloPhotoId = useMemo(() => {
     if (selected.size !== 1) return null;
-    // Resolved against the LOADED stream on purpose: "select all matching" can
-    // hold ids that were never fetched, and a record we do not have is one we
-    // cannot inspect. That case falls through to the batch rail instead.
-    return photos.find((p) => selected.has(p.id)) ?? null;
+    const photo = photos.find((p) => selected.has(p.id));
+    return photo ? String(photo.id) : null;
   }, [photos, selected]);
-  const inspectorPhotoId = inspectorPhoto ? String(inspectorPhoto.id) : null;
 
   // Seed the selection from the URL exactly ONCE, so a reload lands on the same photo.
   useEffect(() => {
@@ -206,12 +189,9 @@ export function PhotoLibraryPage() {
   // Selection → URL. Gated on hydration so the seed is never clobbered by the
   // empty selection that exists for the frame before it lands.
   useEffect(() => {
-    if (!inspectorHydrated || openPhotoId === inspectorPhotoId) return;
-    setPhotoId(inspectorPhotoId);
-  }, [inspectorHydrated, inspectorPhotoId, openPhotoId, setPhotoId]);
-
-  /** The batch rail and the record inspector are ONE right-edge slot at two cardinalities, so they are mutually exclusive by construction… */
-  const showBatchRail = selectionActive && inspectorPhoto === null;
+    if (!inspectorHydrated || openPhotoId === soloPhotoId) return;
+    setPhotoId(soloPhotoId);
+  }, [inspectorHydrated, soloPhotoId, openPhotoId, setPhotoId]);
 
   // Trailing breadcrumb crumb naming the entity in view (PO / ticket / carton).
   const leafPoRef = resolvedPoRef ?? filters.poRef;
@@ -232,6 +212,11 @@ export function PhotoLibraryPage() {
     void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
   }, [queryClient]);
 
+  const refreshAfterPhotoDelete = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
+    void queryClient.invalidateQueries({ queryKey: ['photo-library-folders'] });
+  }, [queryClient]);
+
   const isRefreshing = query.isFetching && !query.isLoading;
 
   // Date breadcrumb quick-jump defaults: today + the most recent
@@ -246,49 +231,17 @@ export function PhotoLibraryPage() {
     [photos],
   );
 
-  const exitSelectMode = useCallback(() => {
-    setSelectMode(false);
-    clear();
-  }, [clear]);
-
   // Reset selection when the BROWSE SCOPE changes — a folder drill, breadcrumb jump, source-scope switch, or search.
   const scopeKey = useMemo(() => JSON.stringify(filters), [filters]);
   const prevScopeKey = useRef(scopeKey);
   useEffect(() => {
     if (prevScopeKey.current === scopeKey) return;
     prevScopeKey.current = scopeKey;
-    exitSelectMode();
-  }, [scopeKey, exitSelectMode]);
+    clear();
+  }, [scopeKey, clear]);
 
   /** Every id the find-bar is currently painting — the select-all target. */
   const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
-
-  // "Select all matching filters" — fetch every matching photo id (capped) for the current filter set and select them, so a bulk…
-  const selectAllMatching = useCallback(async () => {
-    if (searchQuery.trim()) {
-      selectIds(visibleIds);
-      setSelectMode(true);
-      toast.success(`Selected ${visibleIds.length} matching “${searchQuery.trim()}”`);
-      return;
-    }
-    try {
-      const qs = photoLibraryFilterParams(filters).toString();
-      const res = await fetch(`/api/photos/library/ids?${qs}`);
-      if (!res.ok) throw new Error('Failed to select all');
-      const data = (await res.json()) as { ids: number[]; total: number; capped: boolean };
-      selectIds(data.ids);
-      setSelectMode(true);
-      if (data.capped) {
-        toast.success(
-          `Selected first ${data.ids.length} of ${data.total} — narrow filters to select more`,
-        );
-      } else {
-        toast.success(`Selected all ${data.ids.length} matching`);
-      }
-    } catch {
-      toast.error('Could not select all matching photos');
-    }
-  }, [filters, selectIds, searchQuery, visibleIds]);
 
   /** `⌘A` / the rail's select-all: the painted rows, never the hidden ones. */
   const selectAllShown = useCallback(() => {
@@ -315,7 +268,7 @@ export function PhotoLibraryPage() {
       // Yield to KeyboardShortcutsCheatSheet / selection inline overlays.
     },
     onSelectAll: selectAllShown,
-    onEscape: exitSelectMode,
+    onEscape: clear,
     onSelectViewIndex: selectViewByIndex,
   });
 
@@ -364,297 +317,96 @@ export function PhotoLibraryPage() {
     [visiblePhotos, scope, shownIds.length],
   );
 
-  const downloadPhotoFile = useCallback(async (url: string, filename: string) => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to download ${filename}`);
-    const blob = await res.blob();
-    const objectUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = objectUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(objectUrl);
+  const attachToTicket = useCallback((rows: LibraryPhoto[]) => {
+    setClaimPhotos(
+      rows.map((row) => ({
+        id: row.id,
+        src: row.thumbUrl,
+        displayUrl: row.displayUrl,
+        poRef: row.poRef,
+        caption: row.caption ?? null,
+      })),
+    );
   }, []);
 
-  const deletePhotoFromMenu = useCallback(
-    async (id: number) => {
+  // The ONE verb set: the dock and the right-click menu both read it.
+  const { verbsFor, canDelete, deletePhotos, shareReady, dismissShareReady } = usePhotoVerbs({
+    scope,
+    onOpen: setViewerPhotos,
+    onTag: setLabelEditorPhotos,
+    onAttachToTicket: attachToTicket,
+  });
+
+  /** The selection as a verb target — every selected id, plus its loaded rows. */
+  const selectionTarget = useMemo<PhotoVerbTarget>(
+    () => ({ ids: [...selected], rows: selectedPhotos }),
+    [selected, selectedPhotos],
+  );
+  const selectionVerbs = useMemo(() => verbsFor(selectionTarget), [verbsFor, selectionTarget]);
+
+  /** Confirm, then delete — the dock and the right-click menu share this one path. */
+  const confirmAndDelete = useCallback(
+    async (ids: number[], clearsSelection: boolean) => {
+      const count = ids.length;
       const ok = await requestConfirm({
-        description: 'Delete this photo? This cannot be undone.',
+        description: `Delete ${count === 1 ? 'this photo' : `${count} photos`}? This cannot be undone.`,
         tone: 'danger',
         confirmLabel: 'Delete',
       });
       if (!ok) return;
-      try {
-        const res = await fetch(`/api/photos/${id}`, { method: 'DELETE' });
-        if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          throw new Error(data?.error || 'Delete failed');
-        }
-        dispatchReceivingPhotoChanged({ action: 'delete', photoIds: [id] });
-        await queryClient.invalidateQueries({ queryKey: ['photo-library'] });
-        toast.success('Photo deleted');
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Delete failed');
-      }
+      await deletePhotos(ids);
+      if (clearsSelection) clear();
     },
-    [queryClient],
+    [deletePhotos, clear],
+  );
+  const deleteSelection = useMemo(
+    () =>
+      canDelete(selectionTarget)
+        ? () => void confirmAndDelete(selectionTarget.ids, true)
+        : undefined,
+    [canDelete, confirmAndDelete, selectionTarget],
   );
 
-  // Per-photo right-click actions — the "drilling" menu (view, copy link, attach
-  // to a support ticket, download, delete). Mirrors the bulk toolbar for one photo.
-  const photoMenuItems = useCallback(
-    (photo: LibraryPhoto): PhotoContextMenuItem[] => [
-      {
-        key: 'open',
-        label: 'Open in new tab',
-        icon: <ExternalLink className="h-3.5 w-3.5" />,
-        onClick: () => window.open(`/api/photos/${photo.id}/content`, '_blank', 'noopener'),
-      },
-      {
-        key: 'copy',
-        label: 'Copy shareable link',
-        icon: <Link2 className="h-3.5 w-3.5" />,
-        onClick: () =>
-          void shareLinks.generateAndCopy([photo.id], { ttlSeconds: DEFAULT_SHARE_TTL_SECONDS }),
-      },
-      ...(canShare
-        ? [
-            {
-              key: 'share-page',
-              label: 'Create share page',
-              icon: <ExternalLink className="h-3.5 w-3.5" />,
-              onClick: () =>
-                void shareLinks.createSharePage([photo.id], { title: photoShareTitle([photo], scope) }),
-            } satisfies PhotoContextMenuItem,
-          ]
-        : []),
-      ...(canZendesk
-        ? [
-            {
-              key: 'zendesk',
-              label: 'Attach to ticket',
-              icon: <TicketHelp className="h-3.5 w-3.5" />,
-              onClick: () =>
-                setClaimPhotos([
-                  {
-                    id: photo.id,
-                    src: photo.thumbUrl,
-                    displayUrl: photo.displayUrl,
-                    poRef: photo.poRef,
-                    caption: photo.caption ?? null,
-                  },
-                ]),
-            } satisfies PhotoContextMenuItem,
-          ]
-        : []),
-      ...(canManagePhotos
-        ? [
-            {
-              key: 'labels',
-              label: 'Edit labels',
-              icon: <Tag className="h-3.5 w-3.5" />,
-              onClick: () => setLabelEditorPhotos([photo]),
-            } satisfies PhotoContextMenuItem,
-          ]
-        : []),
-      {
-        key: 'download',
-        label: 'Download',
-        icon: <Download className="h-3.5 w-3.5" />,
-        onClick: () =>
-          void downloadPhotoFile(`/api/photos/${photo.id}/content?download=1`, `photo-${photo.id}.jpg`).catch(
-            () => toast.error('Download failed'),
-          ),
-      },
-      {
+  // Right-click acts on the selection when the photo is in it, else on that one
+  // photo (Finder / Photos model) — through the same verbs as the dock.
+  const menuItems = useMemo<PhotoContextMenuItem[]>(() => {
+    if (!ctxMenu) return [];
+    const inSelection = selected.has(ctxMenu.photo.id);
+    const target: PhotoVerbTarget = inSelection
+      ? selectionTarget
+      : { ids: [ctxMenu.photo.id], rows: [ctxMenu.photo] };
+    const items: PhotoContextMenuItem[] = verbsFor(target).map((verb) => {
+      const resolved = resolveSelectionAction(verb, target.rows);
+      return {
+        key: verb.key,
+        label: resolved.label,
+        icon: verb.icon,
+        disabled: resolved.disabled,
+        onClick: () => void verb.run(target.rows),
+      };
+    });
+    if (canDelete(target)) {
+      const count = target.ids.length;
+      items.push({
         key: 'delete',
-        label: 'Delete',
+        label: count === 1 ? 'Delete' : `Delete ${count}`,
+        icon: <Trash2 className="h-4 w-4" />,
         danger: true,
         separatorBefore: true,
-        icon: <Trash2 className="h-3.5 w-3.5" />,
-        onClick: () => void deletePhotoFromMenu(photo.id),
-      },
-    ],
-    [canManagePhotos, canShare, canZendesk, deletePhotoFromMenu, downloadPhotoFile, shareLinks],
-  );
+        onClick: () => void confirmAndDelete(target.ids, inSelection),
+      });
+    }
+    return items;
+  }, [canDelete, confirmAndDelete, ctxMenu, selected, selectionTarget, verbsFor]);
 
-  const deleteSelectedPhotos = useCallback(
-    async () => {
-      // Operate on the whole selection set (may exceed the loaded rows when
-      // "select all matching" is active), not just the loaded selectedPhotos.
-      const ids = [...selected].filter((id) => id > 0);
-      if (ids.length === 0) return;
-      const results = await Promise.allSettled(
-        ids.map(async (id) => {
-          const res = await fetch(`/api/photos/${id}`, { method: 'DELETE' });
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          if (!res.ok) throw new Error(data?.error || `Delete failed for photo ${id}`);
-          return id;
-        }),
-      );
-      const deletedIds = results
-        .filter((result): result is PromiseFulfilledResult<number> => result.status === 'fulfilled')
-        .map((result) => result.value);
-      const failures = results.filter((result) => result.status === 'rejected');
-      if (deletedIds.length > 0) {
-        dispatchReceivingPhotoChanged({ action: 'delete', photoIds: deletedIds });
-      }
-      await queryClient.invalidateQueries({ queryKey: ['photo-library'] });
-      exitSelectMode();
-      if (failures.length > 0) {
-        toast.error(`Deleted ${deletedIds.length} photo${deletedIds.length === 1 ? '' : 's'}; ${failures.length} failed`);
-      } else {
-        toast.success(`Deleted ${ids.length} photo${ids.length === 1 ? '' : 's'}`);
-      }
-    },
-    [exitSelectMode, queryClient, selected],
-  );
-
-  const photoBulkActions = useMemo<SelectionAction<LibraryPhoto>[]>(
-    () => {
-      if (scope === 'outbound') {
-        return [
-          {
-            key: 'download',
-            label: 'Download selected',
-            icon: <Download className="h-4 w-4" />,
-            tone: 'blue' as const,
-            primary: true,
-            run: async (rows: LibraryPhoto[]) => {
-              const docs = rows.filter(isLibraryDocument);
-              if (docs.length === 0) return;
-              if (docs.length >= 2) {
-                const ids = docs.map((row) => libraryDocumentId(row)).join(',');
-                const title = docs[0]?.poRef ? `Order-${docs[0].poRef}-documents` : 'outbound-documents';
-                window.open(`/api/documents/download-zip?ids=${ids}&title=${encodeURIComponent(title)}`, '_blank');
-                toast.success(`Downloading ${docs.length} documents`);
-                return;
-              }
-              const row = docs[0]!;
-              const id = libraryDocumentId(row);
-              const ext = row.mimeType === 'image/png' ? 'png' : 'pdf';
-              await downloadPhotoFile(
-                `/api/documents/${id}/content?download=1`,
-                row.filename ?? `document-${id}.${ext}`,
-              );
-              toast.success('Downloaded 1 document');
-            },
-          } satisfies SelectionAction<LibraryPhoto>,
-        ];
-      }
-
-      return [
-      ...(canZendesk
-        ? [
-            {
-              // Attach the selection to a support ticket (new or existing).
-              key: 'zendesk',
-              label: 'Attach to ticket',
-              icon: <TicketHelp className="h-4 w-4" />,
-              tone: 'blue' as const,
-              primary: true,
-              run: (rows: LibraryPhoto[]) => {
-                setClaimPhotos(
-                  rows.map((row) => ({
-                    id: row.id,
-                    src: row.thumbUrl,
-                    displayUrl: row.displayUrl,
-                    poRef: row.poRef,
-                    caption: row.caption ?? null,
-                  })),
-                );
-              },
-            } satisfies SelectionAction<LibraryPhoto>,
-          ]
-        : []),
-      ...(canShare
-        ? [
-            {
-              // Copy N ephemeral signed links as a formatted, paste-ready block.
-              key: 'copy-links',
-              label: 'Copy shareable links',
-              icon: <Link2 className="h-4 w-4" />,
-              tone: 'blue' as const,
-              primary: false,
-              maxSelected: MAX_SHARE_PHOTOS,
-              disabledReason: `Select ${MAX_SHARE_PHOTOS} or fewer to copy links`,
-              run: () => {
-                const ids = [...selected];
-                if (ids.length > MAX_SHARE_PHOTOS) {
-                  toast.error(`Select ${MAX_SHARE_PHOTOS} or fewer to copy links`);
-                  return;
-                }
-                void shareLinks.generateAndCopy(ids, { ttlSeconds: DEFAULT_SHARE_TTL_SECONDS });
-              },
-            } satisfies SelectionAction<LibraryPhoto>,
-            {
-              // Create one durable public /share/photos/:token page for the set.
-              key: 'share-page',
-              label: 'Create share page',
-              icon: <ExternalLink className="h-4 w-4" />,
-              tone: 'blue' as const,
-              primary: false,
-              maxSelected: MAX_SHARE_PHOTOS,
-              disabledReason: `Select ${MAX_SHARE_PHOTOS} or fewer to build a share page`,
-              run: (rows: LibraryPhoto[]) => {
-                const ids = [...selected];
-                if (ids.length > MAX_SHARE_PHOTOS) {
-                  toast.error(`Select ${MAX_SHARE_PHOTOS} or fewer to build a share page`);
-                  return;
-                }
-                void shareLinks.createSharePage(ids, { title: photoShareTitle(rows, scope, ids.length) });
-              },
-            } satisfies SelectionAction<LibraryPhoto>,
-          ]
-        : []),
-      {
-        // One file → direct download; 2+ → single ZIP (GET /api/photos/download-zip).
-        key: 'download',
-        label: 'Download selected',
-        icon: <Download className="h-4 w-4" />,
-        tone: 'blue',
-        primary: false,
-        run: async (rows) => {
-          const ids = [...selected];
-          if (ids.length === 0) return;
-          if (ids.length >= 2) {
-            shareLinks.downloadZip(ids, { title: photoShareTitle(rows, scope, ids.length) });
-            return;
-          }
-          const row = rows[0];
-          if (!row) return;
-          await downloadPhotoFile(
-            `/api/photos/${row.id}/content?download=1`,
-            `photo-${row.id}.jpg`,
-          ).then(
-            () => toast.success('Downloaded 1 photo'),
-            () => toast.error('Download failed'),
-          );
-        },
-      },
-      ...(canManagePhotos
-        ? [
-            {
-              // Open the label editor for the selection (bulk add/remove diff).
-              key: 'labels',
-              label: 'Edit labels',
-              icon: <Tag className="h-4 w-4" />,
-              tone: 'violet' as const,
-              primary: false,
-              run: (rows: LibraryPhoto[]) => setLabelEditorPhotos(rows),
-            } satisfies SelectionAction<LibraryPhoto>,
-          ]
-        : []),
-    ];
-    },
-    [canManagePhotos, canShare, canZendesk, downloadPhotoFile, scope, selected, shareLinks],
+  const viewerInputs = useMemo(
+    () => (viewerPhotos ? toGalleryInputs(viewerPhotos, scope) : null),
+    [viewerPhotos, scope],
   );
 
   return (
     /* The one page frame (2026-08-31) — `@/design-system/components/DeskPageChrome` via `DeskPageLayout`. */
-    <DeskPageLayout className="h-full" title="Media">
+    <DeskPageLayout className="h-full" title="Media" recordViews={false}>
     <PhotoLibraryDeskActions
       shownIds={shownIds}
       shownCount={shownIds.length}
@@ -669,48 +421,53 @@ export function PhotoLibraryPage() {
         // Card controls stay mounted under selection; the page-level Find lives
         // in the header and writes `?q=` through NAV_PAGE_DECLS.
         <PhotoLibraryFindRow
-          filters={filters}
           view={view}
-          onApplyView={(payload) => applyView(payload.filters, payload.view)}
           onViewChange={handleViewChange}
           density={gridDensity}
           onDensityChange={setGridDensity}
           showDensity={showGridControls}
-          selectionActive={selectionActive}
-          onToggleSelect={() => {
-            if (selectionActive) exitSelectMode();
-            else setSelectMode(true);
-          }}
           onRefresh={refreshLibrary}
           isRefreshing={isRefreshing}
-          canManageViews={canManagePhotos}
         />
       }
       footer={
         // Outside the scroll port (same law as `chrome`) — sticky-inside cannot
-        // pin a foot when a flex-1 panel overflows mid-column.
-        <TableStatusBar
-          lead={
-            <PhotoDateBreadcrumb
-              filters={displayFilters}
-              today={today}
-              mostRecentDay={isSettled ? mostRecentDay : undefined}
-              folderLeafLabel={folderLeafLabel ?? undefined}
-              onNavigate={({ dateFrom, dateTo }) =>
-                patch({
-                  dateFrom,
-                  dateTo,
-                  poRef: undefined,
-                  ticketId: undefined,
-                  receivingId: undefined,
-                })
-              }
-            />
-          }
-          shown={visiblePhotos.length}
-          total={query.hasNextPage ? undefined : visiblePhotos.length}
-          selected={selected.size}
-        />
+        // pin a foot when a flex-1 panel overflows mid-column. The selection
+        // dock floats just above it, over the photos' bottom edge.
+        <>
+          <PhotoShareSheet ready={shareReady} onDismiss={dismissShareReady} aboveDock={selected.size > 0} />
+          <PhotoSelectionDock
+            count={selected.size}
+            rows={selectedPhotos}
+            verbs={selectionVerbs}
+            onDelete={deleteSelection}
+            onClear={clear}
+            shownCount={visiblePhotos.length}
+            onSelectAll={selectAllShown}
+          />
+          <TableStatusBar
+            lead={
+              <PhotoDateBreadcrumb
+                filters={displayFilters}
+                today={today}
+                mostRecentDay={isSettled ? mostRecentDay : undefined}
+                folderLeafLabel={folderLeafLabel ?? undefined}
+                onNavigate={({ dateFrom, dateTo }) =>
+                  patch({
+                    dateFrom,
+                    dateTo,
+                    poRef: undefined,
+                    ticketId: undefined,
+                    receivingId: undefined,
+                  })
+                }
+              />
+            }
+            shown={visiblePhotos.length}
+            total={query.hasNextPage ? undefined : visiblePhotos.length}
+            selected={selected.size}
+          />
+        </>
       }
     >
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -724,7 +481,8 @@ export function PhotoLibraryPage() {
           elevation="none"
           borderless
           // No inset-field — photos are flush to the card edge (operator 2026-09-01).
-          className="relative min-h-0 flex-1"
+          // While the dock floats, the stream ends above it, never under it.
+          className={cn('relative min-h-0 flex-1', selected.size > 0 && 'pb-24')}
         >
           <PhotoLibraryGrid
             photos={visiblePhotos}
@@ -732,10 +490,7 @@ export function PhotoLibraryPage() {
             view={view}
             gridDensity={gridDensity}
             sourceScope={sourceScopeFromFilters(filters)}
-            onPhotoDeleted={() => {
-              void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
-              void queryClient.invalidateQueries({ queryKey: ['photo-library-folders'] });
-            }}
+            onPhotoDeleted={refreshAfterPhotoDelete}
             selectionActive={selectionActive}
             selected={selected}
             onSelectTile={selectTile}
@@ -762,35 +517,13 @@ export function PhotoLibraryPage() {
         </Panel>
       </div>
 
-      {inspectorPhoto ? (
-        <PhotoInspectorPanel
-          photo={inspectorPhoto}
-          scope={scope}
-          onClose={clear}
-        />
-      ) : null}
-
-      {showBatchRail ? (
-        <PhotoBatchInspectorPanel
-          rows={selectedPhotos}
-          total={visiblePhotos.length}
-          selectedCount={selected.size}
-          hasMore={query.hasNextPage}
-          onSelectAllMatching={() => void selectAllMatching()}
-          actions={photoBulkActions}
-          onDeleteSelected={deleteSelectedPhotos}
-          onSelectAll={selectAllShown}
-          onClear={exitSelectMode}
-        />
-      ) : null}
-
       {claimPhotos !== null ? (
         <ZendeskClaimModal
           open
           photos={claimPhotos}
           onClose={() => setClaimPhotos(null)}
           onDone={() => {
-            exitSelectMode();
+            clear();
             void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
           }}
         />
@@ -800,7 +533,7 @@ export function PhotoLibraryPage() {
         <PhotoContextMenu
           x={ctxMenu.x}
           y={ctxMenu.y}
-          items={photoMenuItems(ctxMenu.photo)}
+          items={menuItems}
           onClose={() => setCtxMenu(null)}
         />
       ) : null}
@@ -810,6 +543,16 @@ export function PhotoLibraryPage() {
           photos={labelEditorPhotos}
           scopeImageType={filters.imageType}
           onClose={() => setLabelEditorPhotos(null)}
+        />
+      ) : null}
+
+      {viewerInputs ? (
+        // The grid stays mounted under the viewer, so closing it leaves the
+        // scroll port and the selection exactly where they were.
+        <LightboxPortal
+          photos={viewerInputs}
+          onClose={() => setViewerPhotos(null)}
+          onPhotoDeleted={refreshAfterPhotoDelete}
         />
       ) : null}
     </DashboardScrollShell>

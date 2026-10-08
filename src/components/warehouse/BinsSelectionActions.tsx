@@ -7,6 +7,7 @@ import { toast } from '@/lib/toast';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { useLocationLabelPrint } from '@/hooks/useLocationLabelPrint';
 import { Copy, Download, Printer, Trash2 } from '@/components/Icons';
+import { DELETE_HOTKEY } from '@/lib/keyboard/key-registry';
 import {
   RecordActionStrip,
   type RecordActionVerb,
@@ -115,6 +116,7 @@ export function BinsSelectionActions({ selected, rows, onDeleteSelected }: Props
       label: `Delete ${count} location${count === 1 ? '' : 's'}`,
       icon: <Trash2 />,
       tone: 'danger',
+      hotkey: DELETE_HOTKEY,
       run: () => onDeleteSelected(selectedRows.map((row) => row.id)),
     },
   ], [copyTsv, count, exportCsv, onDeleteSelected, printLabels, selectedRows]);

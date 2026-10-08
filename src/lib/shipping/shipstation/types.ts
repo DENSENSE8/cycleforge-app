@@ -68,6 +68,8 @@ export interface ShippingRateOption {
   /** Insurance + confirmation + other surcharges the engine reported
    *  separately from the shipping amount, when any. */
   otherAmount?: number | null;
+  /** Insurance the engine priced on this rate (part of `otherAmount`), when a declared value was sent. */
+  insuranceAmount?: number | null;
   /** Guaranteed/estimated transit days, when the carrier provides it. */
   deliveryDays?: number | null;
   /** ISO date string of the estimated delivery, when provided. */

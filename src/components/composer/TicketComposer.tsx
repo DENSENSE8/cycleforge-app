@@ -20,6 +20,7 @@ import { SupportProductPicker } from '@/components/ui/SupportProductPicker';
 import { ComposerTicketChannelToggle } from './ComposerTicketChannelToggle';
 import { ComposerTicketInsetChrome } from './ComposerTicketInsetChrome';
 import { useTicketComposer, type TicketComposerSupportItem } from '@/lib/composer/use-ticket-composer';
+import { useStagedPhotoViewer } from './useStagedPhotoViewer';
 import type { SupportComposerCommit } from '@/lib/support/record/support-record-model';
 
 const INSERT_ICONS = {
@@ -69,6 +70,7 @@ export function TicketComposer({
   const [plusOpen, setPlusOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const stagedViewer = useStagedPhotoViewer(c.staging.staged);
 
   // Esc and a pick hand the caret back to the reply: focus first, so the
   // popover's own return-focus sees a live element and leaves it alone.
@@ -232,13 +234,14 @@ export function TicketComposer({
               onCcDraftChange={c.setCcDraft}
               requesterEmail={requesterEmail ?? null}
               ticketId={helpdeskTicketId}
-              trailing={
+              attachments={
                 c.products.length > 0 || c.staging.staged.length > 0 ? (
                   <div className="flex min-w-0 flex-col gap-1">
                     <ComposerProductChips picks={c.products} onRemove={c.removeProduct} />
                     <ComposerStagedPhotoStrip
                       staged={c.staging.staged}
                       onRemove={c.staging.remove}
+                      onOpen={stagedViewer.open}
                       size="compact"
                     />
                   </div>
@@ -247,7 +250,12 @@ export function TicketComposer({
             />
           ) : c.staging.staged.length > 0 ? (
             // A Support item's photos: already on its task (Media tab) as they land.
-            <ComposerStagedPhotoStrip staged={c.staging.staged} onRemove={c.staging.remove} size="compact" />
+            <ComposerStagedPhotoStrip
+              staged={c.staging.staged}
+              onRemove={c.staging.remove}
+              onOpen={stagedViewer.open}
+              size="compact"
+            />
           ) : undefined
         }
         trailingAction={trailingAction}
@@ -294,6 +302,7 @@ export function TicketComposer({
           ) : null}
         </>
       ) : null}
+      {stagedViewer.viewer}
     </div>
   );
 }

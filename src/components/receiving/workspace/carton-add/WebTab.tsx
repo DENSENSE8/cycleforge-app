@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { microBadge } from '@/design-system/tokens/typography/presets';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { type CartonAddSelection, type WebHit } from './carton-add-types';
 import { HintBanner, ResultRow } from './carton-add-primitives';
 
@@ -85,7 +86,7 @@ export function WebTab({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {error ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 inset-field text-role-caption text-amber-800">{error}</div>
+          <div className={`${PHONE_CARD_FACE} border border-amber-200 bg-amber-50 inset-field text-role-caption text-amber-800`}>{error}</div>
         ) : hits.length > 0 ? (
           <ul className="flex flex-col gap-1">
             {hits.map((hit, idx) => (

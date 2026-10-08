@@ -27,6 +27,7 @@ import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/List
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
+import { cornerClass } from '@/design-system/tokens/radius';
 import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import { UpNextActionDock } from './UpNextActionDock';
@@ -365,7 +366,7 @@ export function ActiveOrderWorkspace({
                     {Boolean(previewOrder?.is_out_of_stock) ? (
                       <HoverTooltip label="Out of stock" asChild>
                         <span
-                          className="inline-flex items-center gap-1 rounded-none bg-red-50 px-1.5 py-0.5 text-role-micro font-semibold text-red-800 ring-1 ring-inset ring-red-200"
+                          className={`inline-flex items-center gap-1 ${cornerClass('pill')} bg-red-50 px-1.5 py-0.5 text-role-micro font-semibold text-red-800 ring-1 ring-inset ring-red-200`}
                           data-testid="shipping-oos-corner"
                         >
                           <AlertTriangle className="h-3 w-3" aria-hidden />
@@ -383,7 +384,7 @@ export function ActiveOrderWorkspace({
                         asChild
                       >
                         <span
-                          className="inline-flex items-center gap-1 rounded-none bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold text-amber-800 ring-1 ring-inset ring-amber-200"
+                          className={`inline-flex items-center gap-1 ${cornerClass('pill')} bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold text-amber-800 ring-1 ring-inset ring-amber-200`}
                           data-testid="shipping-sub-pending-corner"
                         >
                           <AlertTriangle className="h-3 w-3" aria-hidden />

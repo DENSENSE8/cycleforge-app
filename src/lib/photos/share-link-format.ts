@@ -36,8 +36,3 @@ export function formatShareLinksText(
   }
   return lines.join('\n');
 }
-
-/** A `text/uri-list` payload — one URL per line (RFC 2483), for dataTransfer. */
-export function formatUriList(links: ShareLinkLine[]): string {
-  return links.map((l) => l.url).join('\n');
-}

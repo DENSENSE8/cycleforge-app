@@ -2,9 +2,9 @@
 
 /**
  * The desk QC unit record (owner 2026-09-29, record grammar Step 5): one
- * serial unit's read → {@link qcUnitRecordModel} + its header verbs, for a
+ * serial unit's read → {@link qcUnitRecordModel} + its verbs, for a
  * desk's `useRecordSlot(model, verbs, label, 'qc-record')`. The verdicts —
- * Pass (P) / Test again (T) / Failed (F) — are header verbs on the one writer
+ * Pass (P) / Test again (T) / Failed (F) — are Actions panel verbs on the one writer
  * (`POST /api/serial-units/{id}/test`); Failed's panel records the fail and
  * files the vendor ticket (`QcFailTicketPanel`, `suggestQcFailRemedy`).
  */

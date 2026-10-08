@@ -1,3 +1,4 @@
+import { formatOrderIdDisplay } from '@/lib/copy-chip-format';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 import type { PhotoEvidenceStage } from '@/lib/photos/stages';
 
@@ -77,7 +78,10 @@ export function photoGroupKey(photo: PhotoNamingFields, scope: PhotoLibrarySourc
   return UNLINKED_PHOTO_GROUP_KEY;
 }
 
-/** Section header / folder title for a group key. */
+/**
+ * Section header / folder title for a group key. A group band is a list
+ * surface, so the identifier wears its last-8 face (identifier-last8-contract).
+ */
 export function photoGroupHeaderLabel(
   key: string,
   scope: PhotoLibrarySourceScope,
@@ -85,9 +89,9 @@ export function photoGroupHeaderLabel(
 ): string {
   if (key === UNLINKED_PHOTO_GROUP_KEY) return 'Unlinked';
   if (key.startsWith('ticket:')) {
-    return claimsTicketLabel(key.slice('ticket:'.length));
+    return claimsTicketLabel(formatOrderIdDisplay(key.slice('ticket:'.length)));
   }
-  const ref = rawLabel ?? key.replace(/^po:/, '');
+  const ref = formatOrderIdDisplay(rawLabel ?? key.replace(/^po:/, ''));
   if (scope === 'local_pickup') return `Pickup ${ref}`;
   if (scope === 'packing') return `Order ${ref}`;
   if (scope === 'repair') return `Unit ${ref}`;

@@ -10,6 +10,7 @@ import { toast } from '@/lib/toast';
 import { mobileTopBarClass } from '@/design-system/tokens/mobile-viewport';
 import { useMobileActionSlotNode } from './MobileV2ActionSlot';
 import { MobileV2ScanCta } from './MobileV2ScanCta';
+import { StaffAccountMenu } from '@/components/sidebar/master-nav/StaffAccountFooter';
 import { MobileV2AppSwitcher } from './MobileV2AppSwitcher';
 import { MobileV2PasteListSheet } from './MobileV2PasteListSheet';
 import { useMobileV2Search } from './MobileV2SearchContext';
@@ -194,6 +195,7 @@ export function MobileV2TopBar() {
         </Suspense>
       </div>
       {pageAction ? <div className="flex shrink-0 items-center">{pageAction}</div> : null}
+      <StaffAccountMenu size="touch" />
       <MobileV2ScanCta rounded />
     </header>
   );

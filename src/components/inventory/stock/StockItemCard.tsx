@@ -10,12 +10,23 @@ import { cn } from '@/utils/_cn';
 import { stockLocationFace, stockRecordTitle } from './stock-record';
 import { StockPhotoTile } from './StockPhotoTile';
 
+/** Count ink on the black corner tab — the color alone says the health (owner 2026-10-08: no "on hand" words). */
+const COUNT_INK: Record<'out' | 'low' | 'in', string> = {
+  out: 'text-red-500',
+  low: 'text-yellow-300',
+  in: 'text-white',
+};
+
 /**
- * The shared Item face for populated and empty stock records, read in an F
- * (owner 2026-10-05): the title leads top-left, the stock count is the big
- * headline top-right of the same line, then the SKU, then where it sits —
- * room first (heavier), then the location as a copy chip. A missing tote,
- * room or stock is never spelled out here; Locations below owns that.
+ * The shared Item face for populated and empty stock records (owner
+ * 2026-10-08): the big photo is the record's identity, top-left; the title
+ * reads beside it, then the SKU, then where it sits: room first (heavier),
+ * then the location as a copy chip. The stock is a FLUSH CORNER TAB — a black
+ * block in the card's own top-right corner, no inset, no ring, square inner
+ * corner — its count red when out, yellow when low, white in stock. The
+ * enclosing card must be `relative` (its `overflow-hidden` rounds the tab's
+ * outer corner with the card). A missing tote, room or stock is never spelled
+ * out here; Locations below owns that.
  */
 export function StockItemCard({
   record,
@@ -37,9 +48,27 @@ export function StockItemCard({
   const provisional = record.is_provisional || isProvisionalSku(record.sku);
   // An empty location's add form has no count of its own yet.
   const counted = record.source !== 'empty';
+  // The same cut as the ledger's Stock health facet (`stockHealth`): out at ≤ 0, low at or under its minimum.
+  const health = record.qty <= 0 ? 'out' : record.min_qty != null && record.qty <= record.min_qty ? 'low' : 'in';
 
   return (
-    <div className="flex min-w-0 items-start gap-4 px-4 py-3" data-testid="stock-record-item">
+    // Wraps: on a phone the text drops under the big photo instead of squeezing beside it.
+    <div className="flex min-w-0 flex-wrap items-start gap-5 px-4 py-4" data-testid="stock-record-item">
+      {counted ? (
+        // -top/-right-px: over the card's hairline, so the tab IS the corner.
+        <span
+          className="absolute -right-px -top-px z-10 flex h-16 min-w-16 items-center justify-center bg-black px-4"
+          data-testid="stock-record-count"
+          data-health={health}
+          title={`${record.qty} on hand${health === 'out' ? ' — out of stock' : health === 'low' ? ' — low stock' : ''}`}
+        >
+          <AnimatedStat
+            value={record.qty}
+            profile="kpi"
+            className={cn('text-role-display font-bold leading-none tabular-nums', COUNT_INK[health])}
+          />
+        </span>
+      ) : null}
       <StockPhotoTile
         stockId={record.stock_id}
         sku={record.sku}
@@ -47,33 +76,21 @@ export function StockItemCard({
         fullPhotoUrl={record.cover_photo_url}
         title={title}
         onChanged={onChanged}
+        size="hero"
+        verbsOnHeader={record.cover_photo_url != null}
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex min-w-0 items-start gap-4">
-          <div className="min-w-0 flex-1">
-            {titleContent ?? (
-              <p
-                className="line-clamp-2 min-w-0 text-role-title font-semibold leading-snug text-text-default [overflow-wrap:anywhere]"
-                title={title}
-                data-testid="stock-record-item-title"
-              >
-                {title}
-              </p>
-            )}
-          </div>
-          {counted ? (
-            <div className="flex shrink-0 flex-col items-end" data-testid="stock-record-count">
-              <AnimatedStat
-                value={record.qty}
-                profile="kpi"
-                className={cn(
-                  'text-role-display font-semibold leading-none tabular-nums',
-                  record.qty > 0 ? 'text-text-default' : 'text-text-warning',
-                )}
-              />
-              <span className="mt-1 text-role-caption font-medium text-text-muted">on hand</span>
-            </div>
-          ) : null}
+      <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+        {/* Clears the corner tab so a long title never runs under it. */}
+        <div className={cn('min-w-0', counted && 'pr-16')}>
+          {titleContent ?? (
+            <p
+              className="line-clamp-2 min-w-0 text-role-title font-semibold leading-snug text-text-default [overflow-wrap:anywhere]"
+              title={title}
+              data-testid="stock-record-item-title"
+            >
+              {title}
+            </p>
+          )}
         </div>
         {showSku ? (
           skuContent ?? (

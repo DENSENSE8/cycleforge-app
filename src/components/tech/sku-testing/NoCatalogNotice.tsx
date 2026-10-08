@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { Button } from '@/design-system/primitives';
 import { ensureCatalog } from './sku-testing-api';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 /** Amber prompt to create a SKU catalog entry when the line has none. */
 export function NoCatalogNotice({
@@ -27,7 +28,7 @@ export function NoCatalogNotice({
   }, [receivingLineId, onCreated]);
 
   return (
-    <div className="mb-3 flex items-center justify-between gap-3 rounded-none border border-amber-200 bg-surface-sunken px-3 py-2">
+    <div className={`mb-3 flex items-center justify-between gap-3 border border-amber-200 bg-surface-sunken px-3 py-2 ${PHONE_CARD_FACE}`}>
       <span className="text-role-caption font-medium text-amber-800">
         No catalog entry for {sku || 'this SKU'} yet.
       </span>

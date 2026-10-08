@@ -161,7 +161,6 @@ export function RacksDesk() {
       record={{
         title: creating ? 'New rack' : (slot?.title ?? openCode ?? ''),
         subtitle: creating ? undefined : (slot?.subtitle ?? undefined),
-        actions: creating ? undefined : slot?.actions,
         noun: 'rack',
         testId: 'rack-record-plane',
         summary: null,

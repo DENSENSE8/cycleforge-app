@@ -48,6 +48,7 @@ import {
   STAFF_PRINT_JOB_EVENT,
   STAFF_PRINT_PROGRESS_EVENT,
   STAFF_PRINT_STATUS_POLL_MS,
+  STOCK_LABELS_PER_JOB,
   UNNAMED_PRINT_STATION,
   isStaffPrintStationLive,
   parseStaffPrintProgress,
@@ -57,6 +58,7 @@ import {
   type StaffPrintJobBody,
   type StationDocumentRef,
   type StaffPrintLocationPayload,
+  type StaffPrintStockLabelFace,
 } from '@/lib/print/staff-print-bridge';
 import { getPrintStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { sendToDevice } from '@/lib/realtime/device-handshake';
@@ -148,6 +150,12 @@ export interface PrintStations {
   sendFnsku: (stationId: string, fnsku: string, copies: number, options?: { test?: boolean }) => Promise<string | null>;
   /** One unit's QC label at a named station; null after print + ledger, otherwise the operator-facing failure. */
   sendQcLabel: (stationId: string, unitKey: string) => Promise<string | null>;
+  /**
+   * Stock 4×6 labels at a named station, one page each; a run bigger than one
+   * job goes in turns, each after the last printed. Null once all printed,
+   * otherwise the operator-facing failure.
+   */
+  sendStockLabels: (stationId: string, labels: readonly StaffPrintStockLabelFace[]) => Promise<string | null>;
   /** Location (`bin`) or bay (`rack`) stickers at a named station — it registers and prints them; true when it acked. */
   sendLocationLabels: (stationId: string, grain: 'bin' | 'rack', location: StaffPrintLocationPayload) => Promise<boolean>;
 }
@@ -392,12 +400,15 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     stationsRef.current = stations;
   }, [stations]);
 
-  /** One job to one station over its org channel. QC waits for the terminal print result. */
+  /**
+   * One job to one station over its org channel. QC and stock labels wait for
+   * the terminal print result — `terminalMs` at most (one label's minute by default).
+   */
   const sendStationJob = useCallback(
     async (
       stationId: string,
       body: StaffPrintJobBody,
-      options: { onProgress?: (done: number, total: number) => void; waitForTerminal?: boolean } = {},
+      options: { onProgress?: (done: number, total: number) => void; waitForTerminal?: boolean; terminalMs?: number } = {},
     ): Promise<StationSendOutcome> => {
       const channelName = orgEnabled ? safeChannelName(() => getPrintStationChannelName(orgId, stationId)) : '';
       const client = channelName ? await getClient() : null;
@@ -417,20 +428,24 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
               : 'FNSKU labels'
             : body.grain === 'qc_label'
               ? 'QC label'
-              : body.grain === 'bin'
-                ? 'Location labels'
-                : body.grain === 'rack'
-                  ? 'Bay labels'
-                  : 'Print job';
+              : body.grain === 'stock_label'
+                ? (body.stockLabel?.labels.length ?? 0) > 1 ? 'Stock labels' : 'Stock label'
+                : body.grain === 'bin'
+                  ? 'Location labels'
+                  : body.grain === 'rack'
+                    ? 'Bay labels'
+                    : 'Print job';
       // Product labels also report their terminal ledger result; only multi-item
       // document/FNSKU runs expose pause and cancel controls.
-      const reportsProgress = body.grain === 'documents' || body.grain === 'fnsku' || body.grain === 'qc_label';
+      const reportsProgress =
+        body.grain === 'documents' || body.grain === 'fnsku' || body.grain === 'qc_label' || body.grain === 'stock_label';
       const controllable = body.grain === 'documents' || body.grain === 'fnsku';
       const waitsForTerminal = options.waitForTerminal === true;
       const work = beginWork({
         kind: 'print',
         label: `${what} → ${stationName}`,
-        total: body.documents?.items.length ?? body.fnsku?.copies ?? (body.qcLabel ? 1 : body.location?.segments.length),
+        total: body.documents?.items.length ?? body.fnsku?.copies ?? body.stockLabel?.labels.length ?? (body.qcLabel ? 1 : body.location?.segments.length),
+        ...(body.stockLabel?.labels.length === 1 ? { detail: body.stockLabel.labels[0].sku } : {}),
         target: stationName,
         ...(body.fnsku ? { detail: body.fnsku.fnsku } : {}),
         ...(controllable
@@ -500,7 +515,7 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
             work.finish(`Sent to ${stationName}`);
           }
           stopProgress();
-        }, waitsForTerminal ? QC_PROGRESS_LISTEN_MS : PROGRESS_LISTEN_MS);
+        }, waitsForTerminal ? (options.terminalMs ?? QC_PROGRESS_LISTEN_MS) : PROGRESS_LISTEN_MS);
         // Timed out, unmounted, refused or settled: release the listener.
         stopProgress = () => {
           window.clearTimeout(timer);
@@ -595,6 +610,25 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     [sendStationJob],
   );
 
+  const sendStockLabels = useCallback(
+    async (stationId: string, labels: readonly StaffPrintStockLabelFace[]): Promise<string | null> => {
+      // A station takes one job at a time, so each turn waits for the last to print.
+      for (let start = 0; start < labels.length; start += STOCK_LABELS_PER_JOB) {
+        const outcome = await sendStationJob(
+          stationId,
+          { grain: 'stock_label', role: 'label', stockLabel: { labels: labels.slice(start, start + STOCK_LABELS_PER_JOB) } },
+          { waitForTerminal: true, terminalMs: labels.length > 1 ? PROGRESS_LISTEN_MS : QC_PROGRESS_LISTEN_MS },
+        );
+        if (!(outcome.acked && outcome.completed)) {
+          const message = outcome.message ?? `${stationId} did not print the labels.`;
+          return start > 0 ? `${start} of ${labels.length} printed — ${message}` : message;
+        }
+      }
+      return null;
+    },
+    [sendStationJob],
+  );
+
   const sendLocationLabels = useCallback(
     (stationId: string, grain: 'bin' | 'rack', location: StaffPrintLocationPayload): Promise<boolean> =>
       sendStationJob(stationId, { grain, role: 'label', location }).then((outcome) => outcome.acked),
@@ -618,6 +652,7 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     sendDocuments,
     sendFnsku,
     sendQcLabel,
+    sendStockLabels,
     sendLocationLabels,
   };
 }

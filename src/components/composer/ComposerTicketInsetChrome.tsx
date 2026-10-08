@@ -1,6 +1,6 @@
 'use client';
 
-/** The rows that sit at the TOP of the ticket composer, inside the outline. */
+/** The rows that sit at the TOP of the ticket composer, inside the outline: attached photos first, then Cc. */
 
 import type { ReactNode } from 'react';
 import { ComposerTicketCcStrip } from './ComposerTicketCcStrip';
@@ -13,7 +13,7 @@ export function ComposerTicketInsetChrome({
   onCcDraftChange,
   requesterEmail,
   ticketId,
-  trailing,
+  attachments,
 }: {
   isPublic: boolean;
   ccs: string[];
@@ -22,10 +22,10 @@ export function ComposerTicketInsetChrome({
   onCcDraftChange: (next: string) => void;
   requesterEmail?: string | null;
   ticketId?: number | null;
-  /** Staged photo thumbs — mounted by the host that owns the staging bag. */
-  trailing?: ReactNode;
+  /** Staged photos / products — mounted by the host that owns the staging bag; painted ABOVE the Cc row. */
+  attachments?: ReactNode;
 }) {
-  if (!isPublic && !trailing) return null;
+  if (!isPublic && !attachments) return null;
 
   return (
     <div
@@ -33,6 +33,7 @@ export function ComposerTicketInsetChrome({
       data-composer-channel={isPublic ? 'public' : 'internal'}
       className="flex min-w-0 flex-col gap-0.5 border-b border-border-hairline px-1.5 py-1"
     >
+      {attachments}
       {isPublic ? (
         <ComposerTicketCcStrip
           ccs={ccs}
@@ -43,7 +44,6 @@ export function ComposerTicketInsetChrome({
           ticketId={ticketId}
         />
       ) : null}
-      {trailing}
     </div>
   );
 }

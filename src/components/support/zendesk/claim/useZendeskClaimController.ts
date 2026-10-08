@@ -7,8 +7,6 @@ import type {
   ClaimPhotoInput,
   ClaimPriority,
   ClaimResult,
-  ClaimWizardStep,
-  PickedTicket,
   ZendeskClaimModalProps,
 } from './claim-types';
 
@@ -27,7 +25,7 @@ let addedSeq = 0;
  * presentational sections read from this (the God-component split pattern).
  */
 export function useZendeskClaimController(props: ZendeskClaimModalProps) {
-  const { open, onClose, photos, defaultMode, defaultTicketId, defaultTicketSubject, onDone } = props;
+  const { open, onClose, photos, defaultMode, defaultTicketId, onDone } = props;
 
   const [mode, setMode] = useState<ClaimMode>(defaultMode ?? 'update');
 
@@ -41,16 +39,10 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
   // First comment is internal by default so filing a ticket never emails anyone.
   const [createPublic, setCreatePublic] = useState(false);
 
-  // ── Update fields ──────────────────────────────────────────────────────────
-  const [ticket, setTicket] = useState<PickedTicket | null>(null);
-  const [comment, setComment] = useState('');
-  const [replyPublic, setReplyPublic] = useState(false);
-
-  const [wizardStep, setWizardStep] = useState<ClaimWizardStep>('pick');
+  // The library selection is the only way photos are chosen; the modal attaches all of them.
   const [libraryPhotos, setLibraryPhotos] = useState<ClaimPhotoInput[]>([]);
 
-  // ── Attachments: library photos (toggleable) + ad-hoc dropped files ──────────
-  const [excluded, setExcluded] = useState<Set<number>>(new Set());
+  // ── Attachments: the library selection + ad-hoc dropped files ────────────────
   const [added, setAdded] = useState<AddedFile[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
@@ -63,16 +55,8 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
   useEffect(() => {
     if (open && !booted.current) {
       booted.current = true;
-      // Photos already chosen in the library (bulk attach) → land on compose.
-      // Pick step is only for adding more via Back.
-      setWizardStep(photos.length > 0 ? 'compose' : 'pick');
       setLibraryPhotos(photos);
       setMode(defaultMode ?? 'update');
-      setTicket(
-        defaultTicketId
-          ? { id: defaultTicketId, subject: defaultTicketSubject ?? null, status: 'open', priority: null }
-          : null,
-      );
       const refs = Array.from(
         new Set(photos.map((p) => p.poRef?.trim()).filter((v): v is string => Boolean(v))),
       );
@@ -86,7 +70,6 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
     }
     if (!open && booted.current) {
       booted.current = false;
-      setWizardStep('pick');
       setLibraryPhotos([]);
       setMode(defaultMode ?? 'update');
       setSubject('');
@@ -96,10 +79,6 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
       setRequesterName('');
       setRequesterEmail('');
       setCreatePublic(false);
-      setTicket(null);
-      setComment('');
-      setReplyPublic(false);
-      setExcluded(new Set());
       setAdded((prev) => {
         prev.forEach((a) => URL.revokeObjectURL(a.url));
         return [];
@@ -108,21 +87,9 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
       setError(null);
       setResult(null);
     }
-  }, [open, defaultMode, defaultTicketId, defaultTicketSubject, photos]);
+  }, [open, defaultMode, photos]);
 
-  const includedPhotoIds = useMemo(
-    () => libraryPhotos.filter((p) => !excluded.has(p.id)).map((p) => p.id),
-    [libraryPhotos, excluded],
-  );
-
-  const togglePhoto = useCallback((id: number) => {
-    setExcluded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  const includedPhotoIds = useMemo(() => libraryPhotos.map((p) => p.id), [libraryPhotos]);
 
   const addFiles = useCallback((files: File[]) => {
     setAdded((prev) => [
@@ -145,57 +112,29 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
 
   const totalAttach = includedPhotoIds.length + added.length;
 
-  const canContinuePick = libraryPhotos.length > 0 && !submitting;
-
-  const continueFromPick = useCallback(() => {
-    if (libraryPhotos.length === 0) return;
-    const refs = Array.from(
-      new Set(libraryPhotos.map((p) => p.poRef?.trim()).filter((v): v is string => Boolean(v))),
-    );
-    const poPart = refs.length === 1 ? ` — PO ${refs[0]}` : '';
-    setSubject(`Photo evidence${poPart}`);
-    setDescription(
-      `Attaching ${libraryPhotos.length} photo${libraryPhotos.length === 1 ? '' : 's'} from the library` +
-        (refs.length ? ` for ${refs.map((r) => `PO ${r}`).join(', ')}` : '') +
-        '.',
-    );
-    setExcluded(new Set());
-    setWizardStep('compose');
-  }, [libraryPhotos]);
-
-  const canSubmit = useMemo(() => {
-    if (submitting) return false;
-    if (mode === 'create') return subject.trim().length > 0 && description.trim().length > 0;
-    return Boolean(ticket) && comment.trim().length > 0;
-  }, [submitting, mode, subject, description, ticket, comment]);
+  // Link replies through the ticket's own composer (ClaimTicketReply);
+  // this pipeline files a NEW ticket.
+  const canSubmit =
+    !submitting && mode === 'create' && subject.trim().length > 0 && description.trim().length > 0;
 
   const submit = useCallback(async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
     try {
-      const meta =
-        mode === 'create'
-          ? {
-              mode: 'create' as const,
-              subject: subject.trim(),
-              description: description.trim(),
-              isPublic: createPublic,
-              priority,
-              tags: tags.length ? tags : undefined,
-              requester:
-                requesterName || requesterEmail
-                  ? { name: requesterName || undefined, email: requesterEmail || undefined }
-                  : undefined,
-              photoIds: includedPhotoIds,
-            }
-          : {
-              mode: 'update' as const,
-              ticketId: ticket!.id,
-              comment: comment.trim(),
-              isPublic: replyPublic,
-              photoIds: includedPhotoIds,
-            };
+      const meta = {
+        mode: 'create' as const,
+        subject: subject.trim(),
+        description: description.trim(),
+        isPublic: createPublic,
+        priority,
+        tags: tags.length ? tags : undefined,
+        requester:
+          requesterName || requesterEmail
+            ? { name: requesterName || undefined, email: requesterEmail || undefined }
+            : undefined,
+        photoIds: includedPhotoIds,
+      };
 
       const fd = new FormData();
       fd.append('meta', JSON.stringify(meta));
@@ -212,7 +151,7 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
         ticketId: data.ticket.id,
         number: data.ticket.number,
         url: data.ticket.url ?? null,
-        mode,
+        mode: 'create',
         attached: data.attached ?? 0,
       };
       setResult(r);
@@ -226,7 +165,6 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
     }
   }, [
     canSubmit,
-    mode,
     subject,
     description,
     createPublic,
@@ -235,9 +173,6 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
     requesterName,
     requesterEmail,
     includedPhotoIds,
-    ticket,
-    comment,
-    replyPublic,
     added,
     onDone,
   ]);
@@ -246,12 +181,7 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
     open,
     onClose,
     photos: libraryPhotos,
-    wizardStep,
-    setWizardStep,
     libraryPhotos,
-    setLibraryPhotos,
-    canContinuePick,
-    continueFromPick,
     mode,
     setMode,
     // create
@@ -269,16 +199,9 @@ export function useZendeskClaimController(props: ZendeskClaimModalProps) {
     setRequesterEmail,
     createPublic,
     setCreatePublic,
-    // update
-    ticket,
-    setTicket,
-    comment,
-    setComment,
-    replyPublic,
-    setReplyPublic,
+    // update — the ticket to open on, when launched from a ticket context
+    defaultTicketId: defaultTicketId ?? null,
     // attachments
-    excluded,
-    togglePhoto,
     includedPhotoIds,
     added,
     addFiles,

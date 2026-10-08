@@ -1,4 +1,4 @@
-/** Single source of truth for receiving-type → label / short / tone / icon key. */
+/** Single source of truth for receiving-type → label / tone / icon key. */
 
 export type ReceivingTypeIconKey =
   | 'package'
@@ -13,8 +13,6 @@ export interface ReceivingTypeMeta {
   value: string;
   /** Canonical display label. */
   label: string;
-  /** Compact label for dense chrome (≤5 chars preferred). */
-  short: string;
   /** Lucide key resolved by ReceivingTypeMark. */
   icon: ReceivingTypeIconKey;
   /** Tailwind text tone for the mark glyph. */
@@ -38,7 +36,6 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
   {
     value: 'PO',
     label: 'Purchase order',
-    short: 'PO',
     icon: 'package',
     text: 'text-blue-600',
     border: 'border-blue-600',
@@ -49,7 +46,6 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
   {
     value: 'RETURN',
     label: 'Return',
-    short: 'Ret',
     icon: 'rotate-ccw',
     text: 'text-rose-600',
     border: 'border-rose-500',
@@ -61,7 +57,6 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     // Orange — matches functional.repair (DESIGN_SYSTEM.md functional hue table) and TicketChip.
     value: 'REPAIR',
     label: 'Repair',
-    short: 'Rep',
     icon: 'wrench',
     text: 'text-orange-600',
     border: 'border-orange-500',
@@ -72,7 +67,6 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
   {
     value: 'TRADE_IN',
     label: 'Trade In',
-    short: 'Trade',
     icon: 'arrow-left-right',
     text: 'text-amber-700',
     border: 'border-amber-500',
@@ -83,7 +77,6 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
   {
     value: 'PICKUP',
     label: 'Pick Up',
-    short: 'Pickup',
     icon: 'map-pin',
     text: 'text-emerald-600',
     border: 'border-emerald-500',
@@ -97,7 +90,6 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
 const UNKNOWN_RECEIVING_TYPE: ReceivingTypeMeta = {
   value: '',
   label: 'Unknown',
-  short: '—',
   icon: 'tag',
   text: 'text-text-faint',
   border: 'border-border-default',
@@ -116,6 +108,5 @@ export function receivingTypeMeta(value: string | null | undefined): ReceivingTy
     ...UNKNOWN_RECEIVING_TYPE,
     value: key,
     label: key.replace(/_/g, ' '),
-    short: key.slice(0, 5),
   };
 }

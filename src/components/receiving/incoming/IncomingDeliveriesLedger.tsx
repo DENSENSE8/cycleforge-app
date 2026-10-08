@@ -152,7 +152,6 @@ export function IncomingDeliveriesLedger({
           notice={notice ?? null}
           record={{
             title: slot?.title ?? 'Delivery',
-            actions: slot?.actions,
             noun: VIEW.noun.one,
             showIndex: false,
             testId: 'incoming-deliveries-ledger-record',

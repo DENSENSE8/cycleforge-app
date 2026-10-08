@@ -13,7 +13,6 @@ import { Search } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { DeskStageRecordHeader } from '@/design-system/components/DeskStageOverlay';
 import { OrderRecordTitle, OrderRecordView } from '@/components/outbound/orders/OrderRecordView';
-import { OrderRecordActionStrip } from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
 import { useOrdersQueueCommits } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
@@ -112,9 +111,9 @@ export function SearchOrderRecord({
       {/* The desk stage measure (max-w-6xl, centered) — the width To-ship's
           record opens at; the ground stays full-bleed around it. */}
       <div className={cn(DESK_STAGE_FIXED_CLASS, 'shrink-0')}>
+        {/* Title + close only: the record's verbs paint in its Actions panel (operator 2026-10-08). */}
         <DeskStageRecordHeader
           title={<OrderRecordTitle record={record} records={records} />}
-          actions={<OrderRecordActionStrip key={record.id} record={record} viewKey="search.orders" />}
           onClose={onBack}
         />
       </div>

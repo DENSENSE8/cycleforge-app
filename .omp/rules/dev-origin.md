@@ -14,5 +14,5 @@ AGENTS.md §1: `http://localhost:3050` is the only dev origin. It is the switchb
 
 - All curl / Playwright / browser probes / screenshots → `http://localhost:3050` (`PW_BASE_URL=http://localhost:3050`).
 - Never bind another port, never hand-start `next dev`, never move `PW_BASE_URL`. `npm run dev` hitting `EADDRINUSE` on `:3050` is correct.
-- `:3050` dead or `503` with `x-switch-error` → the lane is down: `systemctl --user restart cycleforge-lane@prod`, logs `journalctl --user -u cycleforge-lane@prod -f`.
+- `:3050` dead or `503` with `x-switch-error`, or `x-switch-lane` naming a different worktree → stop. Do not start, restart, or switch a lane. Leave a test report (pages, flows, phone and desktop checks, what "working" looks like) and wait until the operator has this worktree answering on `:3050`. Read-only logs: `journalctl --user -u cycleforge-lane@<this-lane>`.
 - Only exception: the `request-shape` skill's production build on an isolated `NEXT_DIST_DIR` + throwaway port; verify the result at `:3050`, then stop it.

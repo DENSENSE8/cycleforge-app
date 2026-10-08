@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import type { NextTicketNumber } from '@/lib/support/next-ticket-number';
+import type { MyRecentTicket } from '@/lib/support/my-recent-tickets';
 import type {
   ZendeskTicket,
   ZendeskComment,
@@ -59,6 +60,8 @@ export const zendeskKeys = {
   /** Predicted next ticket id — the station's draft badge. */
   nextTicketNumber: () => ['zendesk', 'next-ticket-number'] as const,
   users: (ids: number[]) => ['zendesk', 'users', [...ids].sort((a, b) => a - b)] as const,
+  /** Under the `['zendesk', 'tickets']` prefix so ticket-list invalidations and status patches reach it. */
+  myRecent: () => ['zendesk', 'tickets', 'my-recent'] as const,
 };
 
 /** Detail reads stay warm 90s client-side; the server serves them from the local ticket mirror. */
@@ -119,7 +122,7 @@ function buildTicketQuery(text: string, status: StatusFilter): string | null {
   return clauses.length ? clauses.join(' ') : null;
 }
 
-export function useZendeskTickets(params: TicketListParams) {
+export function useZendeskTickets(params: TicketListParams, { enabled = true }: { enabled?: boolean } = {}) {
   const perPage = params.perPage ?? 25;
   return useQuery<TicketListResult, HttpError>({
     queryKey: zendeskKeys.tickets(params),
@@ -135,9 +138,24 @@ export function useZendeskTickets(params: TicketListParams) {
     },
     // Keep the previous page/search visible while the next loads (no blanking).
     placeholderData: (prev) => prev,
+    enabled,
     staleTime: 30_000,
     ...zendeskReadDefaults,
     retry: zendeskShouldRetry,
+  });
+}
+
+/**
+ * "My recent tickets" — the tickets the signed-in staffer last posted on from
+ * this app, newest first (GET /api/support/tickets/recent).
+ */
+export function useMyRecentTickets({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery<{ tickets: MyRecentTicket[] }, HttpError>({
+    queryKey: zendeskKeys.myRecent(),
+    queryFn: () => getJson<{ tickets: MyRecentTicket[] }>('/api/support/tickets/recent'),
+    enabled,
+    staleTime: 30_000,
+    ...zendeskReadDefaults,
   });
 }
 

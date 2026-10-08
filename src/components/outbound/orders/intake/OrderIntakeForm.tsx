@@ -23,6 +23,7 @@ import { Button } from '@/design-system/primitives/Button';
 import { TextField } from '@/design-system/primitives/TextField';
 import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP, FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { usePlatformAccountCatalog, usePlatformCatalog, useStoreLinks } from '@/hooks/useCatalog';
 import { requestOrderCapture } from '@/hooks/useOrderPasteIntake';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
@@ -479,7 +480,7 @@ export function OrderIntakeForm({
             />
           </div>
           {taken ? (
-            <div className="flex items-center gap-2 rounded-mode-control bg-surface-warning px-3 py-2" role="status" data-testid="intake-order-taken">
+            <div className={cn(PHONE_CARD_FACE, 'flex items-center gap-2 bg-surface-warning px-3 py-2')} role="status" data-testid="intake-order-taken">
               <p className="min-w-0 flex-1 text-role-caption text-text-warning">
                 Order <span className="font-mono">{taken.orderNumber}</span> already exists.
               </p>

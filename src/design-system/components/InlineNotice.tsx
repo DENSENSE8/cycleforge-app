@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { X } from '@/components/Icons';
 import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { IconButton } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 
 type InlineNoticeTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
@@ -87,9 +87,9 @@ export function InlineNotice({
     <div
       className={cn(
         'border',
-        // Ops flush — square band under the scan row (not soft card chrome).
-        cornerClass('flush'),
-        hasIcon ? 'flex items-stretch divide-x' : contentPad,
+        // Phone card, never a square band across the pane (operator 2026-10-08).
+        PHONE_CARD_FACE,
+        hasIcon ? 'flex items-stretch divide-x overflow-hidden' : contentPad,
         toneClasses[tone],
         className,
       )}

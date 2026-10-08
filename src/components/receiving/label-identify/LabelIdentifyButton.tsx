@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { Camera, Loader2, Check, AlertTriangle, RotateCcw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button } from '@/design-system/primitives';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { useLabelIdentify } from './useLabelIdentify';
 import type { LabelCandidate } from '@/lib/vision-identify';
 
@@ -69,7 +70,7 @@ export function LabelIdentifyButton({
       )}
 
       {status === 'error' && error && (
-        <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 inset-field text-sm text-amber-800">
+        <div className={`${PHONE_CARD_FACE} mt-2 flex items-start gap-2 border border-amber-200 bg-amber-50 inset-field text-sm text-amber-800`}>
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>

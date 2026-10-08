@@ -9,11 +9,13 @@
  *           External (carrier scans, or the domain's own node) · Internal
  *           step ladder · Both; each rail pinned to its newest step) → Items
  *           (`RecordItem` + price footer) → Serial numbers → Staff notes.
- *   aside — the evidence door → alerts → party → hairline → movement.
+ *   aside — the evidence door → alerts → party → hairline → movement → Actions.
  *
- * Verbs live in the record header (`RecordActionStrip face="header"`); a verb's
- * secondary evidence swaps this body for its panel with Back — never an
- * inline disclosure. Test ids derive from `testId` (`<prefix>-items`, …).
+ * Verbs live in the Actions panel right under party/movement
+ * (`RecordActionStrip face="panel"`, operator 2026-10-08), never the header; a
+ * verb's secondary evidence swaps the main body for its panel with Back — the
+ * Actions panel stays beside it — never an inline disclosure. Test ids derive
+ * from `testId` (`<prefix>-items`, …).
  */
 
 import { useState, type ReactNode } from 'react';
@@ -23,6 +25,7 @@ import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { ExternalLinkActionIcon } from '@/design-system/components/ExternalLinkActionIcon';
 import { RecordFlowFacts, RecordFlowSection, recordFlowLabels } from '@/design-system/components/RecordFlowFacts';
 import { SkeletonList } from '@/design-system/components/Skeletons';
+import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { CarrierEventsRail } from '@/design-system/components/record-ledger/CarrierEventsRail';
 import { DeliveryPromise } from '@/design-system/components/record-ledger/DeliveryPromise';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
@@ -303,10 +306,28 @@ function ModelItem({ item, model, prefix }: { item: RecordModelItem; model: Reco
   );
 }
 
-export function RecordView({ model, panel, testId = 'record' }: { model: RecordModel; panel: RecordPanel | null; testId?: string }) {
+export function RecordView({
+  model,
+  panel,
+  actions,
+  testId = 'record',
+}: {
+  model: RecordModel;
+  panel: RecordPanel | null;
+  /** The record's verbs — painted in the Actions panel under the party/movement block, never the header (operator 2026-10-08). */
+  actions: { verbs: readonly RecordActionVerb[]; label: string };
+  testId?: string;
+}) {
   const prefix = testId;
   const flow = recordFlowLabels(model.flow);
   const statusTone = STATE_TONE_CLASSES[model.status.tone ?? 'warning'];
+  // The panel stays beside a verb's open panel too, so the record's keys keep firing.
+  const actionsPanel =
+    actions.verbs.length > 0 ? (
+      <RecordGroup title="Actions" testId={`${prefix}-actions-panel`}>
+        <RecordActionStrip face="panel" verbs={actions.verbs} label={actions.label} testId={`${prefix}-actions`} />
+      </RecordGroup>
+    ) : null;
 
   if (panel) {
     return (
@@ -325,6 +346,7 @@ export function RecordView({ model, panel, testId = 'record' }: { model: RecordM
               <div className="px-4 pb-4 pt-1">{panel.body}</div>
             </RecordGroup>
           }
+          aside={actionsPanel}
         />
       </div>
     );
@@ -471,6 +493,7 @@ export function RecordView({ model, panel, testId = 'record' }: { model: RecordM
           </RecordFlowSection>
         }
       />
+      {actionsPanel}
     </div>
   );
 

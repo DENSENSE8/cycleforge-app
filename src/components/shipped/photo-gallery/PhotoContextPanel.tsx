@@ -22,6 +22,7 @@ import {
   type PhotoWorkflowKind,
 } from './photo-context-provenance';
 import type { PhotoItem } from './photo-gallery-utils';
+import { useImageSize } from './image-preload';
 
 /** Right-side info panel for the fullscreen viewer — the "where did this photo come from" surface. */
 
@@ -67,6 +68,9 @@ export function PhotoContextPanel({
   // Lazy provenance detail (serial / tracking / claim) — fetched only while the
   // details panel is open (this component unmounts when collapsed).
   const receivingCtx = usePhotoReceivingContext(photo?.id ?? null);
+  // The stage paints the ≤2560px display derivative; the ORIGINAL's size is
+  // read only while this panel is open.
+  const originalSize = useImageSize(photo?.url ?? null);
 
   if (!photo) return null;
 
@@ -267,8 +271,8 @@ export function PhotoContextPanel({
         ) : null}
 
         <Field icon={<ImageIcon className="h-3.5 w-3.5" />} label="Dimensions">
-          {photo.naturalWidth && photo.naturalHeight ? (
-            <span className="tabular-nums">{photo.naturalWidth} × {photo.naturalHeight} px</span>
+          {originalSize ? (
+            <span className="tabular-nums">{originalSize.width} × {originalSize.height} px</span>
           ) : (
             <span className="text-text-faint">—</span>
           )}

@@ -21,7 +21,7 @@ import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
 import { RECEIVING_PHOTO_PACKAGE } from '@/lib/receiving/photo-intent';
 import type { PhotoEntityType } from '@/lib/photos/types';
-import type { PhotoGalleryInput, PhotoItem } from './photo-gallery-utils';
+import { viewerDisplayUrl, type PhotoGalleryInput, type PhotoItem } from './photo-gallery-utils';
 
 /** Soft exit duration for the MovePhotosBetweenPoRail occupant's exit fade. */
 const MOVE_PHOTOS_SOFT_MS = 180;
@@ -154,9 +154,13 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
 
   const [closeState, dispatchClose] = useReducer(closeMachineReducer, INITIAL_CLOSE_STATE);
   const { viewerOpen, panelOpen, deferViewerClose } = closeState;
-  const { photoItems, setPhotoItems, resetFingerprint, loadedCount, errorCount } = usePhotoItems(photos, viewerOpen);
-  const zoom = useImageZoom();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const { photoItems, setPhotoItems, resetFingerprint, loadedCount, errorCount } = usePhotoItems(
+    photos,
+    viewerOpen,
+    currentIndex,
+  );
+  const zoom = useImageZoom();
   const [mounted, setMounted] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
@@ -564,6 +568,7 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
           newItems.push({
             id: res.id,
             url: res.url,
+            displayUrl: viewerDisplayUrl(res.id, res.url),
             thumbUrl: res.thumbUrl,
             status: 'loading',
             index: 0, // reindexed on append below

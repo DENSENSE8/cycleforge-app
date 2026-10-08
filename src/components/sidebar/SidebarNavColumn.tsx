@@ -186,8 +186,6 @@ export function SidebarNavColumn({
                   elevationClass('flat'),
                   // The head's toggle + Search row is CHROME, not map.
                   '[&_[data-spine-head-chrome]]:hidden',
-                  '[&_[data-spine-account-footer]]:hidden',
-                  '[&_[data-staff-account-footer]]:hidden',
                   '[&_[data-spine-nav]]:h-auto [&_[data-spine-nav]]:min-h-0',
                   // The card hugs short lists (`h-auto` shell) but is capped by maxHeight below — so the scrollport must be able to SHRINK, or a full…
                   '[&_[data-spine-scrollport]]:min-h-0 [&_[data-spine-scrollport]]:flex-1 [&_[data-spine-scrollport]]:overflow-y-auto [&_[data-spine-scrollport]]:overscroll-contain',

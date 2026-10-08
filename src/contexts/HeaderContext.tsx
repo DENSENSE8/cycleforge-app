@@ -16,7 +16,10 @@ export interface HeaderCenterTask {
   label: string;
   icon: ComponentType<{ className?: string }>;
   count?: number;
+  /** Icon colour class. */
   tone?: string;
+  /** Word colour class; defaults to the default ink. */
+  labelTone?: string;
 }
 
 export interface HeaderCenterTaskRegistration {

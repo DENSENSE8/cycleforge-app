@@ -21,7 +21,7 @@ import type {
 import { SOURCE_PLATFORMS, sourcePlatformMeta, type SourcePlatformMeta } from '@/lib/source-platform';
 import {
   buildOrderChannelResolver,
-  buildPlatformShortLabelLookup,
+  buildShortLabelLookup,
   catalogPlatformMeta,
   type OrderChannelResolver,
 } from '@/lib/platform-display';
@@ -43,8 +43,8 @@ interface CatalogOption {
   colorHex?: string | null;
   /**
    * Dense collapsed label (carton bookmark). Priority rungs carry one because
-   * the bar shows `Med` where the menu shows `Medium`; platform / type derive
-   * theirs from the registry mark instead.
+   * the bar shows `Med` where the menu shows `Medium`; platform / type carry
+   * none — their collapsed face is the display label ("Return", never "RTR").
    */
   shortLabel?: string;
 }
@@ -147,7 +147,17 @@ export function usePlatformMeta(): (value: string | null | undefined) => SourceP
  */
 export function usePlatformShortLabelLookup(): (value: string | null | undefined) => string | null {
   const { rows } = usePlatformCatalog();
-  return useMemo(() => buildPlatformShortLabelLookup(rows), [rows]);
+  return useMemo(() => buildShortLabelLookup(rows), [rows]);
+}
+
+/**
+ * `lookup(typeCode)` → the org's label face (`types.short_label`, e.g. `RTR`)
+ * for a receiving type named by code / slug or display label, else null. Print
+ * and label-preview faces only — every picker shows the display `label`.
+ */
+export function useReceivingTypeShortLabelLookup(): (value: string | null | undefined) => string | null {
+  const { rows } = useReceivingTypeCatalog();
+  return useMemo(() => buildShortLabelLookup(rows), [rows]);
 }
 
 /** Catalog-aware receiving-type label resolver. */

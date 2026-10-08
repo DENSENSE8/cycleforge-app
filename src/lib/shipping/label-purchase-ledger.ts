@@ -4,6 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { LabelPurchaseResult, ShipAddress } from '@/lib/shipping/shipstation/types';
 import { shipmentIdFromLabelId, type LabelPurpose } from '@/lib/shipping/label-purpose';
+import type { ReplacementReason } from '@/lib/shipping/replacement-rate-shop';
 
 export type LabelPurchaseStatus = 'pending' | 'purchased' | 'voided';
 
@@ -44,6 +45,10 @@ export interface ClaimInput {
   shipTo?: ShipAddress | null;
   /** The engine is on a sandbox key (`ShipStationV2Client.sandbox`). */
   isTest?: boolean;
+  /** Why a replacement was bought — only with `purpose: 'replacement'`. */
+  replacementReason?: ReplacementReason | null;
+  /** Operator's free-text note on the replacement (trimmed, ≤ 500 chars). */
+  replacementNote?: string | null;
 }
 
 export interface RecordPurchasedInput {
@@ -152,16 +157,29 @@ function toRecord(row: Row): LabelPurchaseRecord {
 }
 
 const defaultLedgerDeps: LabelPurchaseLedgerDeps = {
-  claim: async ({ orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose, orderRef, shipTo, isTest }) => {
+  claim: async ({ orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose, orderRef, shipTo, isTest, replacementReason, replacementNote }) => {
     const res = await tenantQuery<{ id: string }>(
       orgId,
       `INSERT INTO shipping_label_purchases
          (organization_id, order_id, client_event_id, status, rate_id, label_format, purchased_by, purpose,
-          order_ref, ship_to, is_test)
-       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9::jsonb, $10)
+          order_ref, ship_to, is_test, replacement_reason, replacement_note)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12)
        ON CONFLICT (organization_id, client_event_id) DO NOTHING
        RETURNING id`,
-      [orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose, orderRef ?? null, shipTo ? JSON.stringify(shipTo) : null, isTest === true],
+      [
+        orgId,
+        orderId,
+        clientEventId,
+        rateId,
+        labelFormat,
+        staffId,
+        purpose,
+        orderRef ?? null,
+        shipTo ? JSON.stringify(shipTo) : null,
+        isTest === true,
+        replacementReason ?? null,
+        replacementNote ?? null,
+      ],
     );
     return res.rows[0] ? { id: Number(res.rows[0].id) } : null;
   },

@@ -6,6 +6,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { getPrimaryPhotoStorage } from '@/lib/photos/storage/resolve-primary';
 import { getStorageAdapter } from '@/lib/photos/storage/registry';
 import { generateThumbnail, readPhotoBytesById } from '@/lib/photos/read-bytes';
+import { readOrCreateDisplayImage } from '@/lib/photos/display-derivative';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
 import { streamVercelBlobResponse } from '@/lib/blob/stream-vercel-blob';
@@ -59,8 +60,12 @@ export async function GET(
     return NextResponse.json({ error: 'Valid photo id is required' }, { status: 400 });
   }
 
-  const variant = new URL(request.url).searchParams.get('variant') === 'thumb' ? 'thumb' : 'full';
-  const download = new URL(request.url).searchParams.get('download') === '1';
+  // `display` = the viewer's screen-sized derivative; `full` (default) = the
+  // original upload — `?download=1` and open-in-new-tab always get the original.
+  const searchParams = new URL(request.url).searchParams;
+  const variantParam = searchParams.get('variant');
+  const variant = variantParam === 'thumb' || variantParam === 'display' ? variantParam : 'full';
+  const download = searchParams.get('download') === '1';
 
   const sid = readSessionSid(request.cookies);
   const actor = await getCurrentUserBySid(sid);
@@ -118,6 +123,41 @@ export async function GET(
     const key = isStoredThumb ? storage.thumbObjectKey! : storage.objectKey;
     try {
       const adapter = getStorageAdapter('gcs');
+
+      // The viewer's display image — streamed (no redirect hop, no per-hour
+      // signed URL) so the browser caches it once under one stable URL.
+      if (variant === 'display') {
+        const etag = `"p${photoId}-display"`;
+        if (request.headers.get('if-none-match') === etag) {
+          return new NextResponse(null, {
+            status: 304,
+            headers: { etag, 'cache-control': IMMUTABLE_CACHE },
+          });
+        }
+        try {
+          const bytes = await readOrCreateDisplayImage({
+            organizationId: orgId,
+            bucket: storage.bucket,
+            objectKey: storage.objectKey,
+          });
+          // content-length lets the viewer show real download progress.
+          return new NextResponse(Buffer.from(bytes), {
+            headers: {
+              'content-type': 'image/jpeg',
+              'content-length': String(bytes.byteLength),
+              'cache-control': IMMUTABLE_CACHE,
+              etag,
+            },
+          });
+        } catch (err) {
+          // Undecodable original or GCS read failure — serve the original instead.
+          console.error(
+            '[photos/content] display derivative failed',
+            { photoId, bucket: storage.bucket, objectKey: storage.objectKey },
+            err instanceof Error ? err.message : err,
+          );
+        }
+      }
 
       // Thumbnails render by the hundreds (grid + strip) and are tiny (≤256px).
       if (variant === 'thumb') {

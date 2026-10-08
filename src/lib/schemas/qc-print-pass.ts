@@ -33,6 +33,8 @@ export const QcPrintPassBody = z.object({
     .trim()
     .nullable()
     .transform((v) => (v ? v.slice(0, 2000) : null)),
+  /** The FBA label that printed with the unit label (a paired, grade-matched FNSKU); null when none printed. */
+  fnsku: optionalText(64),
 });
 
 export type QcPrintPassBody = z.infer<typeof QcPrintPassBody>;

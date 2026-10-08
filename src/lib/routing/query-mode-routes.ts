@@ -415,26 +415,19 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
 export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/stock',
   owns: {
-    /** `all` is the ledger. Absent is the Inventory overview. `replenish` is Needs replenishment. */
-    view: paramEnum(['all', 'replenish'] as const),
-    /** Replenishment view's namespaced filters. */
-    rsku: paramText,
-    rtab: paramText,
-    rstatus: paramText,
     /** The one search box, over every fact a record paints (server-side). */
     q: paramText,
-    /** Room chips — a comma-separated multi-select over `locations.room` (the list's own cut, `useTriageCut`). */
+    /** The picked room (its facet id) — the top of the sidebar's address drill. */
     room: paramText,
-    /** Numeric aisle multi-select, comma-separated. */
+    /** The address drill under the room, one number each: Aisle › Bay › Level › Position. */
     aisle: paramText,
-    excludeAisle: paramText,
+    bay: paramText,
+    level: paramText,
+    position: paramText,
     /** Location walk, on-hand total, or oldest cycle count. */
     sort: paramEnum(LOCATION_STOCK_SORTS),
-    /** `never` keeps bin pairs that have no cycle count. */
-    counted: paramEnum(['never'] as const),
-    /** Operational state funnel: open placeholders or catalog-paired stock. */
+    /** Stock health cut: in-stock · low-stock · out-of-stock · on-hold (comma list). */
     status: paramText,
-    excludeStatus: paramText,
     /** The open stock pair (its record key) — the evidence column. */
     open: paramText,
     /** An on-hold SKU named by a compatibility/share link. */

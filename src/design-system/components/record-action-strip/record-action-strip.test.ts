@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import type { RecordActionVerb } from './RecordActionStrip';
-import { partitionRecordActionVerbs } from './RecordActionStrip';
+import { partitionRecordActionVerbs, partitionRecordPanelVerbs } from './RecordActionStrip';
 
 const verb = (id: string, tone?: RecordActionVerb['tone']): RecordActionVerb => ({
   id,
@@ -33,5 +33,23 @@ describe('partitionRecordActionVerbs', () => {
 
     assert.deepEqual(result.primary.map(({ id }) => id), ['one', 'two', 'three']);
     assert.deepEqual(result.overflow.map(({ id }) => id), ['delete', 'four']);
+  });
+});
+
+describe('partitionRecordPanelVerbs', () => {
+  it('leads with fill-tone verbs, keeps every other verb visible, and closes with danger verbs', () => {
+    const result = partitionRecordPanelVerbs([
+      verb('delete', 'danger'),
+      verb('notes'),
+      verb('replacement', 'primary'),
+      verb('ticket', 'orange'),
+      verb('tonal', 'blue'),
+      verb('urgent', 'yellow'),
+      verb('cancel', 'danger'),
+    ]);
+
+    assert.deepEqual(result.filled.map(({ id }) => id), ['replacement', 'ticket', 'urgent']);
+    assert.deepEqual(result.rows.map(({ id }) => id), ['notes', 'tonal']);
+    assert.deepEqual(result.danger.map(({ id }) => id), ['delete', 'cancel']);
   });
 });

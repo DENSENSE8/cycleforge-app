@@ -550,6 +550,29 @@ test('?id= and ?receiving_id= surface zoho_status from zoho_po_mirror', () => {
   }
 });
 
+test('?id= and ?receiving_id= surface the same who-and-when stamps', () => {
+  // The Unbox workspace refreshes the open carton via ?receiving_id= and merges
+  // over the ?id= row. When this branch lacked the staff columns, the merge
+  // nulled them and "Received by" read "Not scanned in yet" on a scanned carton.
+  const byId = buildReceivingLineByIdSql(4821, ORG).sql;
+  const byReceiving = buildReceivingLinesByReceivingIdSql(917, ORG).lines.sql;
+  for (const column of [
+    'receiving_received_by',
+    'receiving_unboxed_by',
+    'receiving_unbox_opened_by',
+    'received_by_name',
+    'unboxed_by_name',
+    'unbox_opened_by_name',
+    'first_scanned_at',
+    'first_scanned_by',
+    'scanned_by_name',
+  ]) {
+    const alias = new RegExp(`AS ${column},`);
+    assert.match(byId, alias, `by-id must SELECT ${column}`);
+    assert.match(byReceiving, alias, `by-receiving must SELECT ${column}`);
+  }
+});
+
 // ── ?tracking_in= — the bulk paste filter, and the lane relaxation it earns ───
 
 const listFor = (qs: string, opts: Partial<LegacySqlOpts> = {}) =>

@@ -20,8 +20,8 @@ import {
 
 import { zIndex } from '@/design-system/tokens/z-index';
 
-/** Persisted last-open line — written on select for future session UX / e2e;
- *  not restored on cold load so Quality Control lands on its idle stage. */
+/** Persisted last-open line — written on select for e2e. Cold load restores
+ *  from the server's QC Recent head instead (per operator, across devices). */
 const LAST_TESTING_LINE_KEY = 'cf:testing:last-line-id';
 
 interface Props {
@@ -37,6 +37,9 @@ export function TestingLineWorkspace({
   // because the choice IS the active entity (display/station.md §11).
   const pick = useTestingScanPick();
   const lastSelectedRef = useRef<number | null>(null);
+  // Any select-line event (scan, rail click, Back to list) — the mount-time
+  // recent restore never overrides an operator's own choice.
+  const selectionTouchedRef = useRef(false);
   // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
   // one pair so the presence can never drift onto another job's timing.
   const { presence: panePresence, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
@@ -45,6 +48,7 @@ export function TestingLineWorkspace({
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<ReceivingSelectLineDetail>).detail;
       const { row: next } = readSelectLineDetail(detail);
+      selectionTouchedRef.current = true;
       if (next) {
         setRow(next);
         lastSelectedRef.current = next.id;
@@ -77,8 +81,28 @@ export function TestingLineWorkspace({
     return () => window.removeEventListener('receiving-line-updated', handler);
   }, []);
 
-  // No cold-load auto-restore — Quality Control lands on the station canvas.
-  // Operators scan or choose a recent line from the contextual rail.
+  // Opening Quality control shows the most recently scanned product, never an
+  // empty canvas (operator 2026-10-08): the head of this operator's QC Recent
+  // rail (`view=testing_opened`, ordered by last QC open — a scan opens its
+  // line). Mount only, and only while nothing is selected: a scan or rail
+  // click that lands first wins, and an explicit Back to list stays on the
+  // canvas for the rest of the visit.
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/qc/receiving-lines?view=testing_opened&limit=1&offset=0')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { receiving_lines?: ReceivingLineRow[] } | null) => {
+        const latest = data?.receiving_lines?.[0];
+        if (cancelled || !latest || selectionTouchedRef.current) return;
+        dispatchSelectLine(latest);
+      })
+      .catch(() => {
+        /* the idle canvas stays — a failed recent read never blocks scanning */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // The pick covers the browse the same way an open line does, and an open line
   // outranks it — resolving a pick opens a line, so the two are never both live

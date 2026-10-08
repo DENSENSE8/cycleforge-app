@@ -20,7 +20,7 @@ import { platformPaintFromHex } from '@/lib/color-contrast';
 import {
   builtinPlatformShortLabel,
   normalizeShortLabelInput,
-  PLATFORM_SHORT_LABEL_MAX,
+  SHORT_LABEL_MAX,
 } from '@/lib/platform-display';
 import { catalogIdentityDot } from './classify-pill-options';
 import { TypeBindingsEditor } from './TypeBindingsEditor';
@@ -66,7 +66,7 @@ interface Entry {
   isActive: boolean;
   isSystem: boolean;
   colorHex: string | null;
-  /** Org `short_label` (platforms only); null = built-in compact / full name. */
+  /** Org `short_label` (platforms 2026-09-24, types 2026-10-08); null = built-in compact / full name. */
   shortLabel: string | null;
 }
 
@@ -117,8 +117,8 @@ export function CatalogManagerList({
   const canDeactivate = !isPriority;
   /** Both kinds persist an accent (`platforms.color_hex` 2026-08-05 / `types.color_hex` 2026-08-19). */
   const supportsColor = true;
-  /** Only platforms own a `short_label` column (2026-09-24). */
-  const supportsShortLabel = isPlatform;
+  /** Platforms and types own a `short_label` — the 2x1 label face; priority rungs don't. */
+  const supportsShortLabel = !isPriority;
 
   // Manager shows EVERYTHING (active + hidden) so a hidden default can be
   // restored — unlike the pickers, which read active-only via useCatalog.
@@ -160,7 +160,7 @@ export function CatalogManagerList({
         isActive: r.is_active,
         isSystem: r.is_system,
         colorHex: (isPlatform ? (r as PlatformRow).color_hex : (r as TypeRow).color_hex) ?? null,
-        shortLabel: isPlatform ? (r as PlatformRow).short_label : null,
+        shortLabel: (isPlatform ? (r as PlatformRow).short_label : (r as TypeRow).short_label) ?? null,
       }));
   // The catalog is always seeded (seedOrgCatalog on org creation); the only
   // empty moment is the first load, which gets a spinner — never a stale
@@ -211,9 +211,11 @@ export function CatalogManagerList({
     const label = editLabel.trim();
     if (!label) return;
     setBusyId(id);
-    const body = supportsShortLabel
-      ? { label, shortLabel: normalizeShortLabelInput(editShort) }
-      : { label };
+    // Send `shortLabel` only when it changed, so a plain rename never names a
+    // column the row didn't touch (`types.short_label` arrives 2026-10-08b).
+    const shortLabel = normalizeShortLabelInput(editShort);
+    const before = entries.find((e) => e.id === id)?.shortLabel ?? null;
+    const body = supportsShortLabel && shortLabel !== before ? { label, shortLabel } : { label };
     if (await call('PATCH', `/${id}`, body)) setEditingId(null);
     setBusyId(null);
   }
@@ -327,9 +329,9 @@ export function CatalogManagerList({
                     {supportsShortLabel ? (
                       <input
                         value={editShort}
-                        maxLength={PLATFORM_SHORT_LABEL_MAX}
+                        maxLength={SHORT_LABEL_MAX}
                         aria-label="Short label (2x1 label)"
-                        placeholder={builtinPlatformShortLabel(e.slug) ?? 'SHORT'}
+                        placeholder={(isPlatform ? builtinPlatformShortLabel(e.slug) : null) ?? 'SHORT'}
                         onChange={(ev) => setEditShort(ev.target.value.toUpperCase())}
                         onKeyDown={(ev) => {
                           if (ev.key === 'Enter') void saveRow(e.id);

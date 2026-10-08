@@ -16,13 +16,15 @@ export interface PhotoContextMenuItem {
   icon?: ReactNode;
   onClick: () => void;
   danger?: boolean;
+  /** A verb the target cannot take right now — painted, never hidden. */
+  disabled?: boolean;
   separatorBefore?: boolean;
 }
 
 /**
- * Cursor-anchored right-click menu for photo library actions.
- * Built on Kinetic Ledger DropdownMenu (Radix) with a 1×1 virtual trigger
- * at the click point — replaces the hand-rolled portal + clamp.
+ * Cursor-anchored right-click menu for photo library actions — the same verb
+ * set as the bottom PhotoSelectionDock (`usePhotoVerbs`). Built on Kinetic
+ * Ledger DropdownMenu (Radix) with a 1×1 virtual trigger at the click point.
  */
 export function PhotoContextMenu({
   x,
@@ -61,6 +63,7 @@ export function PhotoContextMenu({
             {item.separatorBefore ? <DropdownMenuSeparator /> : null}
             <DropdownMenuItem
               tone={item.danger ? 'danger' : 'default'}
+              disabled={item.disabled}
               onSelect={() => {
                 item.onClick();
                 onClose();
@@ -68,7 +71,7 @@ export function PhotoContextMenu({
               className="gap-2.5 px-2.5 py-1.5 text-role-caption font-semibold"
             >
               {item.icon ? (
-                <span className={cn('shrink-0', item.danger ? 'text-rose-500' : 'text-text-faint')}>
+                <span className={cn('shrink-0 [&_svg]:size-3.5', !item.danger && 'text-text-faint')}>
                   {item.icon}
                 </span>
               ) : null}

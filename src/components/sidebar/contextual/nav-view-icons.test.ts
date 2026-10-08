@@ -25,15 +25,10 @@ test('Labels & docs terminal icons each use a distinct color', () => {
   assert.notEqual(NAV_VIEW_ICONS['label-intake.allocate']?.tone, 'text-blue-600', 'Allocate must not repeat FBM parent blue');
 });
 
-test('Stock and Locations sibling icons each use a distinct color', () => {
-  for (const [page, ids] of [
-    ['stock', ['overview', 'all', 'replenish', 'low-stock', 'out-of-stock']],
-    ['inventory', ['locations', 'rooms', 'racks', 'map', 'labels']],
-  ] as const) {
-    const tones = ids.map((id) => NAV_VIEW_ICONS[`${page}.${id}`]?.tone);
-    assert.ok(tones.every(Boolean), `${page} has a child without an icon tone`);
-    assert.equal(new Set(tones).size, tones.length, `${page} repeats a child icon color`);
-  }
+test('Locations sibling icons each use a distinct color', () => {
+  const tones = ['locations', 'rooms', 'racks', 'map', 'labels'].map((id) => NAV_VIEW_ICONS[`inventory.${id}`]?.tone);
+  assert.ok(tones.every(Boolean), 'inventory has a child without an icon tone');
+  assert.equal(new Set(tones).size, tones.length, 'inventory repeats a child icon color');
 });
 
 

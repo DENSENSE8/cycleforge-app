@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { deleteFbaItem } from '@/lib/fba/patch';
 import type { PlanEntry } from './board-detail-shared';
 import { refreshDomain } from '@/lib/refresh/bus';
@@ -52,7 +53,7 @@ export function FbaDeleteControl({ entries, onDeleted }: { entries: PlanEntry[];
   return (
     <div className="space-y-2">
       {error && (
-        <p className="rounded-none border border-border-danger bg-surface-danger px-3 py-2 text-role-micro font-semibold text-text-danger">
+        <p className={`${PHONE_CARD_FACE} border border-border-danger bg-surface-danger px-3 py-2 text-role-micro font-semibold text-text-danger`}>
           {error}
         </p>
       )}

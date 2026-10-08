@@ -45,6 +45,7 @@ import { CheckoutProductSearch } from './CheckoutProductSearch';
 import { CheckoutSquareImport } from './CheckoutSquareImport';
 import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP, FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
@@ -264,7 +265,7 @@ function Checkout({ first, onNext }: { first: boolean; onNext: () => void }) {
 
         <div className="min-w-0 space-y-3">
           {testMode ? (
-            <p className="rounded-mode-control bg-surface-warning px-3 py-2 text-role-caption text-text-warning" data-testid="checkout-test-banner">
+            <p className={cn(PHONE_CARD_FACE, 'bg-surface-warning px-3 py-2 text-role-caption text-text-warning')} data-testid="checkout-test-banner">
               Test mode — the order saves as <span className="font-mono">CF-TEST-…</span> with no paperwork required, an invoice or Ecwid order
               already in CycleForge imports again, no Square invoice is linked and no payment is requested. Released, it lands on To ship live.
             </p>
@@ -279,11 +280,11 @@ function Checkout({ first, onNext }: { first: boolean; onNext: () => void }) {
             </section>
           ) : null}
           {invoice ? (
-            <p className="rounded-mode-control bg-surface-sunken px-3 py-2 text-role-caption text-text-muted" data-testid="checkout-imported">
+            <p className={cn(PHONE_CARD_FACE, 'bg-surface-sunken px-3 py-2 text-role-caption text-text-muted')} data-testid="checkout-imported">
               From Square invoice <span className="font-mono text-text-default">#{invoice.invoiceNumber}</span> · {invoice.status.replace(/_/g, ' ').toLowerCase()} · {formatCents(invoice.totalCents, invoice.currency)} — set the team, then release.
             </p>
           ) : ecwidOrder ? (
-            <p className="rounded-mode-control bg-surface-sunken px-3 py-2 text-role-caption text-text-muted" data-testid="checkout-imported">
+            <p className={cn(PHONE_CARD_FACE, 'bg-surface-sunken px-3 py-2 text-role-caption text-text-muted')} data-testid="checkout-imported">
               From Ecwid order <span className="font-mono text-text-default">#{ecwidOrder.orderNumber}</span>
               {ecwidOrder.totalCents != null ? ` · ${formatCents(ecwidOrder.totalCents, ecwidOrder.currency || state.currency)}` : ''} — set the team, then release.
             </p>

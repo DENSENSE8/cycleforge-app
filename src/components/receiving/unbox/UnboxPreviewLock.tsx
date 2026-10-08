@@ -4,20 +4,22 @@ import { Lock } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 interface UnboxPreviewLockProps {
   /** Leave without opening anything. */
   onDismiss: () => void;
 }
 
-/** Preview stance's read-only band over an open carton. */
+/** Preview stance's read-only card over an open carton. */
 export function UnboxPreviewLock({ onDismiss }: UnboxPreviewLockProps) {
   return (
     <div
       data-unbox-preview-lock=""
       className={cn(
         PRIMARY_CHROME_ROW_FACE,
-        'z-raised flex w-full items-center gap-2 border-b border-border-hairline bg-amber-50 px-3',
+        PHONE_CARD_FACE,
+        'z-raised mt-2 flex items-center gap-2 border border-amber-200 bg-amber-50 px-3',
       )}
     >
       <Lock className="h-3.5 w-3.5 shrink-0 text-amber-700" aria-hidden />

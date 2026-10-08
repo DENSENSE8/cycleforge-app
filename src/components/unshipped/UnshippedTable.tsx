@@ -26,6 +26,7 @@ import {
 } from '@/lib/queries/caged-orders-queries';
 import { Button } from '@/design-system/primitives';
 import { GridDegradedBox } from '@/design-system/components/grid';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { RefreshCw } from '@/components/Icons';
 import { useRailActionSnapshot } from '@/components/right-rail/RailSelectionActions';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
@@ -829,7 +830,7 @@ function QueueStaleBand({ onRetry }: { onRetry: () => void }) {
     <div
       role="status"
       data-testid="to-ship-stale-band"
-      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-danger bg-surface-danger px-2 py-1 text-role-caption text-text-danger"
+      className={`${PHONE_CARD_FACE} my-2 flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 border border-border-danger bg-surface-danger px-3 py-1.5 text-role-caption text-text-danger`}
     >
       <RefreshCw aria-hidden className="h-3.5 w-3.5 shrink-0" />
       <span>Couldn&apos;t refresh — showing the last rows that loaded.</span>

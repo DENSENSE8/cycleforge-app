@@ -1559,25 +1559,15 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     resolveChild: ({ params }) => parseProductsView(params.get('view')),
   },
   // ── Stock ─────────────────────────────────────────────────────────────────
-  // Stock is a first-class warehouse page. Replenishment is one named stock
-  // view, not a sibling application.
+  // Stock is one list: all stock (owner 2026-10-08 — Overview, Needs
+  // replenishment, Low stock and Out of stock retired; health is a sidebar
+  // facet). One view, so the head paints no view switcher.
   {
     id: 'stock', label: 'Stock', href: `${INVENTORY}/stock`, icon: Package, tone: 'text-blue-600', kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
     children: [
-      { id: 'overview', label: 'Overview', icon: LayoutDashboard, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: null, status: null, rtab: null, rsku: null, rstatus: null, q: null, room: null, aisle: null, sort: null, open: null } }) },
-      { id: 'all', label: 'All stock', icon: Package, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: 'all', status: null, rtab: null, rsku: null, rstatus: null } }) },
-      { id: 'replenish', label: 'Needs replenishment', icon: History, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: 'replenish', rtab: null, status: null } }) },
-      { id: 'low-stock', label: 'Low stock', icon: AlertTriangle, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: null, status: 'low-stock', rtab: null, rsku: null, rstatus: null } }) },
-      { id: 'out-of-stock', label: 'Out of stock', icon: PackageX, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: null, status: 'out-of-stock', rtab: null, rsku: null, rstatus: null } }) },
+      { id: 'all', label: 'All stock', icon: Package, to: () => ({ pathname: `${INVENTORY}/stock`, params: {} }) },
     ],
-    resolveChild: ({ params }) => {
-      if (params.get('view') === 'replenish') return 'replenish';
-      if (params.get('status') === 'low-stock') return 'low-stock';
-      if (params.get('status') === 'out-of-stock') return 'out-of-stock';
-      if (params.get('view') === 'all') return 'all';
-      if (params.get('q') || params.get('room') || params.get('aisle') || params.get('sort') || params.get('open')) return 'all';
-      return 'overview';
-    },
+    resolveChild: () => 'all',
   },
   // ── Locations ─────────────────────────────────────────────────────────────
   {

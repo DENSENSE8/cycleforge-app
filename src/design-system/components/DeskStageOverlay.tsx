@@ -177,7 +177,7 @@ interface DeskStageRecordHeaderProps {
    * `close` — ✕ at the top right, like dismissing a panel.
    */
   dismiss?: 'back' | 'close';
-  /** The record's own verbs — painted before n of N / ✕. */
+  /** Header-band trailing nodes — painted before n of N / ✕. Record verbs paint in the record's Actions panel, never here (operator 2026-10-08). */
   actions?: ReactNode;
   /** The record-view switch — after the verbs, before n of N / ✕. */
   viewSwitch?: ReactNode;

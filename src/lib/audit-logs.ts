@@ -635,6 +635,10 @@ export const AUDIT_ACTION = {
   ORDER_DELETE: 'orders.delete',
   /** Records sheet: the line re-keyed under another order number (`orders.order_id`). */
   ORDER_RENUMBER: 'order.renumber',
+  /** A duplicate stub order absorbed into a surviving order: labels, shipment
+   *  links, label documents and notes moved over, then the stub row deleted
+   *  (POST /api/orders/merge-stub). entityId = the surviving orders.id. */
+  ORDER_MERGE: 'order.merge',
   // Fulfillment substitution — the unit that ships deviates from what was
   // ordered/listed. Re-allocation event recorded in order_unit_amendments;
   // approve/reject gate the block_until_approved enforcement path.

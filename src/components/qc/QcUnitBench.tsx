@@ -7,7 +7,7 @@ import { QcSessionBar } from './QcSessionBar';
 
 /**
  * The QC bench for one unit on the desk: session bar, live readings, next steps. Mounted under the
- * unit on its QC record; the verdicts are the record's header verbs.
+ * unit on its QC record; the verdicts are the record's Actions panel verbs.
  */
 export function QcUnitBench({ unitId, unitStatus }: { unitId: number; unitStatus: string | null | undefined }) {
   const bench = useQcBench(unitId);

@@ -5,7 +5,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { ButtonVariant } from '@/design-system/primitives/Button';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
-import { COPY_HOTKEY, hotkeyFires } from '@/lib/keyboard/key-registry';
+import { COPY_HOTKEY, DELETE_HOTKEY, hotkeyFires } from '@/lib/keyboard/key-registry';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { closeShortcutOverview } from '@/lib/keyboard/shortcut-overview';
 
@@ -48,7 +48,8 @@ export const SELECTION_STATUS_BAR_META: Record<
   flag: { label: 'Flag', variant: 'primarySoft', hotkey: 'f' },
   urgent: { label: 'Urgent', variant: 'warning', hotkey: 'u' },
   'download-photos': { label: 'Download', variant: 'secondary', hotkey: 'i' },
-  delete: { label: 'Delete', variant: 'danger', hotkey: 'd' },
+  // ⌘/Ctrl+⌫, never bare D (operator 2026-10-08).
+  delete: { label: 'Delete', variant: 'danger', hotkey: DELETE_HOTKEY },
 };
 
 export const SELECTION_STATUS_BAR_ORDER = Object.keys(SELECTION_STATUS_BAR_META);

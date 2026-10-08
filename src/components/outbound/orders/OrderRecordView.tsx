@@ -33,7 +33,7 @@ import type { OrderRecordSectionId } from '@/lib/selection-context/order-inspect
 import { VIEW_SPECS, type OrderViewKey } from '@/lib/views/view-specs';
 import { OrderPriceEvidence } from './OrderPriceEvidence';
 import { OrderAutoAssignRuleAction } from './OrderAutoAssignRuleAction';
-import { useOrderRecordMoreVerbs } from './to-ship/MorphingRowActionMenu';
+import { OrderRecordActionStrip, useOrderRecordMoreVerbs } from './to-ship/MorphingRowActionMenu';
 import { subscribeOpenOrderPaperwork } from '@/utils/events';
 import { consumeReplaceTrackingIntent, subscribeReplaceTrackingIntent } from '@/lib/order-inspector/replace-tracking-intent';
 import {
@@ -342,7 +342,8 @@ export function OrderRecordView({
   // ── F-pattern groups (owner 2026-09-27) ────────────────────────────────────
   // Left, the work:  Items (each line with its price) → Payment → Fulfilment →
   // Notes → Documents → Timeline.
-  // Right, the facts: Customer → Shipping → Conversation → More actions.
+  // Right, the facts: Customer → Shipping → (Allocate: Actions) → Conversation
+  // → More actions (non-allocate).
   // Each group is one `RecordGroup` (title top-left, ≤1 action top-right); the
   // order number and its ONE status read in the record header
   // (`OrderRecordTitle` / `OrderRecordStatus`).
@@ -638,7 +639,14 @@ export function OrderRecordView({
   ) : null;
 
   // Details are for reading; Allocate combines buyer + destination into one
-  // information category and sends its verbs to the header overflow.
+  // information category and paints its verbs in the Actions panel right
+  // under it — every verb spelled out with its key (operator 2026-10-08).
+  // The panel stays beside Paperwork too, so the record's keys keep firing.
+  const actionsPanel = allocateDetail ? (
+    <RecordGroup title="Actions" testId="order-record-actions-panel">
+      <OrderRecordActionStrip key={record.id} record={record} viewKey={viewKey} face="panel" />
+    </RecordGroup>
+  ) : null;
   const right = (
     <div className="flex flex-col gap-4">
       {/* The evidence door — always here, above Shipping, so it is learnt. */}
@@ -673,6 +681,7 @@ export function OrderRecordView({
           {shippingBody}
         </RecordGroup>
       ) : null}
+      {actionsPanel}
       {shows.has('conversation') ? (
         <div className={COLUMN_CLASS}>
           <EvidenceDisclosure key={`conversation:${record.id}`} label="Conversation" summary="Staff thread" testId="order-record-conversation" lazy>
@@ -734,6 +743,7 @@ export function OrderRecordView({
               />
             </div>
           }
+          aside={actionsPanel ?? undefined}
         />
       ) : (
         <>

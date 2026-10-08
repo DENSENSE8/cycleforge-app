@@ -60,6 +60,7 @@ export async function POST(
         product_sku: body.product_sku,
         sku_catalog_id: body.sku_catalog_id,
         serial_number: body.serial_number,
+        fnsku: body.fnsku,
       },
     });
     if (!enqueued) {

@@ -9,6 +9,7 @@ import { SUBSTITUTION_REASONS, type SubstitutionReason } from '@/lib/fulfillment
 import { SubstituteReasonPicker } from './SubstituteReasonPicker';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 
 /** Scan-anchored substitution action for the testing / packing card. */
@@ -74,7 +75,7 @@ export function SubstitutePanel({
   return (
     <section
       data-testid="substitute-panel"
-      className={cn('flex flex-col gap-3 rounded-xl border border-border-soft bg-surface-card p-4', className)}
+      className={cn('flex flex-col gap-3 border border-border-soft bg-surface-card p-4', PHONE_CARD_FACE, className)}
     >
       {/* Eyebrow header */}
       <div className="flex items-center justify-between">

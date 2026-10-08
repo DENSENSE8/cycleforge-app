@@ -47,6 +47,17 @@ export function buildGcsObjectKey(opts: {
   return { objectKey, thumbObjectKey: `${prefix}/${thumbSegment}` };
 }
 
+/**
+ * Key of the viewer's screen-sized display derivative, stored next to its
+ * original the way `_thumb.jpg` is: `…/99.jpg` → `…/99_display.jpg`. The
+ * derivative is always JPEG, so any original extension is replaced.
+ */
+export function displayObjectKey(objectKey: string): string {
+  const dot = objectKey.lastIndexOf('.');
+  const stem = dot > objectKey.lastIndexOf('/') ? objectKey.slice(0, dot) : objectKey;
+  return `${stem}_display.jpg`;
+}
+
 /** Object key for an entity video: */
 export function buildGcsVideoObjectKey(opts: {
   organizationId: string;

@@ -88,6 +88,8 @@ export type StationComposerHostProps = {
    * be conditional.
    */
   locationAction?: ReactNode;
+  /** Renders immediately left of {@link locationAction} in the composer footer (Quality control's Pair FNSKU). */
+  locationLeading?: ReactNode;
   trailingAction?: ReactNode;
   chrome?: 'raised' | 'bare';
   animateMount?: boolean;
@@ -221,6 +223,7 @@ export function StationComposerHost({
   labelCommitTooltip = 'Save notes (Enter)',
   labelPlaceholder,
   locationAction,
+  locationLeading,
   trailingAction,
   chrome = 'raised',
   animateMount = true,
@@ -377,7 +380,14 @@ export function StationComposerHost({
 
   const keepTrailing = stationComposerModeKeepsTrailingAction(mode);
   const printTrailing = keepTrailing ? trailingAction : undefined;
-  const locationFooter = locationAction;
+  // Immediately left of the location control in the same footer row — a
+  // station-local always-visible verb (Quality control's Pair FNSKU).
+  const locationFooter = (
+    <>
+      {locationLeading}
+      {locationAction}
+    </>
+  );
 
   const placeholder = onLabelField
     ? labelPlaceholder === ''

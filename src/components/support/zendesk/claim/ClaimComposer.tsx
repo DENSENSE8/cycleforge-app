@@ -6,7 +6,6 @@ import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
 import { ZendeskSelect } from '../ZendeskSelect';
 import { TagInput } from '../TagInput';
 import { ClaimAttachments } from './ClaimAttachments';
-import { ClaimTicketPicker } from './ClaimTicketPicker';
 import { PRIORITY_OPTIONS } from './claim-types';
 import type { ZendeskClaimController } from './useZendeskClaimController';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -16,12 +15,10 @@ const labelCls = 'text-role-micro text-text-soft';
 const inputCls =
   cn('w-full rounded-xl border border-border-default bg-surface-card px-3 py-2.5 text-role-data text-text-default transition placeholder:text-text-faint', focusRing('field', 'accent'));
 
-/** The mode-specific form body + the shared attachments section. */
+/** The New ticket form body + the shared attachments section. Link is {@link ClaimTicketReply}. */
 export function ClaimComposer({ c }: { c: ZendeskClaimController }) {
   return (
     <div className="space-y-5">
-      {c.mode === 'create' ? (
-        <>
           <div className="space-y-1.5">
             <label className={labelCls}>Subject</label>
             <input
@@ -95,32 +92,6 @@ export function ClaimComposer({ c }: { c: ZendeskClaimController }) {
               </div>
             ) : null}
           </div>
-        </>
-      ) : (
-        <>
-          <ClaimTicketPicker ticket={c.ticket} onPick={c.setTicket} />
-          {c.ticket ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className={labelCls}>{c.replyPublic ? 'Public reply' : 'Internal note'}</label>
-                <VisibilityToggle
-                  value={c.replyPublic}
-                  onChange={c.setReplyPublic}
-                  internalLabel="Note"
-                  publicLabel="Reply"
-                />
-              </div>
-              <textarea
-                value={c.comment}
-                onChange={(e) => c.setComment(e.target.value)}
-                rows={4}
-                placeholder={c.replyPublic ? 'Write a reply to the customer…' : 'Add an internal note…'}
-                className={cn(inputCls, 'resize-none leading-relaxed')}
-              />
-            </div>
-          ) : null}
-        </>
-      )}
 
       <ClaimAttachments c={c} />
     </div>

@@ -17,9 +17,9 @@ const colorHex = z
   .optional();
 
 /**
- * Dense face for the 2x1 label / ledger band (`platforms.short_label`,
- * `platform_accounts.short_label`) — ≤ 8 chars, stored upper-case. `null`
- * clears back to the built-in compact / full label.
+ * Label face for the 2x1 sticker (`platforms.short_label`,
+ * `platform_accounts.short_label`, `types.short_label`) — ≤ 8 chars, stored
+ * upper-case. `null` clears back to the built-in compact / full label.
  */
 const shortLabel = trimmed
   .min(1)
@@ -81,6 +81,7 @@ export const TypeCreateBody = z
 export const TypeUpdateBody = z
   .object({
     label: trimmed.min(1).optional(),
+    shortLabel,
     kind: typeKind.optional(),
     colorHex,
     isReturn: z.boolean().optional(),

@@ -1,7 +1,11 @@
 /** Client-safe photo content URL helpers. */
 
-export function photoContentUrl(id: number, variant?: 'thumb' | 'full'): string {
-  const q = variant === 'thumb' ? '?variant=thumb' : '';
+/**
+ * `full` (default) = the original upload (downloads, open-in-new-tab);
+ * `display` = the viewer's screen-sized derivative; `thumb` = grid/strip tiles.
+ */
+export function photoContentUrl(id: number, variant?: 'thumb' | 'display' | 'full'): string {
+  const q = variant === 'thumb' || variant === 'display' ? `?variant=${variant}` : '';
   return `/api/photos/${id}/content${q}`;
 }
 

@@ -12,75 +12,75 @@ const NO_COUNTS: StockScopeCountReader = async () => ({
   onHoldPairs: 0,
   lowStockPairs: 0,
   outPairs: 0,
-  neverCountedPairs: 0,
 });
 
-test('stock room and aisle facets cross-filter with comma-safe room ids', async () => {
-  const calls: Array<{ sql: string; params: readonly unknown[] }> = [];
-  const room = 'Zone 4 - Wall Mounts, Claims, RS';
-  const roomId = locationStockRoomId({ room });
-  const params = new URLSearchParams({ room: roomId, aisle: '10,2' });
-  const result = await inventoryStockFacets(ORG, params, async (sql, bind) => {
-    calls.push({ sql, params: bind });
-    return [
-      { room, aisle: 1, n: 12 },
-      { room, aisle: 2, n: 7 },
-      { room, aisle: 10, n: 1 },
-      { room: 'Zone 3 - Parts', aisle: 2, n: 5 },
-    ];
-  }, NO_COUNTS);
+const ZONE_4 = 'Zone 4 - Wall Mounts, Claims, RS';
+const ZONE_3 = 'Zone 3 - Parts';
+/** Two rooms that both have an Aisle 2 — the reason an aisle needs its room. */
+const ADDRESSES = [
+  { room: ZONE_4, aisle: 1, bay: 1, level: 1, position: 1, n: 12 },
+  { room: ZONE_4, aisle: 2, bay: 1, level: 1, position: 1, n: 4 },
+  { room: ZONE_4, aisle: 2, bay: 1, level: 2, position: 1, n: 2 },
+  { room: ZONE_4, aisle: 2, bay: 3, level: 1, position: 2, n: 1 },
+  { room: ZONE_3, aisle: 2, bay: 7, level: 1, position: 1, n: 5 },
+  { room: ZONE_3, aisle: null, bay: null, level: null, position: null, n: 1 },
+];
 
-  assert.equal(result.total, 8);
-  assert.deepEqual(result.groups.find((group) => group.id === 'room')?.options, [
-    { value: 'Zone 3 - Parts', label: 'Zone 3 - Parts', count: 5 },
-    { value: roomId, label: room, count: 8 },
+async function facets(query: Record<string, string>) {
+  const result = await inventoryStockFacets(ORG, new URLSearchParams(query), async () => ADDRESSES, NO_COUNTS);
+  return { total: result.total, options: (id: string) => result.groups.find((group) => group.id === id)?.options };
+}
+
+test('with no room picked, no address step offers options — an aisle number alone is no place', async () => {
+  const { total, options } = await facets({ aisle: '2', bay: '1' });
+  assert.equal(total, 25);
+  assert.deepEqual(options('room'), [
+    { value: ZONE_3, label: ZONE_3, count: 6 },
+    { value: locationStockRoomId({ room: ZONE_4 }), label: ZONE_4, count: 19 },
   ]);
-  assert.deepEqual(result.groups.find((group) => group.id === 'aisle')?.options, [
+  for (const step of ['aisle', 'bay', 'level', 'position']) assert.deepEqual(options(step), [], step);
+});
+
+test('each step lists only the values under its picked parents, and the room keeps its whole count', async () => {
+  const room = locationStockRoomId({ room: ZONE_4 });
+  const { total, options } = await facets({ room, aisle: '2', bay: '1' });
+  assert.equal(total, 6);
+  // Zone 3's Aisle 2 (bay 7) never leaks into Zone 4's walk.
+  assert.deepEqual(options('aisle'), [
     { value: '1', label: 'Aisle 1', count: 12 },
     { value: '2', label: 'Aisle 2', count: 7 },
-    { value: '10', label: 'Aisle 10', count: 1 },
   ]);
-  assert.deepEqual(calls[0]?.params, [ORG]);
-});
-
-test('room counts include barcoded locations without a numeric aisle', async () => {
-  const result = await inventoryStockFacets(
-    ORG,
-    new URLSearchParams({ room: 'Zone 3 - Parts' }),
-    async () => [
-      { room: 'Zone 3 - Parts', aisle: null, n: 1 },
-      { room: 'Zone 3 - Parts', aisle: 3, n: 2 },
-    ],
-    NO_COUNTS,
-  );
-
-  assert.equal(result.total, 3);
-  assert.deepEqual(result.groups.find((group) => group.id === 'room')?.options, [
-    { value: 'Zone 3 - Parts', label: 'Zone 3 - Parts', count: 3 },
+  assert.deepEqual(options('bay'), [
+    { value: '1', label: 'Bay 1', count: 6 },
+    { value: '3', label: 'Bay 3', count: 1 },
   ]);
-  assert.deepEqual(result.groups.find((group) => group.id === 'aisle')?.options, [
-    { value: '3', label: 'Aisle 3', count: 2 },
+  assert.deepEqual(options('level'), [
+    { value: '1', label: 'Level 1', count: 4 },
+    { value: '2', label: 'Level 2', count: 2 },
   ]);
+  assert.deepEqual(options('position'), []);
+  assert.equal(options('room')?.find((option) => option.value === room)?.count, 19);
 });
 
 test('stock health counts come from the list scope counts on the chip ids', async () => {
   const seen: Array<Parameters<StockScopeCountReader>[0]> = [];
   const result = await inventoryStockFacets(
     ORG,
-    new URLSearchParams({ room: 'Zone 3 - Parts', aisle: '2', q: 'brake', status: 'low-stock' }),
+    new URLSearchParams({ room: ZONE_3, aisle: '2', bay: '7', q: 'brake', status: 'low-stock' }),
     async () => [],
     async (args) => {
       seen.push(args);
-      return { inStockPairs: 9, inStockProducts: 4, inStockUnits: 30, onHoldPairs: 1, lowStockPairs: 3, outPairs: 2, neverCountedPairs: 6 };
+      return { inStockPairs: 9, inStockProducts: 4, inStockUnits: 30, onHoldPairs: 1, lowStockPairs: 3, outPairs: 2 };
     },
   );
 
   assert.deepEqual(seen, [{
     orgId: ORG,
-    room: 'Zone 3 - Parts',
-    excludeRoom: null,
+    room: ZONE_3,
     aisle: '2',
-    excludeAisle: null,
+    bay: '7',
+    level: null,
+    position: null,
     query: 'brake',
   }]);
   const health = result.groups.find((group) => group.id === 'health');
@@ -91,9 +91,6 @@ test('stock health counts come from the list scope counts on the chip ids', asyn
     { value: 'out-of-stock', label: 'Out of stock', count: 2 },
     { value: 'on-hold', label: 'On hold', count: 1 },
   ]);
-  const count = result.groups.find((group) => group.id === 'count');
-  assert.equal(count?.param, 'counted');
-  assert.deepEqual(count?.options, [{ value: 'never', label: 'Never counted', count: 6 }]);
 });
 
 test('inventory stock facets require sku_stock.view', async () => {

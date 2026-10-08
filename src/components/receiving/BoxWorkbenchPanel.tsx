@@ -20,6 +20,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useHandlingUnitDetail } from '@/hooks/useHandlingUnitDetail';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 
 
@@ -187,11 +188,11 @@ export function BoxWorkbenchPanel({
             <Loader2 className="h-4 w-4 animate-spin" /> Loading box…
           </div>
         ) : isError ? (
-          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-rose-700">
+          <div className={cn(PHONE_CARD_FACE, 'border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-rose-700')}>
             {error instanceof Error ? error.message : 'Could not load this box.'}
           </div>
         ) : !box || box.units.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-muted">
+          <div className={cn(PHONE_CARD_FACE, 'border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-muted')}>
             No units in this box yet. Scan a serial above to add one.
           </div>
         ) : (

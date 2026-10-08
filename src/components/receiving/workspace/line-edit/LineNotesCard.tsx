@@ -27,6 +27,7 @@ import {
   StationComposerHost,
 } from '@/components/composer';
 import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStrip';
+import { useStagedPhotoViewer } from '@/components/composer/useStagedPhotoViewer';
 import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
@@ -80,6 +81,8 @@ export function LineNotesCard({
   chrome = 'raised',
   reaction,
   trailingAction,
+  locationLeading,
+  labelPeek,
   onPrimaryAction,
   primaryActionDisabled = false,
   statusStamps,
@@ -91,6 +94,7 @@ export function LineNotesCard({
   trackingNumber,
   orderNumber,
   onTicketLinked,
+  onLinkTicketOpen,
   progressPercent = 0,
   progressTone = 'idle',
   onProgressClick,
@@ -148,6 +152,10 @@ export function LineNotesCard({
    * fires {@link onPrimaryAction} (chat Send); blur still saves.
    */
   trailingAction?: ReactNode;
+  /** Renders immediately left of the location control in the composer footer (Quality control's Pair FNSKU). */
+  locationLeading?: ReactNode;
+  /** The station label peek (see StationLabelPeek): the Label button at the top-left of the row above the composer. */
+  labelPeek?: ReactNode;
   /**
    * Primary footer action for Enter when {@link trailingAction} is mounted
    * (print + receive). Empty notes still allow Enter — receive is not gated
@@ -180,6 +188,8 @@ export function LineNotesCard({
   orderNumber?: string | null;
   /** The linked ticket is on the row. Switch the station thread onto it. */
   onTicketLinked?: (ticketNumber: string) => void;
+  /** "Link existing ticket?" pressed — the station reveals its Ticket tab. */
+  onLinkTicketOpen?: () => void;
   /** Procedure fill for the composer bottom-right progress ring. */
   progressPercent?: number;
   progressTone?: 'idle' | 'selected';
@@ -363,6 +373,7 @@ export function LineNotesCard({
   // Photos ride the same staging pipeline as the console composer:
   const photoStaging = useTicketPhotoStaging({ kind: 'ticket', ticketId: numericTicketId ?? 0 });
   const photoPicker = usePhotoDropzone(photoStaging.addFiles);
+  const stagedViewer = useStagedPhotoViewer(photoStaging.staged);
   const stagedDone = photoStaging.staged.filter(
     (s) => s.status === 'done' && typeof s.photoId === 'number',
   );
@@ -550,16 +561,27 @@ export function LineNotesCard({
     appendToNotes,
   ]);
 
+  const linkTicketReceivingId =
+    !hasTicket && canPostTicket && receivingId != null && receivingId > 0 ? receivingId : null;
+
   return (
     <>
-      {!hasTicket && canPostTicket && receivingId != null && receivingId > 0 ? (
-        <ComposerLinkTicket
-          receivingId={receivingId}
-          lineId={lineId}
-          trackingNumber={trackingNumber}
-          orderNumber={orderNumber}
-          onLinked={onTicketLinked}
-        />
+      {/* The row above the composer: Label first, so the label grows from the
+          composer's top-left, then the link-ticket CTA while nothing is linked. */}
+      {labelPeek || linkTicketReceivingId != null ? (
+        <div className="flex items-center gap-1.5 px-3 pb-1.5" data-testid="composer-above-row">
+          {labelPeek}
+          {linkTicketReceivingId != null ? (
+            <ComposerLinkTicket
+              receivingId={linkTicketReceivingId}
+              lineId={lineId}
+              trackingNumber={trackingNumber}
+              orderNumber={orderNumber}
+              onLinked={onTicketLinked}
+              onOpen={onLinkTicketOpen}
+            />
+          ) : null}
+        </div>
       ) : null}
       <StationComposerHost
         labelValue={notes}
@@ -604,17 +626,19 @@ export function LineNotesCard({
             ccDraft={ticketCcDraft}
             onCcDraftChange={setTicketCcDraft}
             ticketId={numericTicketId}
-            trailing={
+            attachments={
               photoStaging.staged.length > 0 ? (
                 <ComposerStagedPhotoStrip
                   staged={photoStaging.staged}
                   onRemove={photoStaging.remove}
+                  onOpen={stagedViewer.open}
                   size="compact"
                 />
               ) : null
             }
           />
         }
+        locationLeading={locationLeading}
         locationAction={
           <UnboxNotesLocationControl
             lineId={lineId}
@@ -697,6 +721,7 @@ export function LineNotesCard({
         onOpenChange={setStatusOpen}
         row={statusStamps ?? {}}
       />
+      {stagedViewer.viewer}
     </>
   );
 }

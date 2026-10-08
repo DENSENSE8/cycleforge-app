@@ -15,7 +15,6 @@ import {
   Images,
   Inbox,
   Layers,
-  LayoutDashboard,
   Link2,
   List,
   ListChecks,
@@ -23,7 +22,6 @@ import {
   Package,
   PackageCheck,
   PackageOpen,
-  PackageX,
   Phone,
   Plus,
   Printer,
@@ -170,13 +168,8 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'products.labels': { icon: Barcode, tone: 'text-teal-600' },
   'products.pairing': { icon: Link2, tone: 'text-indigo-600' },
   'products.qc': { icon: Check, tone: 'text-amber-600' },
-  // Stock: overview is the glance; the rest are the ledger jobs. None repeats another's ink.
-  'stock.overview': { icon: LayoutDashboard, tone: 'text-orange-600' },
+  // Stock is one view: all stock.
   'stock.all': { icon: Package, tone: 'text-sky-600' },
-  'stock.replenish': { icon: History, tone: 'text-emerald-600' },
-  'stock.fifo': { icon: Truck, tone: 'text-indigo-600' },
-  'stock.low-stock': { icon: AlertTriangle, tone: 'text-amber-600', alertCount: true },
-  'stock.out-of-stock': { icon: PackageX, tone: 'text-rose-600', alertCount: true },
   // Compatibility glyphs for retired stock destinations.
   'stock.graph': { icon: Layers, tone: 'text-indigo-600' },
   'stock.reason-codes': { icon: Tags, tone: 'text-amber-600' },

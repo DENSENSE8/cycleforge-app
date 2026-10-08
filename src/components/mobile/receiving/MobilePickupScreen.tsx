@@ -5,7 +5,7 @@
  * The list keeps a phone card, but its identifier, status word and next step
  * are the record's own (`pickupRecordModel` + `PICKUP_LIFECYCLE`), so a card
  * reads exactly what the desk's `/pickup` header reads. `?lcpu=<id>` opens the
- * same record — the same model and the same header verbs — with the camera on
+ * same record — the same model and the same Actions panel verbs — with the camera on
  * the item tiles.
  */
 
@@ -77,9 +77,8 @@ export function MobilePickupScreen() {
         <MobileV2DetailTopBar title={open?.identity ?? `LCPU-${openId}`} mono subtitle="Local pickup" meta={open?.customer ?? undefined} backHref={pathname} />
         {slot ? (
           <div className="@container flex min-w-0 flex-1 flex-col">
-            <div className="flex min-w-0 flex-col gap-2 border-b border-border-hairline px-4 py-2">
+            <div className="flex min-w-0 border-b border-border-hairline px-4 py-2">
               <span className="min-w-0 overflow-x-auto text-role-body font-semibold">{slot.title}</span>
-              <div className="min-w-0 overflow-x-auto">{slot.actions}</div>
             </div>
             {slot.view}
           </div>

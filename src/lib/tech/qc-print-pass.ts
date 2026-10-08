@@ -24,6 +24,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { upsertSerialUnit } from '@/lib/neon/serial-units-queries';
 import { recordUnitLabelPrint } from '@/lib/labels/record-unit-label-print';
+import { recordLabelPrintJob } from '@/lib/labels/print-jobs';
 import {
   QC_PRINT_PASS_FAILED_INBOX_ITEM_SQL,
   qcPrintPassFailedInboxItemParams,
@@ -50,6 +51,8 @@ export interface QcPrintPassPayload {
   product_sku: string;
   sku_catalog_id: number | null;
   serial_number: string;
+  /** The FBA unit label that printed with the unit label, when a paired FNSKU resolved. */
+  fnsku: string | null;
 }
 
 /** A claimed outbox row. */
@@ -371,6 +374,26 @@ export const defaultQcPrintPassDeps: QcPrintPassDeps = {
     }
     if (printed.failed.length > 0) {
       throw new Error(`print record incomplete: ${printed.failed.join(', ')}`);
+    }
+
+    // The FBA unit label that printed in the same gesture: the same ledger
+    // shape every fnsku print writes (templateId 'fba_fnsku'), linked to the
+    // unit and idempotent on the press's client event id.
+    if (row.payload.fnsku) {
+      await recordLabelPrintJob(
+        {
+          jobType: 'REPRINT',
+          serialUnitId: row.serialUnitId,
+          qrPayload: row.payload.fnsku,
+          symbology: 'code128',
+          templateId: 'fba_fnsku',
+          copies: 1,
+          isReprint: true,
+          clientEventId: `${row.clientEventId}:fnsku`,
+          actorStaffId: row.actorStaffId,
+        },
+        row.organizationId,
+      );
     }
   },
 

@@ -9,6 +9,7 @@ import { photoContentUrl } from '@/lib/photos/display-url';
 import { unitTimelinePhotosKey, unitTimelinePhotosQuery } from '@/lib/timeline/journey-photos';
 import type { UnitTimelinePhotoRowSource } from '@/lib/timeline/unit-photos-events';
 import { Camera } from '@/components/Icons';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 /** Pack / testing workspace peek for a SERIAL_UNIT's photos — prefers one stage bucket, falls back to all timeline photos so prepack packs… */
 export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
@@ -46,7 +47,7 @@ export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
   if (cards.length === 0) {
     if (!showEmptyState) return null;
     return (
-      <div className="flex items-center gap-2 rounded-none border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-role-caption text-text-faint">
+      <div className={`flex items-center gap-2 border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-role-caption text-text-faint ${PHONE_CARD_FACE}`}>
         <Camera className="h-4 w-4 shrink-0" />
         <span>No packed photos yet — scan the unit QR to open the phone camera.</span>
       </div>

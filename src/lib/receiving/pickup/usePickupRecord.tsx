@@ -266,7 +266,7 @@ function PickupTicketsPanel({ units }: { units: readonly { unit: PickupUnitView;
 }
 
 /**
- * The open pickup's model and header verbs; null when none is open. Filter
+ * The open pickup's model and Actions panel verbs; null when none is open. Filter
  * and selection belong to the open pickup — walking to another resets them.
  */
 export function usePickupRecord(

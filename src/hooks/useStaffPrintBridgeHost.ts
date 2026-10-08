@@ -251,8 +251,8 @@ function useStaffPrintBridgeHost() {
         });
       });
 
-      // documents · tote · rack · bin · fnsku · papers · repair · qc — one executor,
-      // loaded on the first job (it carries the label renderers).
+      // documents · tote · rack · bin · fnsku · papers · repair · qc · stock label —
+      // one executor, loaded on the first job (it carries the label renderers).
       const { executeStationPrintJob } = await import('@/lib/print/station-job-executor');
       await executeStationPrintJob(job, { workId, onProgress });
     } finally {

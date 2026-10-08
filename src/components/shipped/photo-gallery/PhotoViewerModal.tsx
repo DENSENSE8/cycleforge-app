@@ -9,10 +9,10 @@ import {
   Upload, Loader2, Ticket,
 } from '../../Icons';
 import { PhotoContextPanel } from './PhotoContextPanel';
+import { PhotoLoadProgress } from './PhotoLoadProgress';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, Layer } from '@/design-system/primitives';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
-import { photoHeroLayoutId } from './photo-gallery-utils';
 import type { PhotoGalleryController } from './usePhotoGallery';
 
 const TOOLBAR_ICON_BTN =
@@ -56,7 +56,6 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const canReset = zoomLevel > 1 || g.rotation !== 0;
   const panelVisible = g.panelOpen;
   const reduceMotion = useReducedMotion();
-  const heroTransition = useMotionTransition(motionTransition.photoHeroMorph);
   const scrimTransition = useMotionTransition(motionTransition.overlayScrim);
   const toolbarTransition = useMotionTransition(motionTransition.dropdownOpen);
   // Keep Tab inside the lightbox — without this the page behind the scrim
@@ -115,14 +114,36 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [moreOpen, downloadOpen]);
 
-  // The grid-tile → lightbox hero morph (shared `layoutId`) only ever plays for the photo the viewer opened on.
-  const heroIndexRef = useRef(currentIndex);
-  const heroSpentRef = useRef(false);
+  // Opening frame: the photo paints in place at its final size and full
+  // opacity — no tile→lightbox morph, no scale-up. Only ←/→ cross-fades.
+  const stageMountedRef = useRef(false);
   useEffect(() => {
-    if (currentIndex !== heroIndexRef.current) heroSpentRef.current = true;
-  }, [currentIndex]);
-  const isHeroFrame = !reduceMotion && !heroSpentRef.current && currentIndex === heroIndexRef.current;
-  const heroLayoutId = isHeroFrame ? photoHeroLayoutId(photoItems[currentIndex]?.id) : undefined;
+    stageMountedRef.current = true;
+  }, []);
+  const currentPhoto = photoItems[currentIndex];
+  // The display image once decoded, else the (cached) thumb as a placeholder at
+  // the SAME box size, so the sharp swap-in never resizes anything.
+  const stageSrc =
+    currentPhoto?.full === 'loaded'
+      ? currentPhoto.displayUrl
+      : currentPhotoError
+        ? undefined
+        : currentPhoto?.thumbUrl;
+  const stageIsPlaceholder = stageSrc !== undefined && currentPhoto?.full !== 'loaded';
+  /** The display image is still downloading — the bar above the strip shows how far. */
+  const stageLoading = Boolean(currentPhoto) && !currentPhotoError && currentPhoto?.full !== 'loaded';
+
+  // The stage <img> fills a fixed box and `object-contain` letterboxes the
+  // photo inside it — a click on that empty band is a click on the scrim.
+  const handleStageImageClick = (e: ReactMouseEvent<HTMLImageElement>) => {
+    e.stopPropagation();
+    const img = e.currentTarget;
+    if (zoomLevel > 1 || !img.naturalWidth || !img.naturalHeight) return;
+    const fit = Math.min(img.clientWidth / img.naturalWidth, img.clientHeight / img.naturalHeight);
+    const dx = Math.abs(e.nativeEvent.offsetX - img.clientWidth / 2);
+    const dy = Math.abs(e.nativeEvent.offsetY - img.clientHeight / 2);
+    if (dx > (img.naturalWidth * fit) / 2 || dy > (img.naturalHeight * fit) / 2) g.closeViewer();
+  };
 
   // Click-off to close:
   const handleBackdropClick = (e: ReactMouseEvent) => {
@@ -573,19 +594,20 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
           the scrim; the image (and placeholders) re-enable pointer events. */}
       <motion.div
         key={currentIndex}
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
+        initial={stageMountedRef.current ? { opacity: 0 } : false}
+        animate={{ opacity: 1 }}
         transition={motionTransition.dropdownOpen}
         className="pointer-events-none relative flex h-full w-full items-center justify-center p-4 sm:py-16 sm:pl-16 sm:pr-16"
       >
-        {photoItems[currentIndex]?.full === 'loaded' ? (
+        {stageSrc ? (
+          // Fixed box + object-contain: the placeholder thumb and the display
+          // image paint at the identical size from the first frame.
           <motion.img
-            src={photoItems[currentIndex].url}
+            src={stageSrc}
             alt={`Photo ${currentIndex + 1}`}
-            layoutId={heroLayoutId}
-            transition={heroLayoutId ? heroTransition : undefined}
-            className="pointer-events-auto max-h-[78vh] max-w-[90vw] object-contain shadow-2xl select-none sm:max-h-[65vh] sm:max-w-[48vw]"
+            className={`pointer-events-auto h-[78vh] w-[90vw] object-contain drop-shadow-2xl select-none sm:h-[65vh] sm:w-[48vw]${
+              stageIsPlaceholder ? ' blur-[1px]' : ''
+            }`}
             style={{
               scale: zoomLevel,
               rotate: g.rotation,
@@ -594,7 +616,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
               cursor: zoomLevel > 1 ? (g.isDragging ? 'grabbing' : 'grab') : 'default',
             }}
             draggable={false}
-            onClick={stopBubble}
+            onClick={handleStageImageClick}
             onPointerDown={stopBubble}
             onMouseDown={g.onMouseDown}
             onMouseMove={g.onMouseMove}
@@ -610,33 +632,14 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             <AlertCircle className="mb-4 h-16 w-16 text-red-400" />
             <p className="text-lg font-semibold text-red-300">Failed to load image</p>
           </div>
-        ) : photoItems[currentIndex]?.thumbUrl ? (
-          // Instant low-res placeholder while the full image preloads — never a black/spinner-only stage on a slow (mobile) connection.
-          <motion.img
-            src={photoItems[currentIndex].thumbUrl}
-            alt={`Photo ${currentIndex + 1}`}
-            layoutId={heroLayoutId}
-            transition={heroLayoutId ? heroTransition : undefined}
-            className="pointer-events-auto max-h-[78vh] max-w-[90vw] object-contain shadow-2xl select-none blur-[1px] sm:max-h-[65vh] sm:max-w-[48vw]"
-            style={{
-              cursor: zoomLevel > 1 ? (g.isDragging ? 'grabbing' : 'grab') : 'default',
-            }}
-            draggable={false}
-            onClick={stopBubble}
-            onPointerDown={stopBubble}
-            onMouseDown={g.onMouseDown}
-            onMouseMove={g.onMouseMove}
-            onMouseUp={g.onMouseUp}
-            onMouseLeave={g.onMouseUp}
-          />
         ) : (
+          // Nothing to paint yet (no thumb): an empty stage at the image's box
+          // size; the progress bar above the strip carries the wait.
           <div
-            className="pointer-events-auto flex h-96 w-full max-w-2xl items-center justify-center rounded-2xl bg-stage-raised/50"
+            className="pointer-events-auto h-[78vh] w-[90vw] rounded-2xl bg-stage-raised/50 sm:h-[65vh] sm:w-[48vw]"
             onClick={stopBubble}
             onPointerDown={stopBubble}
-          >
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-400/30 border-t-blue-400" />
-          </div>
+          />
         )}
       </motion.div>
 
@@ -662,13 +665,30 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         </>
       )}
 
-      {/* Thumbnail Strip — portrait thumbs. The pill itself is `w-fit max-w-full
-          mx-auto`, so it shrinks to its thumbs and stays centered when they fit,
-          and scrolls internally once they exceed the available width. */}
-      {photoItems.length > 1 && (
+      {/* Bottom stack: the load bar sits between the photo and the thumbnail
+          strip. The strip pill is `w-fit max-w-full mx-auto`, so it shrinks to
+          its thumbs and stays centered when they fit, and scrolls internally
+          once they exceed the available width. The stack is bottom-anchored,
+          so the bar coming and going never moves the strip. */}
+      <div className="pointer-events-none absolute bottom-8 left-1/2 z-10 flex w-full max-w-4xl -translate-x-1/2 flex-col items-center gap-3 px-8">
+        <AnimatePresence initial={false}>
+          {stageLoading && currentPhoto ? (
+            <motion.div
+              key="photo-load-progress"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={scrimTransition}
+              data-testid="photo-load-progress"
+            >
+              <PhotoLoadProgress url={currentPhoto.displayUrl} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      {multiPhoto ? (
         <div
           data-testid="photo-filmstrip"
-          className="pointer-events-auto absolute bottom-8 left-1/2 z-10 w-full max-w-4xl -translate-x-1/2 px-8"
+          className="pointer-events-auto w-full"
           onClick={(e) => {
             // #region agent log
             dbg251('PhotoViewerModal.tsx:filmstripClick', 'filmstrip root click', {
@@ -713,7 +733,8 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
+      </div>
       </div>
       </div>
       {/* Details drawer — flex sibling of the stage; animates its own width (0 ⇄ 20rem), so open and close are one symmetric toggle and the image… */}

@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PRIORITY_OVERRIDE_TIERS, priorityOverrideTiersForHeader, priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
-import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
-import { platformClassifyOptions } from './classify-pill-options';
+import { platformClassifyOptions, typeClassifyOptions } from './classify-pill-options';
 
 test('urgency bookmark shorts stay ≤4 chars', () => {
   for (const t of PRIORITY_OVERRIDE_TIERS) {
@@ -43,9 +42,15 @@ test('platform classify options have no letter shortLabel', () => {
   }
 });
 
-test('receiving type shorts stay compact for bookmark chrome', () => {
-  assert.equal(receivingTypeMeta('PO').short, 'PO');
-  assert.equal(receivingTypeMeta('RETURN').short, 'Ret');
-  assert.equal(receivingTypeMeta('TRADE_IN').short, 'Trade');
-  assert.ok(receivingTypeMeta('TRADE_IN').short.length <= 5);
+test('type classify options carry no letter shortLabel — the display name is the face', () => {
+  const options = typeClassifyOptions({
+    catalogOptions: [
+      { value: 'PO', label: 'PO' },
+      { value: 'RETURN', label: 'Return' },
+      { value: 'TRADE_IN', label: 'Trade In' },
+    ],
+  });
+  for (const option of options) {
+    assert.equal(option.shortLabel, undefined, `${option.label} must show its name, not ${option.shortLabel}`);
+  }
 });

@@ -63,8 +63,9 @@ lands through `ingestInboundOrder`.
 - Doors: global header Add (`C` then `P` New purchase order, `R` New return — grouped under
   Inbound, sales rows under Outbound), `IncomingDeskAddAction` Add / Add return, Unbox Add PO.
   The old module store and the in-stage mount in `ReceivingLinesTable` are gone.
-- Unbox: a return line shows `UnboxReturnCallout` ("check for: <reason>", RMA, original order,
-  listing link) above the line record (`LineEditPanel`); rows carry `return_reason`,
+- Unbox: a return line shows `UnboxReturnCheck` ("Check for: <reason>", RMA, original order,
+  listing link) at the bottom-right of the next-step bubble (`LineEditPanel`, 2026-10-08 — it was a
+  full-width band above the line); rows carry `return_reason`,
   `return_rma_ref`, `return_source_order_id` from `receiving_line_return` (carton fallback).
 
 **Gaps against the outbound twin (verify each before building; do not assume):**

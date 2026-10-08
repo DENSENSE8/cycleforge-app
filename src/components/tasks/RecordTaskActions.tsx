@@ -1,14 +1,12 @@
 'use client';
 
-/** Staff task verbs on an open desk record: */
+/** The ONE staff-task verb on an open desk record: Assign task (you, or anyone, from the same picker). */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import type { RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { Button } from '@/design-system/primitives/Button';
 import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
-import { evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -17,9 +15,8 @@ import type { ThrowTarget } from '@/lib/tasks/throw-targets';
 import { ClipboardList } from '@/components/Icons';
 import { InlineStageAssign } from '@/design-system/components/record-ledger/InlineStageAssign';
 
-type RecordTaskKind = 'mine' | 'staff';
-
-const TASK_TITLE: Record<RecordTaskKind, string> = { mine: 'Add task', staff: 'Send to staff as task' };
+/** The record key for Assign task. */
+const RECORD_TASK_HOTKEY = 'a';
 
 /**
  * The record a task is thrown at — `label` names it in the composer (`Order 113-…`, `PO 15-…`).
@@ -30,60 +27,31 @@ type RecordTaskTarget =
   | Pick<ThrowTarget, 'entityType' | 'entityId' | 'label'>
   | { entityType: null; entityId: null; label: string };
 
-/** "Add task" · "Send to staff as task" as strip verbs; each morphs into the composer. */
-export function buildRecordTaskVerbs(target: RecordTaskTarget): RecordActionVerb[] {
-  return (Object.keys(TASK_TITLE) as RecordTaskKind[]).map((kind) => ({
-    id: `task-${kind}`,
-    label: TASK_TITLE[kind],
+/**
+ * Assign task — one verb (operator 2026-10-08: "Add task" and "Send to staff
+ * as task" were duplicates). It morphs into the composer, whose "Who does it"
+ * picker starts on you and takes anyone.
+ */
+export function buildRecordTaskVerb(target: RecordTaskTarget): RecordActionVerb {
+  return {
+    id: 'task',
+    label: 'Assign task',
     icon: <ClipboardList />,
-    display: (done) => <RecordTaskForm key={`${kind}:${target.entityId ?? target.label}`} kind={kind} target={target} onDone={done} />,
-  }));
-}
-
-function RecordTaskActions({ target }: { target: RecordTaskTarget }) {
-  const [kind, setKind] = useState<RecordTaskKind | null>(null);
-  return (
-    <>
-      <div className="flex gap-2 p-4" data-testid="record-tasks">
-        {(Object.keys(TASK_TITLE) as RecordTaskKind[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            aria-haspopup="dialog"
-            data-testid={`record-task-${key}`}
-            className={cn(evidenceVerbClass(), 'flex-1 border-mode-ink')}
-            onClick={() => setKind(key)}
-          >
-            {TASK_TITLE[key]}
-          </button>
-        ))}
-      </div>
-      <DeskStageOverlay
-        open={kind != null}
-        onClose={() => setKind(null)}
-        title={kind ? TASK_TITLE[kind] : 'Task'}
-        subtitle={`Linked to ${target.label}`}
-        fill="inset"
-        testId="record-task-composer"
-      >
-        {kind ? <RecordTaskForm key={kind} kind={kind} target={target} onDone={() => setKind(null)} /> : null}
-      </DeskStageOverlay>
-    </>
-  );
+    hotkey: RECORD_TASK_HOTKEY,
+    display: (done) => <RecordTaskForm key={String(target.entityId ?? target.label)} target={target} onDone={done} />,
+  };
 }
 
 /** The task composer body — a strip verb's morph, or inline in a record (Stock's "Send to staff" group). */
 export function RecordTaskForm({
-  kind,
   target,
   onDone,
 }: {
-  kind: RecordTaskKind;
   target: RecordTaskTarget;
   onDone: () => void;
 }) {
   const task = useThrowTask({ onThrown: () => onDone() });
-  const { setPicked, setProjectName, staff, assignees, toggleAssigneeById } = task;
+  const { setPicked, setProjectName, assignees, toggleAssigneeById } = task;
   const { entityType, entityId, label } = target;
   // The phone reads Send at the 44px touch rung.
   const { isMobile } = useUIModeOptional();
@@ -93,14 +61,6 @@ export function RecordTaskForm({
     if (entityType == null) setProjectName(label);
     else setPicked({ entityType, entityId, label });
   }, [setPicked, setProjectName, entityType, entityId, label]);
-
-  // "Send to staff": the creator starts unticked (the hook preselects you).
-  const clearedSelf = useRef(false);
-  useEffect(() => {
-    if (kind !== 'staff' || clearedSelf.current || !staff || assignees.length !== 1) return;
-    clearedSelf.current = true;
-    toggleAssigneeById(assignees[0]!.id, assignees[0]!.name);
-  }, [kind, staff, assignees, toggleAssigneeById]);
 
   const lead = assignees[0] ?? null;
 
@@ -144,7 +104,7 @@ export function RecordTaskForm({
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 text-role-caption text-text-muted">{task.missing ?? ''}</span>
         <Button type="submit" variant="ink" size={isMobile ? 'lg' : 'sm'} disabled={!task.canThrow} loading={task.throwing} data-testid="record-task-submit">
-          {kind === 'staff' ? 'Send task' : 'Add task'}
+          Assign task
         </Button>
       </div>
     </form>

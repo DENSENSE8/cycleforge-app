@@ -38,6 +38,12 @@ export const COPY_HOTKEY = 'mod+c';
 /** Copy every shown entry (paste ledgers): ⌘⌥C / Ctrl+Alt+C — never Ctrl+Shift+C (DevTools). */
 export const COPY_SHOWN_HOTKEY = 'mod+alt+c';
 /**
+ * Delete the record / selection: ⌘⌫ on Apple, Ctrl+Backspace elsewhere —
+ * never a bare letter (operator 2026-10-08). Every delete verb also asks for
+ * a second press before it runs (`RecordActionVerb.confirm`).
+ */
+export const DELETE_HOTKEY = 'mod+backspace';
+/**
  * Paste a list and check each number's status, from any page (NavFind's
  * paste-a-list: the clipboard's 2+ numbers become the held list in the
  * search field, else the field takes focus with its list panel open, where

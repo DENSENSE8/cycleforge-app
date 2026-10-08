@@ -25,11 +25,6 @@ export function parseLocationStockSort(raw: string | null | undefined): Location
   return raw != null && LOCATION_STOCK_SORT_SET.has(raw) ? (raw as LocationStockSort) : 'location-asc';
 }
 
-/** A counted bin with no cycle count. Units have no count column; empty places are capacity. */
-export function locationStockNeverCounted(row: Pick<LocationStockTableRow, 'source' | 'last_counted'>): boolean {
-  return row.source === 'bin' && row.last_counted == null;
-}
-
 export interface LocationStockTableRow {
   /**
    * The `locations` row, or `null` when the placement names a location this
@@ -322,16 +317,62 @@ export function parseLocationStockRoomIds(raw: string | null | undefined): strin
     });
 }
 
-/** Parse the contextual aisle comma-list without turning an empty value into aisle 0. */
-export function parseLocationStockAisles(raw: string | null | undefined): number[] {
-  return [...new Set(
-    (raw ?? '')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean)
-      .map(Number)
-      .filter((value) => Number.isInteger(value) && value >= 0),
-  )];
+/** One picked address part (aisle, bay, level, position) — an empty or non-numeric value is no pick, never part 0. */
+export function parseLocationStockAddressPart(raw: string | null | undefined): number | null {
+  const value = (raw ?? '').trim();
+  if (!value) return null;
+  const part = Number(value);
+  return Number.isInteger(part) && part >= 0 ? part : null;
+}
+
+/** The address drill the stock sidebar writes: Room › Aisle › Bay › Level › Position, each under its parent. */
+export interface LocationStockAddressScope {
+  aisle: number | null;
+  bay: number | null;
+  level: number | null;
+  position: number | null;
+}
+
+/** Read the drill; a deeper part is dropped when a shallower one is missing (an aisle needs a room). */
+export function parseLocationStockAddressScope(
+  hasRoom: boolean,
+  raw: { aisle?: string | null; bay?: string | null; level?: string | null; position?: string | null },
+): LocationStockAddressScope {
+  const aisle = hasRoom ? parseLocationStockAddressPart(raw.aisle) : null;
+  const bay = aisle != null ? parseLocationStockAddressPart(raw.bay) : null;
+  const level = bay != null ? parseLocationStockAddressPart(raw.level) : null;
+  const position = level != null ? parseLocationStockAddressPart(raw.position) : null;
+  return { aisle, bay, level, position };
+}
+
+/** The row sits inside the picked address parts. */
+export function locationStockInAddress(
+  row: Pick<LocationStockTableRow, 'aisle' | 'bay' | 'level' | 'position'>,
+  scope: LocationStockAddressScope,
+): boolean {
+  return (
+    (scope.aisle == null || row.aisle === scope.aisle) &&
+    (scope.bay == null || row.bay === scope.bay) &&
+    (scope.level == null || row.level === scope.level) &&
+    (scope.position == null || row.position === scope.position)
+  );
+}
+
+/**
+ * The server-read scope of a stock URL (room, address drill, sort) as one
+ * string: the ledger re-reads when the live URL's key leaves the loaded one.
+ */
+export function locationStockScopeKey(params: {
+  room?: string | null;
+  aisle?: string | null;
+  bay?: string | null;
+  level?: string | null;
+  position?: string | null;
+  sort?: string | null;
+}): string {
+  return [params.room, params.aisle, params.bay, params.level, params.position, params.sort]
+    .map((value) => value?.trim() ?? '')
+    .join('|');
 }
 
 /**

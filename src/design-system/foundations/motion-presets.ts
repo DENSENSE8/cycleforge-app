@@ -336,7 +336,7 @@ export const motionTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Media-library thumbnail → fullscreen viewer hero morph (`layoutId`-driven). */
+  /** Photo hero morph (`layoutId`-driven) — the prepack product hero. The media-library viewer opens in place, without a morph. */
   photoHeroMorph: {
     type: 'spring' as const,
     visualDuration: 0.45,

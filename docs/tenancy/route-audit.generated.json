@@ -1,11 +1,11 @@
 {
   "summary": {
-    "total": 1233,
-    "withAuth": 872,
-    "tenantWrapped": 971,
-    "delegatedTenantWrapped": 910,
-    "orgIdRef": 1092,
-    "rawPool": 364,
+    "total": 1237,
+    "withAuth": 874,
+    "tenantWrapped": 975,
+    "delegatedTenantWrapped": 912,
+    "orgIdRef": 1096,
+    "rawPool": 366,
     "drizzle": 19,
     "transitional": 6,
     "cron": 45,
@@ -13,8 +13,8 @@
       "critical": 26,
       "high": 25,
       "medium": 61,
-      "low": 661,
-      "info": 460
+      "low": 664,
+      "info": 461
     }
   },
   "routes": [
@@ -8974,6 +8974,49 @@
       "risk": "low"
     },
     {
+      "route": "/api/orders/mark-packed",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "shipping_tracking_numbers",
+        "orders"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/orders/merge-stub",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": "orders.void",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "orders"
+      ],
+      "risk": "low"
+    },
+    {
       "route": "/api/orders/missing-parts",
       "methods": [
         "POST"
@@ -9978,27 +10021,6 @@
       "risk": "low"
     },
     {
-      "route": "/api/photos/library/ids",
-      "methods": [
-        "GET"
-      ],
-      "withAuth": true,
-      "permission": "photos.view",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": false,
-      "touched": [
-        "photos"
-      ],
-      "risk": "low"
-    },
-    {
       "route": "/api/photos/links",
       "methods": [
         "POST",
@@ -10894,6 +10916,50 @@
       "mutates": true,
       "touched": [
         "sku_stock"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/qc/fnsku-candidates",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": "tech.qc_pass",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": false,
+      "touched": [
+        "fba_fnskus",
+        "sku"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/qc/fnsku-pair",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "sku_catalog",
+        "fba_fnskus"
       ],
       "risk": "low"
     },
@@ -24797,6 +24863,25 @@
       "isCron": false,
       "isPathParam": false,
       "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/support/tickets/recent",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": "integrations.zendesk",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": false,
       "touched": [],
       "risk": "info"
     },

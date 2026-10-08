@@ -703,6 +703,13 @@ test('regression: orders-exceptions/[id] PATCH is orders.create (tracking-only e
   assert.ok(r.methods.includes('PATCH'), 'expected PATCH method');
 });
 
+test('regression: orders/merge-stub is orders.void (it deletes the stub row — Send-replacement split-brain fix)', () => {
+  const r = routeByPath('/api/orders/merge-stub/route.ts');
+  assert.ok(r, 'orders/merge-stub should be in the manifest');
+  assert.equal(r.permission, 'orders.void');
+  assert.ok(r.methods.includes('POST'), 'expected POST method');
+});
+
 // ── Kiosk device principal (/kiosk — FOH/BOH surface split doc 06) ───────────
 
 test('kiosk enroll + revoke are gated by walk_in.enroll_kiosk', () => {
@@ -968,6 +975,15 @@ test('regression: integrations.zendesk gates the support ticket link + create wa
     assert.equal(r.permission, 'integrations.zendesk', path);
     assert.deepEqual(r.methods, methods, path);
   }
+});
+
+test('regression: integrations.zendesk gates "My recent tickets" (the staffer\'s own helpdesk_comment_staff rows)', () => {
+  const path = '/api/support/tickets/recent/route.ts';
+  const r = routeByPath(path);
+  assert.ok(r, `${path} should be in the manifest`);
+  assert.equal(r.gate, 'withAuth');
+  assert.equal(r.permission, 'integrations.zendesk');
+  assert.deepEqual(r.methods, ['GET']);
 });
 
 test('regression: inbound follow-ups read on receiving.view, write on the carton staff-notes permission', () => {

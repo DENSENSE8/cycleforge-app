@@ -94,7 +94,7 @@
   "RecordFlowFacts": {
     "useWhen": "commerce record detail, order search detail, outbound customer and shipping, inbound vendor and purchased from, paired party and movement facts, directional order record",
     "doNot": "Do not invent local relationship headings or separate these facts into unrelated cards. Outbound is Customer → Shipping; inbound mirrors it as Purchased from → Shipping. The two regions share one card and one hairline. Serial numbers are item identity: render them inline with the item through the house SerialChip and never repeat them in Pick, Pack, QC, Scan out, shipping, or purchase facts.",
-    "law": "src/design-system/components/RecordFlowFacts.tsx + src/components/outbound/orders/OrderRecordView.tsx + src/design-system/components/record-ledger/RecordView.tsx (RecordModel; inbound adapters in src/components/receiving/record/). Search and desk surfaces consume the same directional grammar; domain adapters supply facts but never rename the roles or move serial identity into process state."
+    "law": "src/design-system/components/RecordFlowFacts.tsx + src/components/outbound/orders/OrderRecordView.tsx + src/design-system/components/record-ledger/RecordView.tsx (RecordModel; inbound adapters in src/components/receiving/record/). Search and desk surfaces consume the same directional grammar; domain adapters supply facts but never rename the roles or move serial identity into process state. Record verbs paint in the Actions panel (RecordGroup title=\"Actions\" + RecordActionStrip face=\"panel\") under the party/movement block on every record — top of the aside when a record has none — never as pills in the record header (operator 2026-10-08)."
   },
   "RecordItemIdentity": {
     "useWhen": "item identity row, SKU row, item number row, SKU open in menu, view in products, view in inventory, stock by bin link, record item SKU and Item",
@@ -344,7 +344,7 @@
   "RecordActionStrip": {
     "useWhen": "record actions, selection actions, row actions, bulk actions, ordered record verbs, overflow action menu, three dots menu, delete selected rows, destructive verb on a selection, danger verb",
     "doNot": "Pass one ordered verb list. The first three non-danger verbs remain visible in source order; every remaining verb and every danger verb goes into the single MoreVertical overflow menu. Never add placement metadata, an isolated danger lane, or a two-click arm state.",
-    "law": "src/design-system/components/record-action-strip/RecordActionStrip.tsx. partitionRecordActionVerbs is the one partition rule for every face and consumer."
+    "law": "src/design-system/components/record-action-strip/RecordActionStrip.tsx. partitionRecordActionVerbs is the one partition rule for every face and consumer — except face=\"panel\" (operator 2026-10-08): a record's side-column Actions group, partitionRecordPanelVerbs — fill-tone verbs (primary · orange · warning · yellow · success) lead as full-width filled CTAs, every other verb is a full-width ghost row, danger verbs close under a hairline; every verb spelled out with its keycap, no ⋮. Record verbs paint in the Actions panel under the party/movement block on every record, never face=\"header\" for one open record (operator 2026-10-08); face=\"header\" stays for bulk / check-set bars only."
   },
   "triage-view": {
     "useWhen": "TriageViewDecl, view config, view declaration, card view config, which facts a card shows, top-right status kind, next-step vocabulary, status chips param, paging client or server, sections by urgency, a new nav view of a card list, card slot contract",
@@ -399,7 +399,7 @@
   "MorphingRowActionMenu": {
     "useWhen": "row actions, packing slip, shipping label, mark urgent, scan out, selection manifold, checkbox menu",
     "doNot": "Do not occupy or hide the column-header labels. This paints below Order / Item / Dates and delegates its ordered verbs to RecordActionStrip. Desktop Notes morph the row (notes-view + strip). Radix bottom Sheet only on /m/. Delete never hard-deletes on press: it goes through deleteOrdersWithUndo (swipe out, Undo toast bottom-right, DELETEs on expiry / pagehide).",
-    "law": "src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx + src/design-system/components/record-action-strip/RecordActionStrip.tsx. Deferred delete: src/lib/orders/deferred-order-delete.ts + triage-card-list/dismiss.ts."
+    "law": "src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx + src/design-system/components/record-action-strip/RecordActionStrip.tsx. Deferred delete: src/lib/orders/deferred-order-delete.ts + triage-card-list/dismiss.ts. Allocate records (To Ship, Pending, search.orders) paint OrderRecordActionStrip face=\"panel\" in the record's Actions group under Customer · Shipping, never in the record header (operator 2026-10-08); a shipped order leads with Buy replacement label (primary), Create customer ticket wears orange."
   },
   "Collapse": {
     "useWhen": "expand, collapse, reveal, accordion, show more, unfold, quick look, drawer section, height animation, row enter or exit with height",

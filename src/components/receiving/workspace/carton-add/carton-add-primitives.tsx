@@ -4,13 +4,16 @@ import {
   joinStackedIdentityKeys,
   StackedRowIdentity,
 } from '@/components/ui/StackedRowIdentity';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 // ─── Hint banner (e.g. off-PO notice) ────────────────────────────────────────
 
 export function HintBanner({ text }: { text: string }) {
   return (
-    <div className="border-b border-amber-100 bg-amber-50 px-3 py-1.5 text-role-micro font-semibold text-amber-800">
-      {text}
+    <div className="px-2 pt-2">
+      <div className={`${PHONE_CARD_FACE} border border-amber-100 bg-amber-50 px-3 py-1.5 text-role-micro font-semibold text-amber-800`}>
+        {text}
+      </div>
     </div>
   );
 }

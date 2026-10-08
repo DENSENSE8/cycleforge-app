@@ -88,9 +88,23 @@ import { PRINT_SLIP_HOTKEY, usePrintPackingSlip } from '@/components/outbound/or
 import type { KitComposition } from '@/lib/orders/order-kit-composition';
 import { VIEW_SPECS, viewOffersVerb, type OrderViewKey } from '@/lib/views/view-specs';
 import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
-import { buildRecordTaskVerbs } from '@/components/tasks/RecordTaskActions';
+import { buildRecordTaskVerb } from '@/components/tasks/RecordTaskActions';
 import { supportCreateTicketHref } from '@/lib/support/order-support-routes';
-import { COPY_HOTKEY } from '@/lib/keyboard/key-registry';
+import { COPY_HOTKEY, DELETE_HOTKEY } from '@/lib/keyboard/key-registry';
+import { isOrderShipped } from '@/components/shipped/details-panel/shipped-details-logic';
+import { SendReplacementPopover } from '@/components/outbound/labels/SendReplacementPopover';
+import { ReturnLabelDialog } from '@/components/outbound/labels/ReturnLabelDialog';
+import { pickOrderDocument, useOrderDocuments } from '@/lib/orders/order-paperwork-client';
+import { SELECTION_STATUS_BAR_META } from '@/hooks/useSelectionStatusBarHotkeys';
+
+/** The record key that opens a shipped order's replacement-label buy ("rEplacement"; R is Resolve / Create rule). */
+const REPLACEMENT_LABEL_HOTKEY = 'e';
+/** Return label ("Home" — back to the warehouse). */
+const RETURN_LABEL_HOTKEY = 'h';
+/** Create customer ticket. */
+const CUSTOMER_TICKET_HOTKEY = 't';
+/** Buyer cancelled. */
+const BUYER_CANCELLED_HOTKEY = 'z';
 
 function orderIdOf(row: unknown): number | null {
   if (!row || typeof row !== 'object' || !('id' in row)) return null;
@@ -197,14 +211,17 @@ const TRIAGE_BAR_PRIMARY_IDS: readonly string[] = ['paste', 'resolve', 'out-of-s
 const TRIAGE_BAR_DROPPED_IDS: ReadonlySet<string> = new Set(['more-info', 'select', 'notes', 'label']);
 
 /**
- * The allocate record header's visible verbs, in order, with the face each
- * wears there (owner 2026-09-29): Urgent keeps its yellow, Create customer
- * ticket is orange, Assign task white, Report out of stock red.
+ * The allocate record's lead verbs, in order, with the face each wears there
+ * (owner 2026-09-29; operator 2026-10-08): the service verbs a caller rings
+ * for lead — Buy replacement label, Return label, Create customer ticket
+ * (vivid orange) — then Assign task and Report out of stock.
  */
 const ALLOCATE_HEADER_PRIMARY: readonly { id: string; face?: Partial<Pick<RecordActionVerb, 'label' | 'tone'>> }[] = [
   { id: 'urgent' },
-  { id: 'customer-ticket', face: { tone: 'warning' } },
-  { id: 'task-staff', face: { label: 'Assign task', tone: 'default' } },
+  { id: 'replacement-label' },
+  { id: 'return-label' },
+  { id: 'customer-ticket', face: { tone: 'orange' } },
+  { id: 'task' },
   { id: 'out-of-stock' },
 ];
 
@@ -284,6 +301,9 @@ function useOrderActionVerbs({
   const actionIds = actionRows.map(orderIdOf).filter((id): id is number => id != null);
   const orderRef = String(record.order_id ?? '').trim() || String(record.id);
   const slip = usePrintPackingSlip(orderId);
+  // Print packing slip only once a shipping label is linked and on file for this order.
+  const documents = useOrderDocuments(actionRows.length === 1 ? orderId : 0);
+  const hasShippingLabel = pickOrderDocument(documents.data?.documents ?? [], 'shipping_label', null) != null;
 
   const resolved = new Map(
     catalog.map((action) => [action.key, resolveSelectionAction(action, actionRows)] as const),
@@ -324,6 +344,8 @@ function useOrderActionVerbs({
   // Live-derived (`stateRows`): the label and the toggle direction must both
   // answer the row's CURRENT urgency, not the click-time snapshot.
   const selectionIsUrgent = stateRows.length > 0 && stateRows.every(isUrgentRow);
+  // A shipped order is already out the door: urgency is moot, a replacement is the verb.
+  const selectionShipped = stateRows.length > 0 && stateRows.every(isOrderShipped);
   const markUrgent = () => {
     if (actionIds.length === 0) {
       toast.error('Select an order first');
@@ -521,7 +543,7 @@ function useOrderActionVerbs({
           : { display: (done: () => void) => <OosDisplay rows={oosRows} done={done} /> }),
     });
   }
-  if (viewOffersVerb(viewKey, 'urgent')) {
+  if (viewOffersVerb(viewKey, 'urgent') && !selectionShipped) {
     verbs.push({
       id: 'urgent',
       label: selectionIsUrgent ? 'Clear urgent' : 'Mark urgent',
@@ -619,15 +641,15 @@ function useOrderActionVerbs({
       id: key,
       label: r.label,
       icon: r.action.icon,
+      // The selection bar's letter for the same verb (Download photos → I); the record's own verbs win a shared letter.
+      hotkey: SELECTION_STATUS_BAR_META[key]?.hotkey,
       disabled: r.disabled,
       disabledReason: r.reason,
       run: () => r.action.run(actionRows, r.direction ? { direction: r.direction } : undefined),
     });
   }
-  // Return / replacement labels open the label desk, looked up on this order.
-  const labelDeskHref = `/search?entry=label&q=${encodeURIComponent(orderRef)}&purpose=`;
-  verbs.push(
-    {
+  if (hasShippingLabel) {
+    verbs.push({
       id: 'print-slip',
       label: 'Print packing slip',
       icon: <Printer />,
@@ -635,35 +657,64 @@ function useOrderActionVerbs({
       scope: 'single',
       disabled: slip.pending,
       run: slip.print,
-    },
+    });
+  }
+  verbs.push(
     {
       id: 'return-label',
       label: 'Return label',
       icon: <RotateCcw />,
+      hotkey: RETURN_LABEL_HOTKEY,
+      // A filled lead CTA once shipped (the caller wants it back); a row before that.
+      tone: selectionShipped ? 'success' : undefined,
       scope: 'single',
-      run: () => router.push(`${labelDeskHref}return`),
+      display: (done) => (
+        <ReturnLabelDialog
+          orderId={orderId}
+          orderRef={orderRef}
+          onClose={done}
+          onChange={() => {
+            bustFulfillmentCaches(queryClient);
+            refreshDomain('orders.outbound');
+          }}
+        />
+      ),
     },
     {
       id: 'replacement-label',
-      label: 'Replacement label',
+      label: 'Buy replacement label',
       icon: <Repeat />,
+      hotkey: REPLACEMENT_LABEL_HOTKEY,
+      // Solid blue once shipped — the record's lead CTA; tonal otherwise.
+      tone: selectionShipped ? 'primary' : 'blue',
       scope: 'single',
-      run: () => router.push(`${labelDeskHref}replacement`),
+      // The open record's lead verb once the order shipped: spelled out, key painted.
+      standingKeycap: Boolean(openRecord) && selectionShipped,
+      // The buy opens over the record (ship-to + parcel prefilled); the label lands on this order.
+      display: (done) => (
+        <SendReplacementPopover
+          order={{ orderRowId: orderId, orderNumber: orderRef, title: String(record.product_title ?? ''), tracking: trackingOf(record) }}
+          open
+          onOpenChange={(open) => {
+            if (!open) done();
+          }}
+          onChange={() => {
+            bustFulfillmentCaches(queryClient);
+            refreshDomain('orders.outbound');
+          }}
+        />
+      ),
     },
   );
   verbs.push({
     id: 'customer-ticket',
     label: 'Create customer ticket',
     icon: <Ticket />,
+    hotkey: CUSTOMER_TICKET_HOTKEY,
     scope: 'single',
     run: () => router.push(supportCreateTicketHref(orderId)),
   });
-  verbs.push(
-    ...buildRecordTaskVerbs({ entityType: 'order', entityId: orderId, label: `Order ${orderRef}` }).map((verb) => ({
-      ...verb,
-      scope: 'single' as const,
-    })),
-  );
+  verbs.push({ ...buildRecordTaskVerb({ entityType: 'order', entityId: orderId, label: `Order ${orderRef}` }), scope: 'single' });
   if (!openRecord) {
     verbs.push({
       id: 'more-info',
@@ -681,6 +732,7 @@ function useOrderActionVerbs({
     id: 'buyer-cancelled',
     label: actionIds.length > 1 ? `Buyer cancelled ${actionIds.length}` : 'Buyer cancelled',
     icon: <PackageX />,
+    hotkey: BUYER_CANCELLED_HOTKEY,
     tone: 'danger',
     scope: 'both',
     run: buyerCancel,
@@ -689,12 +741,25 @@ function useOrderActionVerbs({
     id: 'delete',
     label: actionIds.length > 1 ? `Delete ${actionIds.length}` : 'Delete',
     icon: <Trash2 />,
-    hotkey: 'd',
+    hotkey: DELETE_HOTKEY,
+    confirm: true,
     tone: 'danger',
     scope: 'both',
     run: deleteOrder,
   });
-  return verbs;
+  // Every verb carries a key. The record's own verbs claim their letters first;
+  // a catalog verb whose selection-bar letter is taken (or claimed twice) goes keyless.
+  const catalogIds = new Set(resolved.keys());
+  const claimed = new Set(
+    verbs.filter((verb) => !catalogIds.has(verb.id) && verb.hotkey).map((verb) => verb.hotkey!.toLowerCase()),
+  );
+  return verbs.map((verb) => {
+    const key = verb.hotkey?.toLowerCase();
+    if (!key || !catalogIds.has(verb.id)) return verb;
+    if (claimed.has(key)) return { ...verb, hotkey: undefined };
+    claimed.add(key);
+    return verb;
+  });
 }
 
 /** Scan out — who and when (backdated at most `SCAN_OUT_DESK_MAX_BACKDATE_MS`), then Save. */
@@ -1052,10 +1117,13 @@ export function OrderRecordActionStrip({
   checked = false,
   onToggleSelect,
   onOpenLabels,
+  face,
 }: {
   record: ShippedOrder;
   viewKey: OrderViewKey;
   onOpenLabels?: (record: ShippedOrder) => void;
+  /** Default: `header` for an allocate record, `strip` otherwise. `panel` = the record's Actions group in its side column. */
+  face?: 'strip' | 'header' | 'panel';
 } & Partial<OrderOpenRecordControls>) {
   const allVerbs = useOrderActionVerbs({
     record,
@@ -1069,7 +1137,7 @@ export function OrderRecordActionStrip({
   const allocateDetail = VIEW_SPECS[viewKey].recordPresentation === 'allocate';
   // Ledger desks keep one ordered action list; RecordActionStrip chooses the
   // three visible non-destructive actions and owns the overflow.
-  const verbs = (() => {
+  const ranked = (() => {
     if (viewKey === 'shipping.shipped') return allVerbs;
     if (!allocateDetail) {
       return [
@@ -1112,13 +1180,16 @@ export function OrderRecordActionStrip({
     if (deleteVerb) overflow.push(deleteVerb);
     return [...primary, ...overflow];
   })();
+  // A shipped order leads with the replacement buy — the reason the caller rang.
+  const replacement = isOrderShipped(record) ? ranked.find((verb) => verb.id === 'replacement-label') : undefined;
+  const verbs = replacement ? [replacement, ...ranked.filter((verb) => verb !== replacement)] : ranked;
   const orderRef = String(record.order_id ?? '').trim() || String(record.id);
   return (
     <RecordActionStrip
       verbs={verbs}
       label={`Order ${orderRef} actions`}
       testId="order-record-actions"
-      face={allocateDetail ? 'header' : 'strip'}
+      face={face ?? (allocateDetail ? 'header' : 'strip')}
     />
   );
 }

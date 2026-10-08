@@ -5,6 +5,7 @@ import { photoContentUrl, resolvePhotoDisplayUrl } from '@/lib/photos/display-ur
 test('photoContentUrl builds id-based content routes', () => {
   assert.equal(photoContentUrl(42), '/api/photos/42/content');
   assert.equal(photoContentUrl(42, 'thumb'), '/api/photos/42/content?variant=thumb');
+  assert.equal(photoContentUrl(42, 'display'), '/api/photos/42/content?variant=display');
 });
 
 test('resolvePhotoDisplayUrl prefers content route when id is known', () => {

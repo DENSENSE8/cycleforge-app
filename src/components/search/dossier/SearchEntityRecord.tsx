@@ -5,21 +5,25 @@
  * FBA) and the phone order — the order record's grammar (Shopify order-details
  * split): 2/3 = the thing (its lines, each with a photo large enough to judge)
  * then its timeline; 1/3 = the directional relationship card when applicable,
- * then identity facts and related records, each a `/search` link. One column
+ * the record's Actions panel (its desk handoffs, operator 2026-10-08), then
+ * identity facts and related records, each a `/search` link. One column
  * below the record's `@4xl` container width.
  */
 
 import { useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/design-system/primitives';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { DeskStageRecordHeader } from '@/design-system/components/DeskStageOverlay';
 import { StatusBadge } from '@/design-system/components/StatusBadge';
+import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { RecordFullId } from '@/design-system/components/record-ledger/RecordFullId';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { DESK_RECORD_COLUMN_CARD_CLASS, DESK_STAGE_FIXED_CLASS } from '@/design-system/tokens/desk-stage';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { PhotoPeekFan, type PeekCard } from '@/components/receiving/workspace/line-edit/PhotoPeekFan';
@@ -189,6 +193,7 @@ export function SearchEntityRecord({
   onBack?: () => void;
 }) {
   const hrefOf = useTargetHref();
+  const router = useRouter();
   const [showAll, setShowAll] = useState(false);
   const items = findEventsToTimelineItems(events);
   const hidden = showAll ? 0 : Math.max(0, items.length - TIMELINE_INITIAL_LIMIT);
@@ -203,14 +208,16 @@ export function SearchEntityRecord({
         </span>
       </div>
       {hasFindings ? (
-        <ul className="border-b border-mode-fact bg-surface-warning" data-testid="search-record-findings">
-          {findings.map((finding) => (
-            <li key={finding.key} className="px-4 py-2">
-              <p className="text-role-body font-semibold text-text-default">{finding.label}</p>
-              <p className="text-role-caption text-text-soft">{finding.hint}</p>
-            </li>
-          ))}
-        </ul>
+        <div className="border-b border-mode-fact px-4 py-3">
+          <ul className={cn(PHONE_CARD_FACE, 'border border-mode-fact bg-surface-warning')} data-testid="search-record-findings">
+            {findings.map((finding) => (
+              <li key={finding.key} className="px-4 py-2">
+                <p className="text-role-body font-semibold text-text-default">{finding.label}</p>
+                <p className="text-role-caption text-text-soft">{finding.hint}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       {lines.length > 0 ? (
         lines.map((line) => <RecordLine key={line.id} line={line} hrefOf={hrefOf} />)
@@ -240,6 +247,22 @@ export function SearchEntityRecord({
     <div className="flex min-w-0 flex-col gap-4">
       {evidence}
       {relationship}
+      {/* The record's verbs (its desk handoffs) paint under party/movement, never the header (operator 2026-10-08). */}
+      {handoffs.length > 0 ? (
+        <RecordGroup title="Actions" testId="search-record-actions-panel">
+          <RecordActionStrip
+            face="panel"
+            verbs={handoffs.map((handoff) => ({
+              id: handoff.href,
+              label: handoff.label,
+              tone: handoff.primary ? (hasFindings ? 'warning' : 'primary') : 'default',
+              run: () => router.push(handoff.href),
+            }))}
+            label={`${entity} ${reference} actions`}
+            testId="search-record-handoffs"
+          />
+        </RecordGroup>
+      ) : null}
       <div className={DESK_RECORD_COLUMN_CARD_CLASS}>
         <div className="flex flex-col px-4" data-testid="search-record-facts">
           {facts.map((fact) => (
@@ -278,24 +301,11 @@ export function SearchEntityRecord({
       {/* The desk stage measure (max-w-6xl, centered) — the width To-ship's
           record opens at; the ground stays full-bleed around it. */}
       <div className={cn(DESK_STAGE_FIXED_CLASS, 'shrink-0')}>
-      <DeskStageRecordHeader
-        title={`${entity} ${reference}`}
-        subtitle={title && title !== reference ? title : undefined}
-        onClose={onBack}
-        actions={
-          handoffs.length > 0 ? (
-            <span className="flex items-center gap-1.5" data-testid="search-record-handoffs">
-              {handoffs.map((handoff) => (
-                <Link key={handoff.href + handoff.label} href={handoff.href}>
-                  <Button size="sm" variant={handoff.primary ? (hasFindings ? 'warning' : 'primary') : 'secondary'}>
-                    {handoff.label}
-                  </Button>
-                </Link>
-              ))}
-            </span>
-          ) : undefined
-        }
-      />
+        <DeskStageRecordHeader
+          title={`${entity} ${reference}`}
+          subtitle={title && title !== reference ? title : undefined}
+          onClose={onBack}
+        />
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         <div className={cn(DESK_STAGE_FIXED_CLASS, '@container flex-1 bg-mode-canvas p-4 text-mode-ink')}>

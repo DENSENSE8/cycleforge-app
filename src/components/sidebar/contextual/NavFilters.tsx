@@ -48,6 +48,18 @@ function readValues(raw: string | null, multi: boolean): string[] {
   return multi ? raw.split(',').filter(Boolean) : [raw];
 }
 
+/** Every param under `id` in its drill chain (Room › Aisle › Bay …), nearest first. */
+function drillDescendantParams(groups: NavFiltersSpec['groups'], id: string): string[] {
+  const params: string[] = [];
+  let parents = [id];
+  while (parents.length > 0) {
+    const children = groups.filter((group) => group.parent != null && parents.includes(group.parent));
+    params.push(...children.map((group) => group.param));
+    parents = children.map((group) => group.id);
+  }
+  return params;
+}
+
 /** The control kinds in paint order: the declared `controls.order` first, then every other kind in the default order. */
 function controlOrder(controls: NavControls | undefined): readonly NavControlKind[] {
   const declared = controls?.order ?? [];
@@ -88,9 +100,19 @@ export function NavFilters({
     ...navControlParams(controls ? { ...controls, sort: undefined, group: undefined } : undefined),
   ];
   const activeCount = ownedParams.filter((param) => searchParams?.has(param)).length;
-  const [open, setOpen] = useState<ReadonlySet<string>>(
-    () => new Set(filters?.groups.filter((group) => searchParams?.has(group.param)).map((group) => group.id)),
-  );
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => {
+    const groups = filters?.groups ?? [];
+    return new Set(
+      groups
+        .filter((group) => {
+          if (!group.parent) return searchParams?.has(group.param) && !groups.some((child) => child.parent === group.id);
+          // A drill step stands open while it is the next pick (its parent is set, it is not); picked, it folds to its chip.
+          const parentParam = groups.find((parent) => parent.id === group.parent)?.param;
+          return parentParam != null && searchParams?.has(parentParam) && !searchParams?.has(group.param);
+        })
+        .map((group) => group.id),
+    );
+  });
   const toggleOpen = (id: string) =>
     setOpen((prev) => {
       const next = new Set(prev);
@@ -103,17 +125,32 @@ export function NavFilters({
       for (const param of ownedParams) params.delete(param);
     });
 
-  const toggleValue = (group: NavFiltersSpec['groups'][number], value: string) =>
+  const toggleValue = (group: NavFiltersSpec['groups'][number], value: string) => {
+    const current = readValues(searchParams?.get(group.param) ?? null, group.multi);
+    const picking = !current.includes(value);
     replace((params) => {
-      const current = readValues(params.get(group.param), group.multi);
-      const next = current.includes(value)
-        ? current.filter((v) => v !== value)
+      const now = readValues(params.get(group.param), group.multi);
+      const next = now.includes(value)
+        ? now.filter((v) => v !== value)
         : group.multi
-          ? [...current, value]
+          ? [...now, value]
           : [value];
       if (next.length === 0) params.delete(group.param);
       else params.set(group.param, next.join(','));
+      // A drill step's children narrow THIS value; a new value voids them.
+      for (const param of drillDescendantParams(filters?.groups ?? [], group.id)) params.delete(param);
     });
+    // A drill pick folds its row to the chip and opens the next step.
+    const children = (filters?.groups ?? []).filter((child) => child.parent === group.id);
+    if (picking && children.length > 0) {
+      setOpen((prev) => {
+        const next = new Set(prev);
+        next.delete(group.id);
+        for (const child of children) next.add(child.id);
+        return next;
+      });
+    }
+  };
 
   const toggleExcludedValue = (group: NavFiltersSpec['groups'][number], value: string) =>
     replace((params) => {
@@ -129,11 +166,17 @@ export function NavFilters({
   const badgeTransition = useMotionTransition(motionTransition.sidebarScopeSwap);
 
   // A context serving several tabs (the Unbox station) answers a group the open tab does not read with no options.
+  // A drill step waits for its parent's value.
   const hiddenFacetIds = new Set(
     filters?.groups
-      .filter((declared) =>
-        facets.data?.groups.find((g) => g.id === declared.id)?.options.length === 0 &&
-        readValues(searchParams?.get(declared.param) ?? null, declared.multi).length === 0)
+      .filter((declared) => {
+        if (declared.parent) {
+          const parent = filters.groups.find((group) => group.id === declared.parent);
+          if (parent && !searchParams?.get(parent.param)) return true;
+        }
+        return facets.data?.groups.find((g) => g.id === declared.id)?.options.length === 0 &&
+          readValues(searchParams?.get(declared.param) ?? null, declared.multi).length === 0;
+      })
       .map((declared) => declared.id),
   );
   // Nothing to paint (no control rows, every facet group empty): no hairline, no padding.

@@ -3,7 +3,7 @@
 /**
  * A stock record's temporary (`TMP-`) SKU: the copy chip, plus an edit button
  * that shows on hover (always on touch) and opens the same Pair to SKU action
- * as the record's header verb. Its glyph is the pair link, not a pencil — the
+ * as the record's Actions panel verb. Its glyph is the pair link, not a pencil — the
  * SKU chip already wears the pencil as its tone mark. No "Open this SKU in…":
  * a temporary SKU has no outside home to open.
  */

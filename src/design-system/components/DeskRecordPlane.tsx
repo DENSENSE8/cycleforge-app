@@ -106,7 +106,11 @@ interface DeskRecordPlaneProps {
   /** Noun for the empty split pane (`Select an order`). */
   recordNoun?: string;
   footer?: ReactNode;
-  /** The record's own verbs, in the header band of both views (before n of N / ‹ › / ✕). */
+  /**
+   * Header-band trailing nodes of both views (before n of N / ‹ › / ✕) — a state
+   * face, an archival print affordance. A record's verbs never go here: they paint
+   * in its Actions panel under party/movement (operator 2026-10-08).
+   */
   actions?: ReactNode;
   /** Open record's key — matched against {@link DESK_RECORD_KEY_ATTR} for focus return. */
   recordKey?: string | null;

@@ -460,33 +460,51 @@ export function parsePhotoLibraryDisplayParams(
   };
 }
 
+/** Free-text / id filters written verbatim (trimmed) to the URL. */
+const PHOTO_LIBRARY_VALUE_FILTER_KEYS = [
+  'dateFrom',
+  'dateTo',
+  'poRef',
+  'receivingId',
+  'staffId',
+  'tracking',
+  'serial',
+  'sku',
+  'ticketId',
+  'pickupId',
+  'rma',
+  'poFinder',
+  'poFinderKind',
+  'q',
+  'damageDetected',
+  'hasAnalysis',
+  'imageType',
+  'label',
+  'documentType',
+  'outboundMedia',
+] as const satisfies readonly (keyof PhotoLibraryFilterState)[];
+
+/** Every URL param a Media Library saved view captures (filters + sort + display mode). */
+export const PHOTO_LIBRARY_SAVED_VIEW_PARAM_KEYS: readonly string[] = [
+  'sourceScope',
+  'stage',
+  'sort',
+  'view',
+  ...PHOTO_LIBRARY_VALUE_FILTER_KEYS,
+];
+
+/**
+ * Nav `savedViews` key of the Media Library's server-backed views
+ * (`/api/photos/saved-views`) — painted as one-click blocks at the top of the
+ * left contextual sidebar, never as header tabs.
+ */
+export const MEDIA_SAVED_VIEWS_KEY = 'media_library_saved_views';
+
 export function photoLibraryFiltersToParams(
   filters: PhotoLibraryFilterState,
   base?: URLSearchParams,
 ): URLSearchParams {
   const params = new URLSearchParams(base?.toString() ?? '');
-  const keys: (keyof PhotoLibraryFilterState)[] = [
-    'dateFrom',
-    'dateTo',
-    'poRef',
-    'receivingId',
-    'staffId',
-    'tracking',
-    'serial',
-    'sku',
-    'ticketId',
-    'pickupId',
-    'rma',
-    'poFinder',
-    'poFinderKind',
-    'q',
-    'damageDetected',
-    'hasAnalysis',
-    'imageType',
-    'label',
-    'documentType',
-    'outboundMedia',
-  ];
   if (filters.sourceScope && filters.sourceScope !== 'all') {
     params.set('sourceScope', filters.sourceScope);
   } else {
@@ -502,7 +520,7 @@ export function photoLibraryFiltersToParams(
   }
   if (filters.sort && filters.sort !== 'recent') params.set('sort', filters.sort);
   else params.delete('sort');
-  for (const key of keys) {
+  for (const key of PHOTO_LIBRARY_VALUE_FILTER_KEYS) {
     const val = filters[key]?.trim();
     if (val) params.set(key, val);
     else params.delete(key);

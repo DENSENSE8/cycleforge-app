@@ -6,6 +6,7 @@ import {
 } from '@/design-system/tokens/record';
 import { Plus } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 /**
  * The buyer-note slot on a record's band 1, beside the state code
@@ -36,7 +37,8 @@ export function BuyerNoteBlock({ note, className }: { note: string | null; class
     <section
       aria-label="Buyer note"
       data-testid="buyer-note-block"
-      className={cn('flex gap-3 border-b border-mode-ink border-l-4 border-l-mode-warn bg-mode-panel px-3 py-2.5', className)}
+      // A phone card inset in the column, not a full-width band (operator 2026-10-08).
+      className={cn('my-2 flex gap-3 border border-mode-warn bg-mode-panel px-4 py-3', PHONE_CARD_FACE, className)}
     >
       <span className={cn(RECORD_NOTE_SLOT_CLASS, 'self-start')}>
         <span className={RECORD_NOTE_BADGE_CLASS} aria-hidden>

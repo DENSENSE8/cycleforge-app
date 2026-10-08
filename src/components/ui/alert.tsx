@@ -1,14 +1,16 @@
 'use client';
 
-/** shadcn/ui Alert (new-york), restyled to house tokens. */
+/** shadcn/ui Alert (new-york), restyled to house tokens — a phone card, never a full-width band (operator 2026-10-08). */
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 
 const alertVariants = cva(
   cn(
-    'relative grid w-full items-start gap-x-2.5 gap-y-0.5 rounded-none border px-3.5 py-3 text-role-caption',
+    'relative grid items-start gap-x-2.5 gap-y-0.5 border px-4 py-3 text-role-caption',
+    PHONE_CARD_FACE,
     'has-[>svg]:grid-cols-[auto_1fr] grid-cols-[0_1fr]',
     '[&>svg]:size-4 [&>svg]:translate-y-0.5',
   ),

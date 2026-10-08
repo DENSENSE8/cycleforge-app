@@ -56,6 +56,14 @@ describe('Button semantic intents (2a)', () => {
     assert.doesNotMatch(BUTTON_VARIANTS.yellow, /ring-1/, 'filled pill, not outline');
   });
 
+  it('orange is the vivid filled escalation pill with dark ink', () => {
+    assert.ok('orange' in BUTTON_VARIANTS);
+    assert.match(BUTTON_VARIANTS.orange, /(^|\s)bg-orange-500(\s|$)/);
+    assert.match(BUTTON_VARIANTS.orange, /(^|\s)text-orange-950(\s|$)/, 'dark ink: AA on the bright fill');
+    assert.doesNotMatch(BUTTON_VARIANTS.orange, /(^|\s)text-white(\s|$)/, 'white on orange-500 fails AA');
+    assert.doesNotMatch(BUTTON_VARIANTS.orange, /ring-1/, 'filled pill, not outline');
+  });
+
   it('glass is white ink on a bar that owns the scrim, never a fill of its own', () => {
     // The mobile camera panel's chrome sits ON the viewfinder.
     assert.ok('glass' in BUTTON_VARIANTS, 'glass (chrome on live media) must be a Button variant');

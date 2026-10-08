@@ -65,6 +65,7 @@ import type { FiledTicket } from '@/components/receiving/workspace/claim/claim-t
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 
 
@@ -1142,7 +1143,7 @@ function CompareLine({
 }) {
   return (
     <div
-      className={`flex items-start gap-2 rounded-none inset-cozy text-role-caption ring-1 ring-inset ${LINE_TONE[tone]}`}
+      className={cn(PHONE_CARD_FACE, 'flex items-start gap-2 inset-cozy text-role-caption ring-1 ring-inset', LINE_TONE[tone])}
     >
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0 font-semibold">{text}</span>
@@ -1168,7 +1169,7 @@ function MergedNotice({ state }: { state: RefetchState }) {
 
   return (
     <div
-      className={`flex items-start gap-2 rounded-none inset-field text-role-caption ring-1 ring-inset ${tone}`}
+      className={cn(PHONE_CARD_FACE, 'flex items-start gap-2 inset-field text-role-caption ring-1 ring-inset', tone)}
     >
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0">{state.message}</span>

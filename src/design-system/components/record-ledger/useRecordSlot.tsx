@@ -2,22 +2,22 @@
 
 /**
  * A record's desk slot — ONE controller per open record that hands the record
- * plane its three pieces (title, header verbs, view), whatever the record is.
- * A panel verb's open panel is keyed by the record, so walking J / K closes it.
+ * plane its two pieces (title, view), whatever the record is. The record's
+ * verbs paint in the view's Actions panel under the party/movement block,
+ * never in the header (operator 2026-10-08). A panel verb's open panel is
+ * keyed by the record, so walking J / K closes it.
  */
 
 import { useState, type ReactNode } from 'react';
-import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { RecordTitle, RecordView } from '@/design-system/components/record-ledger/RecordView';
 import type { RecordModel, RecordVerb } from '@/design-system/components/record-ledger/record-model';
 
 export interface RecordSlot {
   title: ReactNode;
-  actions: ReactNode;
   view: ReactNode;
 }
 
-/** Title + header verbs + view for the open record; null when none is open. `testId` prefixes every test id. */
+/** Title + view (with its Actions panel) for the open record; null when none is open. `testId` prefixes every test id. */
 export function useRecordSlot(
   model: RecordModel | null,
   verbs: readonly RecordVerb[],
@@ -33,12 +33,12 @@ export function useRecordSlot(
   );
   return {
     title: <RecordTitle title={model.title} testId={`${testId}-title`} />,
-    actions: <RecordActionStrip key={model.key} face="header" verbs={stripVerbs} label={label} testId={`${testId}-actions`} />,
     view: (
       <RecordView
         key={model.key}
         model={model}
         testId={testId}
+        actions={{ verbs: stripVerbs, label }}
         panel={active?.panel ? { title: active.label, body: active.panel(close), onBack: close } : null}
       />
     ),

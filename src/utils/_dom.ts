@@ -72,3 +72,43 @@ export async function copyToClipboard(
   return true;
 }
 
+/**
+ * Copy text that is still being fetched, from inside the click that asked for
+ * it. Browsers trust a clipboard write only during the user's gesture; a write
+ * made after `await fetch(…)` is refused (always in Safari, in Chrome once focus
+ * has moved). Call this BEFORE the first `await`: a `ClipboardItem` holding the
+ * pending text claims the gesture now and fills in when the text lands. Where
+ * that API is missing, it falls back to {@link copyToClipboard} once ready.
+ * Resolves false when the text rejects or every path is refused.
+ */
+export async function copyToClipboardWhenReady(
+  text: Promise<string>,
+  opts?: Parameters<typeof copyToClipboard>[1],
+): Promise<boolean> {
+  if (!isBrowser()) return false;
+  if (window.isSecureContext && typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'text/plain': text.then((t) => new Blob([t], { type: 'text/plain' })) }),
+      ]);
+      if (opts?.recordHistory !== false) {
+        // Lazy import keeps this SSR-safe helper free of a static React dep (same as copyToClipboard).
+        const { recordCopy } = await import('@/lib/clipboard-history');
+        recordCopy(await text, {
+          kind: opts?.historyKind,
+          display: opts?.historyDisplay,
+          sellerMessageId: opts?.historySellerMessageId,
+        });
+      }
+      return true;
+    } catch {
+      // Refused or unsupported payload — try the plain path with the settled text.
+    }
+  }
+  try {
+    return await copyToClipboard(await text, opts);
+  } catch {
+    return false;
+  }
+}
+

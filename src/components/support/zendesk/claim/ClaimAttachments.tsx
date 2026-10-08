@@ -1,16 +1,16 @@
 'use client';
 
-import { Check, Upload, X } from '@/components/Icons';
+import { Upload, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { PhotoThumb } from '@/components/photos/PhotoThumb';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { cn } from '@/utils/_cn';
 import type { ZendeskClaimController } from './useZendeskClaimController';
 
 /**
- * Selected library photos (toggle each on/off) plus a drop zone for ad-hoc files.
- * Both sets ride along as real Zendesk attachments on submit.
+ * The photos selected in the library (all attached — the library is the one
+ * selection method) plus a drop zone for ad-hoc files. Both sets ride along as
+ * real Zendesk attachments on submit.
  */
 export function ClaimAttachments({ c }: { c: ZendeskClaimController }) {
   const dz = usePhotoDropzone(c.addFiles);
@@ -20,42 +20,16 @@ export function ClaimAttachments({ c }: { c: ZendeskClaimController }) {
     <section className="space-y-2.5">
       <div className="flex items-center justify-between">
         <p className="text-role-micro text-text-soft">Attachments</p>
-        <span className="text-role-caption font-semibold text-text-faint">{c.totalAttach} selected</span>
+        <span className="text-role-caption font-semibold text-text-faint">{c.totalAttach} attached</span>
       </div>
 
       {hasLibrary ? (
         <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
-          {c.photos.map((p) => {
-            const on = !c.excluded.has(p.id);
-            return (
-              <HoverTooltip
-                key={p.id}
-                label={on ? 'Attached' : 'Skipped'}
-                asChild
-              >
-                <button
-                  type="button"
-                  onClick={() => c.togglePhoto(p.id)}
-                  aria-pressed={on}
-                  className={cn(
-                    'ds-raw-button group relative aspect-square overflow-hidden rounded-lg ring-1 ring-inset transition',
-                    on ? 'ring-blue-400' : 'opacity-40 grayscale ring-border-soft hover:opacity-75',
-                  )}
-                >
-                  <PhotoThumb src={p.src} alt={p.caption ?? `Photo ${p.id}`} ratio="square" className="h-full w-full" />
-                  <span
-                    className={cn(
-                      'absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-white shadow-sm',
-                      // ds-allow-raw-neutral: badge overlays a photo thumbnail — photos don't theme
-                      on ? 'bg-blue-500' : 'bg-gray-400',
-                    )}
-                  >
-                    {on ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                  </span>
-                </button>
-              </HoverTooltip>
-            );
-          })}
+          {c.photos.map((p) => (
+            <div key={p.id} className="relative aspect-square overflow-hidden rounded-lg ring-1 ring-inset ring-border-soft">
+              <PhotoThumb src={p.src} alt={p.caption ?? `Photo ${p.id}`} ratio="square" className="h-full w-full" />
+            </div>
+          ))}
         </div>
       ) : null}
 

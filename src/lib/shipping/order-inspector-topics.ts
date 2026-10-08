@@ -151,6 +151,8 @@ export function orderInspectorOrderUpdateActions(input: {
   showDispatchExtras: boolean;
   showAssign: boolean;
   isUrgent: boolean;
+  /** Already left the building — urgency is moot, so no urgent toggle. */
+  isShipped: boolean;
 }): ReadonlyArray<OrderInspectorUpdateAction> {
   const items: OrderInspectorUpdateAction[] = [];
 
@@ -159,11 +161,13 @@ export function orderInspectorOrderUpdateActions(input: {
   }
 
   if (input.showDispatchExtras) {
-    items.push({
-      key: 'urgent',
-      label: input.isUrgent ? 'Clear urgent' : 'Mark urgent',
-      shortcut: 'U',
-    });
+    if (!input.isShipped) {
+      items.push({
+        key: 'urgent',
+        label: input.isUrgent ? 'Clear urgent' : 'Mark urgent',
+        shortcut: 'U',
+      });
+    }
     items.push({ key: 'notes', label: 'Notes', shortcut: 'N' });
     items.push({ key: 'out_of_stock', label: 'Out of stock', shortcut: 'O' });
     items.push({ key: 'status', label: 'Mark shipped', shortcut: 'S' });

@@ -21,7 +21,9 @@ import { useWorkspaceTicketDraft } from '@/components/receiving/workspace/line-e
 import { StationContextBar } from '@/components/station/entity-context';
 import { StationPhotosTask } from '@/components/station/StationPhotosTask';
 import { useStationTaskController } from '@/components/station/useStationTaskController';
-import { Boxes, ShieldCheck, Tag } from '@/components/Icons';
+import { useStationHasPhotos } from '@/components/station/useStationHasPhotos';
+import { SCAN_STATION_TONES } from '@/lib/sidebar-navigation';
+import { Boxes, ShieldCheck } from '@/components/Icons';
 import {
   StationBandStack,
   useAutoCollapse,
@@ -46,6 +48,9 @@ import { resolveTestingTerminal } from './testing-panel/terminal/testing-termina
 import { useTestingPrimaryAction } from './testing-panel/useTestingPrimaryAction';
 import { TestingCartonHeader } from './testing-panel/TestingCartonHeader';
 import { TestingVerdictBar } from './testing-panel/TestingVerdictBar';
+import { QcFnskuPairButton } from './testing-panel/QcFnskuPairBar';
+import { TestingConditionBar } from './testing-panel/TestingConditionBar';
+import { StationLabelPeek } from '@/components/station/label-peek/StationLabelPeek';
 import { TestingPoUnboxingSection } from './testing-panel/TestingPoUnboxingSection';
 import { TestingPanelModals } from './testing-panel/TestingPanelModals';
 import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
@@ -72,31 +77,37 @@ export function TestingPanel({
   const qc = useQueryClient();
   const productTitle = resolveTestingLineTitle(row);
 
+  const hasPhotos = useStationHasPhotos(row.receiving_id, row.photo_count);
   const {
     activeDisplay: activeSideTab,
     ticketActive: ticketMode,
     photosActive,
     displaysActive,
     selectTask,
+    revealTask,
     openDisplay,
     closeDisplays,
   } = useStationTaskController({
     owner: 'quality-control',
     workLabel: 'Quality Control',
     workIcon: ShieldCheck,
+    workTone: SCAN_STATION_TONES.testing,
     scopeKey: row.id,
+    context: {
+      hasPhotos,
+      hasTicket: Boolean(String(row.zendesk_ticket ?? '').trim()),
+    },
   });
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;
     requestId: number;
   } | null>(null);
   const bandCollapse = useAutoCollapse();
-  const bands = useBandCollapse(bandCollapse, { label: false });
+  const bands = useBandCollapse(bandCollapse);
   const lineCollapse = useLineCollapse(row?.id ?? null);
 
   useEffect(() => {
-    bands.close('label');
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only the line flips
+    setFnskuPairOpen(false);
   }, [row?.id]);
 
   const openDisplays = useCallback(
@@ -118,7 +129,16 @@ export function TestingPanel({
   }, [selectTask]);
 
   const c = useTestingLineController(row, staffId, { onOpenClaim });
-  const { primaryTitle } = useTestingPrimaryAction(c, row);
+  const [fnskuPairOpen, setFnskuPairOpen] = useState(false);
+  // `K` while the Pair FNSKU dropdown is open pairs its highlighted row.
+  const [fnskuPairNonce, setFnskuPairNonce] = useState(0);
+  const { primaryTitle } = useTestingPrimaryAction(c, row, {
+    onFnskuKey: () => {
+      if (fnskuPairOpen) setFnskuPairNonce((n) => n + 1);
+      else setFnskuPairOpen(true);
+    },
+    onGradeKey: (grade) => c.regradeActive(grade),
+  });
   const claimTicketId = c.providerTicketId ?? null;
   const sellerClaimed = useSellerClaimedCondition(row, c.activeSerial);
 
@@ -296,10 +316,29 @@ export function TestingPanel({
           row={row}
           c={c}
           chrome="raised"
+          locationLeading={
+            <QcFnskuPairButton
+              row={row}
+              grade={c.activeGrade}
+              open={fnskuPairOpen}
+              onOpenChange={setFnskuPairOpen}
+              pairNonce={fnskuPairNonce}
+            />
+          }
+          labelPeek={
+            <StationLabelPeek
+              key={row.id}
+              signal={`${c.itemNote ?? ''}|${c.activeGrade}|${c.activeLabelKind ?? ''}|${c.activeSlot}|${c.labelEditorRequestId ?? 0}`}
+              testId="testing-label-peek"
+            >
+              {({ reveal }) => <UnboxLabelPreview row={row} c={c} onReveal={reveal} />}
+            </StationLabelPeek>
+          }
           trailingAction={bubbleTerminal}
           onPrimaryAction={terminalVm ? () => void terminalVm.onClick() : undefined}
           primaryActionDisabled={Boolean(terminalVm?.disabled)}
           onOpenStatusHistory={openTimelineDisplay}
+          onLinkTicketOpen={() => revealTask('ticket')}
         />
       </div>
     </div>
@@ -374,21 +413,15 @@ export function TestingPanel({
                           onViewAllUnits={openUnits}
                         />
                       ),
-                      // Cartoned lines judge here; an uncartoned line's inline slot carries its own verdict.
-                      after: row.receiving_id != null ? <TestingVerdictBar c={c} row={row} /> : null,
-                    },
-                    {
-                      id: 'label',
-                      label: 'Label',
-                      icon: Tag,
-                      testId: 'testing-band-label',
-                      body: (
-                        <UnboxLabelPreview
-                          row={row}
-                          c={c}
-                          onReveal={() => bands.open('label')}
-                        />
-                      ),
+                      // Cartoned lines judge here (condition 1–7 above Fail · Test again · Pass);
+                      // an uncartoned line's inline slot carries its own verdict.
+                      after:
+                        row.receiving_id != null ? (
+                          <div className="flex w-full min-w-0 flex-col">
+                            <TestingConditionBar c={c} />
+                            <TestingVerdictBar c={c} row={row} />
+                          </div>
+                        ) : null,
                     },
                   ]}
                   onCollapseAll={() => {

@@ -140,7 +140,6 @@ export function DockedPackagesLedger({
         allClear={<TriageAllClear title={emptyMessage} detail="Arrival-scanned packages wait here until Unbox begins." />}
         record={{
           title: slot?.title ?? 'Docked package',
-          actions: slot?.actions,
           noun: 'package',
           showIndex: false,
           testId: 'docked-package-record',

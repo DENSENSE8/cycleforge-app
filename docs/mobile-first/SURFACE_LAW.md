@@ -68,6 +68,7 @@ When showing mobile SoT on a large viewport:
 2. **Left / right** = thick empty gutters **or** compact **recents** (top-left, small rows) — never a full desk rail that the phone lacks.
 3. **No dual interactive trees** (`lg:hidden` full flow + `hidden lg:block` full flow both live). One step machine; optional layout variants only.
 4. Desk URLs may **embed** the `/m` frame; they must not fork a separate click path.
+5. **Informational displays are phone cards, never full-width bands** (operator 2026-10-08). A notice, warning, error, status / result strip, prompt or empty state on the desk never stretches edge to edge as a square tinted box — that boxy face reads as an alarm and sends the eye across the whole screen. It is a centred, phone-width card with the mobile corner: `PHONE_CARD_FACE` (`src/design-system/tokens/phone-card.ts`, `mx-auto w-full max-w-md` + `cornerClass('card')`) plus the tone's fill. The roots already wear it — `Alert`, `InlineNotice`, `EvidenceNotice`, `BuyerNoteBlock`, `InlineActionFeedbackCard` — so mount one of those before hand-rolling a box, and never pass a `className` that re-squares or re-stretches them. Status tags are pills (`cornerClass('pill')`).
 
 ---
 

@@ -2,11 +2,8 @@
 
 import { useCallback, useState } from 'react';
 import { toast } from '@/lib/toast';
-import {
-  formatShareLinksText,
-  formatUriList,
-  type ShareLinkLine,
-} from '@/lib/photos/share-link-format';
+import { copyToClipboardWhenReady } from '@/utils/_dom';
+import { formatShareLinksText, type ShareLinkLine } from '@/lib/photos/share-link-format';
 
 /** Shape returned by POST /api/photos/share. */
 interface ShareApiResponse {
@@ -16,12 +13,21 @@ interface ShareApiResponse {
   groupUrl: string | null;
 }
 
-interface ShareLinksOutcome {
-  /** The formatted, clipboard-ready text block. */
+/** What the share sheet shows once links or a share page exist. */
+export interface PhotoShareReady {
+  kind: 'links' | 'page';
+  /** How many photos the share covers. */
+  count: number;
+  /** The exact clipboard payload (the formatted link block, or the page URL). */
   text: string;
-  /** `text/uri-list` payload (one URL per line). */
-  uriList: string;
-  response: ShareApiResponse;
+  /** The public share page, for `kind: 'page'`. */
+  url: string | null;
+  /** "24 hours" — when signed links stop working; null when they don't expire. */
+  expiresInLabel: string | null;
+  /** Whether the copy made during the press landed. */
+  copied: boolean;
+  /** Photos the server could not find (skipped). */
+  skipped: number;
 }
 
 /** Render the uniform expiry as a short human label ("24 hours"). */
@@ -37,25 +43,27 @@ function expiresInLabel(expiresAt: string | null): string | null {
   return `${hours} hour${hours === 1 ? '' : 's'}`;
 }
 
-/** `usePhotoShareLinks` — generate temporary share URLs for a set of photo ids, copy the formatted block to the clipboard, and toast the… */
+/**
+ * `usePhotoShareLinks` — temporary share links or a durable share page for a
+ * set of photo ids. The copy is claimed during the press itself
+ * ({@link copyToClipboardWhenReady}), because a clipboard write made after the
+ * network round trip is refused. The result lands in `ready` for the share
+ * sheet, which always offers its own Copy button; failures toast.
+ */
 export function usePhotoShareLinks() {
   const [isLoading, setIsLoading] = useState(false);
+  const [ready, setReady] = useState<PhotoShareReady | null>(null);
 
-  /** POST the ids, format + copy the result, toast success/failure. */
+  /** POST the ids and copy the formatted link block. Call straight from the press. */
   const generateAndCopy = useCallback(
-    async (photoIds: number[], opts: { ttlSeconds?: number } = {}): Promise<ShareLinksOutcome | null> => {
+    async (photoIds: number[], opts: { ttlSeconds?: number } = {}): Promise<PhotoShareReady | null> => {
       const ids = [...new Set(photoIds.filter((id) => Number.isFinite(id) && id > 0))];
       if (ids.length === 0) {
         toast.error('Select at least one photo to share');
         return null;
       }
 
-      setIsLoading(true);
-      const toastId = toast.loading(
-        `Generating ${ids.length} share link${ids.length === 1 ? '' : 's'}…`,
-      );
-
-      try {
+      const request = (async () => {
         const res = await fetch('/api/photos/share', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -63,46 +71,31 @@ export function usePhotoShareLinks() {
         });
         const data = (await res.json().catch(() => null)) as ShareApiResponse | { error?: string } | null;
         if (!res.ok || !data || !('links' in data)) {
-          const message = (data as { error?: string } | null)?.error || 'Failed to generate share links';
-          throw new Error(message);
+          throw new Error((data as { error?: string } | null)?.error || 'Failed to generate share links');
         }
+        const expires = expiresInLabel(data.expiresAt);
+        return { data, expires, text: formatShareLinksText(data.links, { groupUrl: data.groupUrl, expiresInLabel: expires }) };
+      })();
+      // Before any await: this is still the operator's press.
+      const copied = copyToClipboardWhenReady(request.then((r) => r.text), { historyKind: 'photo-share-links' });
 
-        const text = formatShareLinksText(data.links, {
-          groupUrl: data.groupUrl,
-          expiresInLabel: expiresInLabel(data.expiresAt),
-        });
-        const uriList = formatUriList(data.links);
-
-        // Copy to clipboard.
-        let copied = true;
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch {
-          copied = false;
-        }
-
-        const signed = data.links.filter((l) => l.kind === 'signed').length;
-        const note = data.missingIds.length
-          ? ` · ${data.missingIds.length} skipped (not found)`
-          : '';
-        toast.success(
-          copied
-            ? `Copied ${data.links.length} share link${data.links.length === 1 ? '' : 's'}${note}`
-            : `Generated ${data.links.length} link${data.links.length === 1 ? '' : 's'} — press Ctrl/⌘+V to paste${note}`,
-          {
-            id: toastId,
-            description:
-              signed < data.links.length
-                ? `${data.links.length - signed} link(s) are session-only (not GCS-backed).`
-                : undefined,
-          },
-        );
-
-        return { text, uriList, response: data };
+      setIsLoading(true);
+      setReady(null);
+      try {
+        const { data, expires, text } = await request;
+        const next: PhotoShareReady = {
+          kind: 'links',
+          count: data.links.length,
+          text,
+          url: data.groupUrl,
+          expiresInLabel: expires,
+          copied: await copied,
+          skipped: data.missingIds.length,
+        };
+        setReady(next);
+        return next;
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to generate share links', {
-          id: toastId,
-        });
+        toast.error(error instanceof Error ? error.message : 'Failed to generate share links');
         return null;
       } finally {
         setIsLoading(false);
@@ -111,21 +104,19 @@ export function usePhotoShareLinks() {
     [],
   );
 
-  /** Create a durable, public share *page* for the selection (vs. */
+  /** Create one durable public share page for the selection and copy its URL. Call straight from the press. */
   const createSharePage = useCallback(
     async (
       photoIds: number[],
       opts: { title?: string; expiresInDays?: number } = {},
-    ): Promise<{ shareUrl: string } | null> => {
+    ): Promise<PhotoShareReady | null> => {
       const ids = [...new Set(photoIds.filter((id) => Number.isFinite(id) && id > 0))];
       if (ids.length === 0) {
         toast.error('Select at least one photo to share');
         return null;
       }
 
-      setIsLoading(true);
-      const toastId = toast.loading('Creating share page…');
-      try {
+      const request = (async () => {
         const res = await fetch('/api/photos/share-packs', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -135,27 +126,30 @@ export function usePhotoShareLinks() {
             expiresInDays: opts.expiresInDays,
           }),
         });
-        const data = (await res.json().catch(() => null)) as
-          | { shareUrl?: string; error?: string }
-          | null;
-        if (!res.ok || !data?.shareUrl) {
-          throw new Error(data?.error || 'Failed to create share page');
-        }
-        let copied = true;
-        try {
-          await navigator.clipboard.writeText(data.shareUrl);
-        } catch {
-          copied = false;
-        }
-        toast.success(
-          copied ? 'Share page link copied' : 'Share page created — press Ctrl/⌘+V to paste',
-          { id: toastId, description: data.shareUrl },
-        );
-        return { shareUrl: data.shareUrl };
+        const data = (await res.json().catch(() => null)) as { shareUrl?: string; error?: string } | null;
+        if (!res.ok || !data?.shareUrl) throw new Error(data?.error || 'Failed to create share page');
+        return data.shareUrl;
+      })();
+      // Before any await: this is still the operator's press.
+      const copied = copyToClipboardWhenReady(request, { historyKind: 'photo-share-page' });
+
+      setIsLoading(true);
+      setReady(null);
+      try {
+        const shareUrl = await request;
+        const next: PhotoShareReady = {
+          kind: 'page',
+          count: ids.length,
+          text: shareUrl,
+          url: shareUrl,
+          expiresInLabel: null,
+          copied: await copied,
+          skipped: 0,
+        };
+        setReady(next);
+        return next;
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to create share page', {
-          id: toastId,
-        });
+        toast.error(error instanceof Error ? error.message : 'Failed to create share page');
         return null;
       } finally {
         setIsLoading(false);
@@ -163,6 +157,8 @@ export function usePhotoShareLinks() {
     },
     [],
   );
+
+  const dismissReady = useCallback(() => setReady(null), []);
 
   /** Download the selection as a single ZIP via the existing `GET /api/photos/download-zip` (a session-protected attachment response). */
   const downloadZip = useCallback((photoIds: number[], opts: { title?: string } = {}) => {
@@ -182,5 +178,5 @@ export function usePhotoShareLinks() {
     toast.success(`Preparing ZIP of ${ids.length} photo${ids.length === 1 ? '' : 's'}…`);
   }, []);
 
-  return { generateAndCopy, createSharePage, downloadZip, isLoading };
+  return { generateAndCopy, createSharePage, downloadZip, isLoading, ready, dismissReady };
 }

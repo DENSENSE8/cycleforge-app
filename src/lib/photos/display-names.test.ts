@@ -37,6 +37,11 @@ test('claims photos without a ticket link fall into Unlinked', () => {
   assert.equal(photoGroupHeaderLabel(UNLINKED_PHOTO_GROUP_KEY, 'claims'), 'Unlinked');
 });
 
+test('group header labels wear the last-8 face of long identifiers', () => {
+  assert.equal(photoGroupHeaderLabel('po:10084000397923', 'unboxing'), 'PO 00397923');
+  assert.equal(photoGroupHeaderLabel('po:14-4421', 'packing'), 'Order 14-4421');
+});
+
 test('photoExportBaseName prefers ticket id for linked claim photos', () => {
   assert.equal(photoExportBaseName(claimPhoto), '4821');
   assert.equal(photoExportBaseName({ id: 1, poRef: '4421', ticketId: null }), 'PO-4421');

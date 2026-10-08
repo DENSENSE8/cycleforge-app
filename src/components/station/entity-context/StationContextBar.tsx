@@ -28,6 +28,13 @@ const BUBBLE_SLOTS: ReadonlyArray<{ slot: 'nextStep' | 'summary' | 'label'; mate
   { slot: 'label', material: 'paper' },
 ];
 
+/** md+ column count by how many bubbles are present (static strings for Tailwind). */
+const BUBBLE_ROW_COLUMNS: Readonly<Record<number, string>> = {
+  1: '',
+  2: 'md:grid-cols-2',
+  3: 'md:grid-cols-3',
+};
+
 export function StationContextBar({
   identity,
   moreDetails,
@@ -41,9 +48,10 @@ export function StationContextBar({
   moreDetails?: ReactNode;
   /**
    * The row between the identity row and the work below (operator 2026-10-07):
-   * three equal bubbles — next step top-left ({@link StationNextActionHeadline}),
-   * a brief summary in the middle, the printed label on the right. Same
-   * surface, radius and shadow for all three; an empty slot keeps its column.
+   * next step on the left ({@link StationNextActionHeadline}), a brief summary,
+   * then the printed label. Same surface, radius and shadow for every bubble;
+   * the row splits into as many equal columns as there are bubbles, so two
+   * bubbles read as a left and a right column (operator 2026-10-08).
    */
   bubbles?: { nextStep?: ReactNode; summary?: ReactNode; label?: ReactNode };
   className?: string;
@@ -53,6 +61,10 @@ export function StationContextBar({
    */
   placement?: 'overlay' | 'flow';
 }) {
+  const presentBubbles = BUBBLE_SLOTS.flatMap(({ slot, material }) => {
+    const node = bubbles?.[slot];
+    return node != null ? [{ slot, material, node }] : [];
+  });
   return (
     <div
       className={cn(
@@ -93,31 +105,28 @@ export function StationContextBar({
             {identity}
           </div>
         </Panel>
-        {bubbles ? (
+        {presentBubbles.length > 0 ? (
           <div
             className={cn(
               STATION_WORKBENCH_COLUMN,
-              'grid grid-cols-1 items-stretch gap-5 px-5 py-4 md:grid-cols-3',
+              'grid grid-cols-1 items-stretch gap-5 px-5 py-4',
+              BUBBLE_ROW_COLUMNS[presentBubbles.length],
             )}
             data-testid="station-bubble-row"
           >
-            {BUBBLE_SLOTS.map(({ slot, material }) =>
-              bubbles[slot] != null ? (
-                <WorkspaceCard
-                  key={slot}
-                  overflow="visible"
-                  className={cn('group/bubble min-w-0', cornerClass('canvas'), elevationClass('raised', 'default'))}
-                  surfaceStyle={stationBubbleMaterialStyle(material)}
-                  bodyClassName="h-full px-4 py-3"
-                >
-                  <div className="h-full min-w-0" data-testid={`station-bubble-${slot}`} data-material={material}>
-                    {bubbles[slot]}
-                  </div>
-                </WorkspaceCard>
-              ) : (
-                <div key={slot} aria-hidden />
-              ),
-            )}
+            {presentBubbles.map(({ slot, material, node }) => (
+              <WorkspaceCard
+                key={slot}
+                overflow="visible"
+                className={cn('group/bubble min-w-0', cornerClass('canvas'), elevationClass('raised', 'default'))}
+                surfaceStyle={stationBubbleMaterialStyle(material)}
+                bodyClassName="h-full px-4 py-3"
+              >
+                <div className="h-full min-w-0" data-testid={`station-bubble-${slot}`} data-material={material}>
+                  {node}
+                </div>
+              </WorkspaceCard>
+            ))}
           </div>
         ) : null}
       </div>

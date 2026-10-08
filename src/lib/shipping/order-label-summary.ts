@@ -3,8 +3,11 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { G3_LABEL_EXISTS_SQL, G3_LABEL_PURCHASED_SQL } from '@/lib/orders/caged-orders';
+import { positiveOrNull, resolveParcelWithSource, PARCEL_FALLBACK_SELECT_SQL, parcelFallbackJoinSql, type ParcelFallbackColumns } from '@/lib/orders/parcel-dims';
 import type { LabelPurchaseStatus } from '@/lib/shipping/label-purchase-ledger';
 import { listOrderLabels, type OrderLabelEntry } from '@/lib/shipping/order-label-links';
+import { resolveOrderShipTo } from '@/lib/shipping/shipstation/order-ship-to';
+import type { ShipAddress } from '@/lib/shipping/shipstation/types';
 
 export type OrderLabelStatus = 'none' | 'bought' | 'pending' | 'linked' | 'voided';
 
@@ -28,10 +31,26 @@ export interface OrderLabelSummary {
   purchase: OrderLabelPurchase | null;
   /** Every label on the order, oldest first. */
   labels: OrderLabelEntry[];
+  /** The address a label buys to (ShipStation's own ship-to, else the customer cache). */
+  shipTo: ShipAddress | null;
+  /** The stored parcel (order row → SKU → item number, first with any value) — the prefill a replacement reuses. */
+  parcel: {
+    weightOz: number | null;
+    lengthIn: number | null;
+    widthIn: number | null;
+    heightIn: number | null;
+  };
 }
 
-export interface OrderLabelRow {
+export type OrderLabelRow = {
   id: number | string;
+  order_id: string | null;
+  account_source: string | null;
+  customer_id: number | null;
+  parcel_weight_oz: string | number | null;
+  parcel_length_in: string | number | null;
+  parcel_width_in: string | number | null;
+  parcel_height_in: string | number | null;
   label_linked: boolean | null;
   label_bought_document: boolean | null;
   purchase_status: LabelPurchaseStatus | null;
@@ -44,12 +63,14 @@ export interface OrderLabelRow {
   bought_at: Date | string | null;
   purchased_by: number | null;
   purchased_by_name: string | null;
-}
+} & ParcelFallbackColumns
 
 export interface OrderLabelSummaryDeps {
   /** The order's label facts; `null` when the order is not in this org. */
   readRow(orgId: OrgId, orderId: number): Promise<OrderLabelRow | null>;
   readLabels(orgId: OrgId, orderId: number): Promise<OrderLabelEntry[]>;
+  /** The ship-to a label buys to — the same resolution the rate-shop uses. */
+  readShipTo(orgId: OrgId, order: { id: number; order_id: string | null; account_source: string | null; customer_id: number | null }): Promise<ShipAddress | null>;
 }
 
 function deriveOrderLabelStatus(facts: {
@@ -64,7 +85,11 @@ function deriveOrderLabelStatus(facts: {
   return 'none';
 }
 
-function summaryFromRow(row: OrderLabelRow, labels: OrderLabelEntry[] = []): OrderLabelSummary {
+function summaryFromRow(
+  row: OrderLabelRow,
+  labels: OrderLabelEntry[] = [],
+  shipTo: ShipAddress | null = null,
+): OrderLabelSummary {
   const purchase: OrderLabelPurchase | null = row.purchase_status
     ? {
         status: row.purchase_status,
@@ -79,6 +104,17 @@ function summaryFromRow(row: OrderLabelRow, labels: OrderLabelEntry[] = []): Ord
           row.purchased_by == null ? null : { id: row.purchased_by, name: row.purchased_by_name },
       }
     : null;
+  // Order row → SKU → item number; the replacement dialog reuses whatever the
+  // order already knows about its box (first tier holding any value wins).
+  const parcel = resolveParcelWithSource(
+    {
+      weightOz: positiveOrNull(row.parcel_weight_oz),
+      lengthIn: positiveOrNull(row.parcel_length_in),
+      widthIn: positiveOrNull(row.parcel_width_in),
+      heightIn: positiveOrNull(row.parcel_height_in),
+    },
+    row,
+  );
   return {
     orderId: Number(row.id),
     status: deriveOrderLabelStatus({
@@ -88,6 +124,13 @@ function summaryFromRow(row: OrderLabelRow, labels: OrderLabelEntry[] = []): Ord
     }),
     purchase,
     labels,
+    shipTo,
+    parcel: {
+      weightOz: parcel.weightOz,
+      lengthIn: parcel.lengthIn,
+      widthIn: parcel.widthIn,
+      heightIn: parcel.heightIn,
+    },
   };
 }
 
@@ -97,6 +140,14 @@ function summaryFromRow(row: OrderLabelRow, labels: OrderLabelEntry[] = []): Ord
 const ORDER_LABEL_SQL = `
   SELECT
     o.id,
+    o.order_id,
+    o.account_source,
+    o.customer_id,
+    o.parcel_weight_oz,
+    o.parcel_length_in,
+    o.parcel_width_in,
+    o.parcel_height_in,
+    ${PARCEL_FALLBACK_SELECT_SQL},
     (${G3_LABEL_EXISTS_SQL}) OR EXISTS (
       SELECT 1 FROM shipping_label_purchases lk
        WHERE lk.organization_id = o.organization_id
@@ -130,6 +181,7 @@ const ORDER_LABEL_SQL = `
      LIMIT 1
   ) p ON TRUE
   LEFT JOIN staff s ON s.id = p.purchased_by AND s.organization_id = o.organization_id
+  ${parcelFallbackJoinSql('o')}
   WHERE o.id = $1 AND o.organization_id = $2
   LIMIT 1
 `;
@@ -140,6 +192,7 @@ const defaultOrderLabelSummaryDeps: OrderLabelSummaryDeps = {
     return res.rows[0] ?? null;
   },
   readLabels: listOrderLabels,
+  readShipTo: async (orgId, order) => (await resolveOrderShipTo(orgId, order)).shipTo,
 };
 
 /** The order's label summary; `null` when the order is not in this org. */
@@ -149,5 +202,15 @@ export async function getOrderLabelSummary(
   deps: OrderLabelSummaryDeps = defaultOrderLabelSummaryDeps,
 ): Promise<OrderLabelSummary | null> {
   const row = await deps.readRow(orgId, orderId);
-  return row ? summaryFromRow(row, await deps.readLabels(orgId, orderId)) : null;
+  if (!row) return null;
+  const [labels, shipTo] = await Promise.all([
+    deps.readLabels(orgId, orderId),
+    deps.readShipTo(orgId, {
+      id: Number(row.id),
+      order_id: row.order_id,
+      account_source: row.account_source,
+      customer_id: row.customer_id,
+    }),
+  ]);
+  return summaryFromRow(row, labels, shipTo);
 }

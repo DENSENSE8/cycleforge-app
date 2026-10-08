@@ -4,7 +4,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { claimOverlay } from '@/lib/overlay-stack/store';
-import { Button } from '@/design-system/primitives/Button';
+import { Button, type ButtonVariant } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { KeyboardChord } from '@/design-system/primitives/KeyboardKey';
 import { hotkeyChord } from '@/lib/keyboard/key-registry';
@@ -34,8 +34,18 @@ export interface RecordActionVerb {
   icon?: ReactNode;
   /** Single key, shown via KeyboardKey on `?`. */
   hotkey?: string;
-  /** `warning` = the orange escalation fill (Create customer ticket). */
-  tone?: 'default' | 'danger' | 'warning' | 'yellow' | 'blue' | 'success';
+  /**
+   * Paint the verb spelled out with its keycap inline, always — on every face,
+   * without `?` (operator 2026-10-08: a shipped order's "Buy replacement label"
+   * shows its key so the caller's operator presses it without hunting).
+   */
+  standingKeycap?: boolean;
+  /**
+   * `primary` = the solid blue lead CTA (a shipped order's Buy replacement label);
+   * `orange` = the vivid escalation fill (Create customer ticket, operator 2026-10-08);
+   * `warning` = the amber recoverable fill; `blue` = the tonal blue face.
+   */
+  tone?: 'default' | 'danger' | 'warning' | 'yellow' | 'blue' | 'success' | 'primary' | 'orange';
   disabled?: boolean;
   disabledReason?: string;
   /** A toggle verb's current state (Select, Mark urgent) — `aria-pressed`. */
@@ -51,6 +61,12 @@ export interface RecordActionVerb {
   run?: () => void | Promise<void>;
   /** OR morph the strip into this display; `done()` morphs it back. */
   display?: (done: () => void) => ReactNode;
+  /**
+   * Destructive: the first press (click or key) only arms the verb — its face
+   * reads "Press again to confirm" for a few seconds; the second press runs it
+   * (operator 2026-10-08: delete is ⌘/Ctrl+⌫, pressed twice).
+   */
+  confirm?: boolean;
 }
 
 export type RecordVerbScope = 'single' | 'bulk' | 'both';
@@ -77,8 +93,12 @@ interface RecordActionStripProps {
    * `N selected · Actions · [quick] · ×`. Every verb lives
    * in the Actions menu; a verb's `display` opens as a card above the pill.
    * Requires {@link dock}.
+   * `panel`: a side column's Actions group (operator 2026-10-08) — vertical,
+   * nothing hidden: fill-tone verbs first as full-width filled CTAs, then every
+   * other verb as a full-width ghost row, danger verbs last under a hairline.
+   * Every verb is spelled out with its keycap; no ⋮.
    */
-  face?: 'strip' | 'header' | 'inline' | 'dock';
+  face?: 'strip' | 'header' | 'inline' | 'dock' | 'panel';
   /** The `dock` face's selection facts: the count, Clear, and an optional one-press icon verb beside Actions. */
   dock?: RecordActionDock;
 }
@@ -106,6 +126,21 @@ const STRIP_CLASS =
 const HEADER_FACE_CLASS =
   '@container/verbs flex w-full min-w-0 flex-1 items-center gap-1 @min-[64rem]/record-head:!min-w-[28rem]';
 const INLINE_FACE_CLASS = 'flex shrink-0 items-center gap-1';
+const PANEL_FACE_CLASS = 'flex w-full min-w-0 flex-col gap-0.5 px-2 pb-2';
+/** How long a `confirm` verb stays armed after its first press. */
+const CONFIRM_ARM_MS = 4000;
+
+/** The Button fill each verb tone wears; the tones with a solid fill lead the `panel` face. */
+const VERB_TONE_FILL: Record<NonNullable<RecordActionVerb['tone']>, { variant: ButtonVariant | null; panelFill: boolean }> = {
+  default: { variant: null, panelFill: false },
+  danger: { variant: null, panelFill: false },
+  blue: { variant: 'primarySoft', panelFill: false },
+  primary: { variant: 'primary', panelFill: true },
+  orange: { variant: 'orange', panelFill: true },
+  warning: { variant: 'warning', panelFill: true },
+  yellow: { variant: 'yellow', panelFill: true },
+  success: { variant: 'success', panelFill: true },
+};
 
 /**
  * Header actions start as icons and expand in importance order. At most three
@@ -136,6 +171,32 @@ export function partitionRecordActionVerbs(verbs: readonly RecordActionVerb[]): 
   return { primary, overflow };
 }
 
+/**
+ * The `panel` face's grouping: fill-tone verbs lead (filled CTAs), the rest
+ * follow as rows, danger verbs close the list. Source order within each group;
+ * nothing overflows.
+ */
+export function partitionRecordPanelVerbs(verbs: readonly RecordActionVerb[]): {
+  filled: RecordActionVerb[];
+  rows: RecordActionVerb[];
+  danger: RecordActionVerb[];
+} {
+  const filled: RecordActionVerb[] = [];
+  const rows: RecordActionVerb[] = [];
+  const danger: RecordActionVerb[] = [];
+  for (const verb of verbs) {
+    if (verb.tone === 'danger') danger.push(verb);
+    else if (VERB_TONE_FILL[verb.tone ?? 'default'].panelFill) filled.push(verb);
+    else rows.push(verb);
+  }
+  return { filled, rows, danger };
+}
+
+/** The Button fill a verb wears on the strip, header, inline and panel faces: its tone's fill, else ink when pressed. */
+function verbVariant(verb: RecordActionVerb): ButtonVariant {
+  return VERB_TONE_FILL[verb.tone ?? 'default'].variant ?? (verb.pressed ? 'ink' : 'secondary');
+}
+
 export function RecordActionStrip({
   verbs,
   label,
@@ -144,7 +205,14 @@ export function RecordActionStrip({
   face = 'strip',
   dock,
 }: RecordActionStripProps) {
-  const shellClass = face === 'header' ? HEADER_FACE_CLASS : face === 'inline' ? INLINE_FACE_CLASS : STRIP_CLASS;
+  const shellClass =
+    face === 'header'
+      ? HEADER_FACE_CLASS
+      : face === 'inline'
+        ? INLINE_FACE_CLASS
+        : face === 'panel'
+          ? PANEL_FACE_CLASS
+          : STRIP_CLASS;
   const [activeId, setActiveId] = useState<string | null>(null);
   // The ⋮ menu holds the keyboard while open, like any overlay: its Escape
   // closes the menu — not this strip, and not the host's check-set.
@@ -163,8 +231,22 @@ export function RecordActionStrip({
     setActiveId(null);
   };
 
+  // A `confirm` verb's first press arms it; it disarms itself after a beat.
+  const [armedId, setArmedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (armedId == null) return;
+    const timer = window.setTimeout(() => setArmedId(null), CONFIRM_ARM_MS);
+    return () => window.clearTimeout(timer);
+  }, [armedId]);
+  const labelOf = (verb: RecordActionVerb) => (verb.confirm && armedId === verb.id ? 'Press again to confirm' : verb.label);
+
   const press = (verb: RecordActionVerb) => {
     if (verb.disabled) return;
+    if (verb.confirm && armedId !== verb.id) {
+      setArmedId(verb.id);
+      return;
+    }
+    setArmedId(null);
     if (verb.display) {
       setActiveId(verb.id);
       return;
@@ -173,7 +255,9 @@ export function RecordActionStrip({
   };
 
   const displayOpen = active != null;
-  useRecordActionStripKeys({ verbs, displayOpen, press, done, onDismiss });
+  // The dock's quick verb sits outside the Actions menu; its hotkey still fires and lists under `?`.
+  const keyedVerbs = face === 'dock' && dock?.quick ? [...verbs, dock.quick] : verbs;
+  useRecordActionStripKeys({ verbs: keyedVerbs, displayOpen, press, done, onDismiss });
 
   if (face === 'dock' && dock) {
     return (
@@ -209,10 +293,14 @@ export function RecordActionStrip({
                     title={verb.disabled ? verb.disabledReason : undefined}
                     data-testid={`${testId}-${verb.id}`}
                     tone={verb.tone === 'danger' ? 'danger' : 'default'}
-                    onSelect={() => press(verb)}
+                    onSelect={(event) => {
+                      // Arming keeps the menu open so the second press lands on the same item.
+                      if (verb.confirm && armedId !== verb.id) event.preventDefault();
+                      press(verb);
+                    }}
                   >
                     {verb.icon}
-                    {verb.label}
+                    {labelOf(verb)}
                     {showHotkeys && verb.hotkey ? (
                       <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
                     ) : null}
@@ -222,7 +310,12 @@ export function RecordActionStrip({
             </DropdownMenu>
           )}
           {dock.quick ? (
-            <HoverTooltip label={dock.quick.disabled ? (dock.quick.disabledReason ?? dock.quick.label) : dock.quick.label} asChild placement="above">
+            <HoverTooltip
+              label={dock.quick.disabled ? (dock.quick.disabledReason ?? dock.quick.label) : dock.quick.label}
+              shortcut={dock.quick.hotkey ? hotkeyChord(dock.quick.hotkey) : undefined}
+              asChild
+              placement="above"
+            >
               <button
                 type="button"
                 className={dock.quickText ? DOCK_QUICK_PILL_CLASS : DOCK_ROUND_CLASS}
@@ -255,14 +348,70 @@ export function RecordActionStrip({
         aria-label={`${label}: ${active.label}`}
         data-testid={testId}
         data-view={active.id}
-        className={cn(shellClass, 'flex-nowrap')}
+        className={cn(shellClass, face === 'panel' ? undefined : 'flex-nowrap')}
       >
-        <Button type="button" variant="ghost" size="sm" onClick={done} data-testid={`${testId}-back`}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={face === 'panel' ? 'self-start' : undefined}
+          onClick={done}
+          data-testid={`${testId}-back`}
+        >
           Back
         </Button>
-        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1" data-testid={`${testId}-display`}>
+        <div
+          className={face === 'panel' ? 'flex min-w-0 flex-col gap-1' : 'flex min-w-0 flex-1 flex-nowrap items-center gap-1'}
+          data-testid={`${testId}-display`}
+        >
           {active.display(done)}
         </div>
+      </div>
+    );
+  }
+
+  if (face === 'panel') {
+    const { filled, rows, danger } = partitionRecordPanelVerbs(verbs);
+    // Spelled out, key always painted (operator 2026-10-08): the side column has the room the header never did.
+    const panelVerb = (verb: RecordActionVerb, fill: boolean) => (
+      <Button
+        key={verb.id}
+        type="button"
+        size={fill ? 'md' : 'sm'}
+        variant={fill ? verbVariant(verb) : 'ghost'}
+        icon={verb.icon}
+        disabled={verb.disabled}
+        title={verb.disabled ? verb.disabledReason : undefined}
+        aria-pressed={verb.confirm ? armedId === verb.id : verb.pressed}
+        aria-haspopup={verb.display ? 'true' : undefined}
+        data-testid={`${testId}-${verb.id}`}
+        className={cn(
+          'w-full justify-start',
+          !fill && 'font-medium',
+          verb.tone === 'danger' && 'text-text-danger hover:bg-surface-danger hover:text-text-danger',
+        )}
+        onClick={() => press(verb)}
+      >
+        <span className="min-w-0 flex-1 truncate text-left">{labelOf(verb)}</span>
+        {verb.hotkey ? (
+          <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone={fill ? 'inverse' : 'default'} />
+        ) : null}
+      </Button>
+    );
+    return (
+      <div role="toolbar" aria-label={label} aria-orientation="vertical" data-testid={testId} data-view="verbs" className={shellClass}>
+        {filled.length > 0 ? (
+          <div className={cn('flex flex-col gap-1.5', rows.length > 0 || danger.length > 0 ? 'pb-1.5' : undefined)}>
+            {filled.map((verb) => panelVerb(verb, true))}
+          </div>
+        ) : null}
+        {rows.map((verb) => panelVerb(verb, false))}
+        {danger.length > 0 ? (
+          <div className="mt-2 flex flex-col gap-0.5 border-t border-border-soft pt-2" data-testid={`${testId}-danger`}>
+            <p className="px-2.5 pb-1 text-left text-role-caption font-semibold text-text-danger">Danger zone</p>
+            {danger.map((verb) => panelVerb(verb, false))}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -271,10 +420,6 @@ export function RecordActionStrip({
 
   /** `expand` = the header face's rung for this verb; without one a header verb stays a 24px icon. */
   const verbButton = (verb: RecordActionVerb, expand?: (typeof HEADER_EXPAND_TIERS)[number]) => {
-    const warning = verb.tone === 'warning';
-    const yellow = verb.tone === 'yellow';
-    const blue = verb.tone === 'blue';
-    const success = verb.tone === 'success';
     return (
       <HoverTooltip
         key={verb.id}
@@ -287,35 +432,29 @@ export function RecordActionStrip({
           type="button"
           size="sm"
           radius="pill"
-          variant={
-            warning
-              ? 'warning'
-              : yellow
-                ? 'yellow'
-                : blue
-                  ? 'primarySoft'
-                  : success
-                    ? 'success'
-                    : verb.pressed
-                      ? 'ink'
-                      : 'secondary'
-          }
+          variant={verbVariant(verb)}
           icon={verb.icon}
-          ariaLabel={verb.label}
+          ariaLabel={labelOf(verb)}
           disabled={verb.disabled}
-          aria-pressed={verb.pressed}
+          aria-pressed={verb.confirm ? armedId === verb.id : verb.pressed}
           aria-haspopup={verb.display ? 'true' : undefined}
           data-testid={`${testId}-${verb.id}`}
           // A record header spends its width on identity first: a verb is a
           // 24px icon, spelled out only once the header has room for it
           // (HEADER_EXPAND_TIERS); the tooltip and accessible name carry it until then.
-          className={face === 'header' ? cn('h-6 w-6 shrink-0 whitespace-nowrap !px-0', expand?.button, HEADER_FULL_RECORD_BUTTON) : undefined}
+          className={
+            face === 'header'
+              ? verb.standingKeycap
+                ? 'h-6 shrink-0 whitespace-nowrap !px-2.5'
+                : cn('h-6 w-6 shrink-0 whitespace-nowrap !px-0', expand?.button, HEADER_FULL_RECORD_BUTTON)
+              : undefined
+          }
           onClick={() => press(verb)}
         >
-          <span className={face === 'header' ? cn('sr-only', expand?.label, HEADER_FULL_RECORD_LABEL) : undefined}>
-            {verb.label}
+          <span className={face === 'header' && !verb.standingKeycap ? cn('sr-only', expand?.label, HEADER_FULL_RECORD_LABEL) : undefined}>
+            {labelOf(verb)}
           </span>
-          {face !== 'header' && showHotkeys && verb.hotkey ? (
+          {verb.hotkey && (verb.standingKeycap || (face !== 'header' && showHotkeys)) ? (
             <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-1" />
           ) : null}
         </Button>
@@ -383,10 +522,13 @@ export function RecordActionStrip({
                     title={verb.disabled ? verb.disabledReason : undefined}
                     data-testid={`${testId}-${verb.id}`}
                     tone={verb.tone === 'danger' ? 'danger' : 'default'}
-                    onSelect={() => press(verb)}
+                    onSelect={(event) => {
+                      if (verb.confirm && armedId !== verb.id) event.preventDefault();
+                      press(verb);
+                    }}
                   >
                     {verb.icon}
-                    {verb.label}
+                    {labelOf(verb)}
                     {showHotkeys && verb.hotkey ? (
                       <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
                     ) : null}

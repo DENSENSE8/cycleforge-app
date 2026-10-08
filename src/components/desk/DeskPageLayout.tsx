@@ -39,6 +39,8 @@ export interface DeskPageLayoutProps {
   measure?: 'fixed' | 'full';
   /** Something that leads the title on its line (a full-screen page's Back) — the title's first element. */
   titleLead?: ReactNode;
+  /** `false` = this desk opens no record pane: no In place · Split, the stage stays in place (see `DeskPageChrome`). */
+  recordViews?: boolean;
   className?: string;
 }
 
@@ -75,11 +77,13 @@ function DeskPageFrame({
   subtitle,
   headerCenter,
   measure,
+  recordViews = true,
   className,
 }: DeskPageLayoutProps & DeskHeaderFaces) {
   const { pageId } = useActiveSidebarChild();
   const title = titleOverride ?? getSidebarPageNav(pageId)?.label ?? '';
-  const { view, setView } = useDeskView(pageId);
+  const deskView = useDeskView(pageId);
+  const view: DeskStageView = recordViews ? deskView.view : 'in-place';
   const addSlot = useDeskActionSlotNode();
 
   return (
@@ -99,8 +103,9 @@ function DeskPageFrame({
       addSlot={addSlot}
       headerCenter={headerCenter}
       view={view}
-      onViewChange={setView}
+      onViewChange={deskView.setView}
       measure={measure}
+      recordViews={recordViews}
       className={className}
     >
       {children}

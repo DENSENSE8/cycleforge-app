@@ -8,7 +8,9 @@ import {
   PackageCheck as LucidePackageCheck,
   PackageSearch as LucidePackageSearch,
   Receipt as LucideReceipt,
+  Ruler as LucideRuler,
   Store as LucideStore,
+  Weight as LucideWeight,
 } from 'lucide-react';
 
 export const Package = ({ className = "w-6 h-6" }: { className?: string }) => (
@@ -91,6 +93,16 @@ export const Archive = ({ className = "w-6 h-6" }: { className?: string }) => (
 /** Scan / identifier mark. Lucide bars — not an `h.01` dot grid (vanishes at 16px on some GPUs). */
 export const Barcode = ({ className = "w-6 h-6" }: { className?: string }) => (
     <LucideBarcode className={className} />
+);
+
+/** Scale weight — a parcel's weight field (label buy). */
+export const Weight = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideWeight className={className} />
+);
+
+/** Ruler — a parcel's length field (label buy). */
+export const Ruler = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideRuler className={className} />
 );
 
 /** Hash — order IDs / numeric references */

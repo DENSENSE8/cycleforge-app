@@ -90,8 +90,8 @@ export function useViewHotkeys(items: readonly NavItem[], enabled: boolean) {
  * and its count (an alerting view beacons on it). Hover shows every view's
  * digit beside the sidebar when the page binds them (`viewKeys`, from its
  * `NAV_PAGE_DECLS` entry — a digit is painted only where bound); click hangs
- * the OTHER views in an overlay (`NavSwitcherMenu`). One view is no choice:
- * nothing renders.
+ * the OTHER views in an overlay (`NavSwitcherMenu`). One view (Stock's All
+ * stock) paints the block alone, no menu — the page still says where you are.
  */
 export function NavViewSwitcher({
   sections,
@@ -106,7 +106,7 @@ export function NavViewSwitcher({
   const painted = useMemo(() => sections.flatMap((section) => section.items), [sections]);
   useViewHotkeys(painted, viewKeys);
   const counts = useViewCounts(pageId, painted);
-  if (painted.length < 2) return null;
+  if (painted.length === 0) return null;
   const current = painted.find((item) => item.active);
   const currentGlyph = current ? navRowGlyph(current, pageId) : null;
   const alerts = painted.filter((item) => {

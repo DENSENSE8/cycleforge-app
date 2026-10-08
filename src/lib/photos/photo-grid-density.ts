@@ -18,7 +18,8 @@ export const PHOTO_GRID_DENSITY_LABELS: Record<PhotoGridDensity, string> = {
 
 export const PHOTO_GRID_DENSITY_STORAGE_KEY = 'photo-grid-density';
 
-export const DEFAULT_PHOTO_GRID_DENSITY: PhotoGridDensity = 'lg';
+/** First visit opens the small contact sheet; the density control grows it and remembers the choice. */
+export const DEFAULT_PHOTO_GRID_DENSITY: PhotoGridDensity = 'sm';
 
 /** Tile aspect — `natural` sizes to the image; `square` is a 1:1 crop. */
 export type PhotoGridTileRatio = 'square' | 'natural';
@@ -77,9 +78,4 @@ export function photoGridLeafClass(density: PhotoGridDensity): string {
       // Natural-height cards — top-align so mixed orientations don't stretch.
       return 'grid grid-cols-2 items-start gap-0.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4';
   }
-}
-
-/** @deprecated Use {@link photoGridLeafClass} — labeled grid-lg defers to the same layout. */
-function photoGridLabeledClass(density: PhotoGridDensity): string {
-  return photoGridLeafClass(density);
 }

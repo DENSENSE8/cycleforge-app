@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server';
+import { z } from 'zod';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { ApiError, errorResponse } from '@/lib/api';
@@ -27,10 +28,31 @@ import { labelTrailNote } from '@/lib/shipping/order-label-links';
 import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
 import { buildOrderShipmentSpec } from '@/lib/shipping/shipstation/order-shipment-spec';
 import { OrderRateDimensionsSchema } from '@/lib/shipping/shipstation/order-parcel';
+import { REPLACEMENT_REASONS, type ReplacementReason } from '@/lib/shipping/replacement-rate-shop';
 
 export const dynamic = 'force-dynamic';
 
 /** POST /api/shipping/order-labels/purchase */
+
+/** Why a replacement was bought — only meaningful with `purpose: 'replacement'`. */
+const ReplacementDetailsSchema = z.object({
+  replacementReason: z
+    .custom<ReplacementReason>((v) => REPLACEMENT_REASONS.some((r) => r.id === v))
+    .nullish(),
+  replacementNote: z.string().trim().max(500).nullish(),
+});
+
+/** The buy's order-notes trail line, with the replacement reason + note when given. */
+function buyTrailNote(
+  purpose: LabelPurpose,
+  label: PurchasedLabel,
+  reason: ReplacementReason | null,
+  note: string | null,
+): string {
+  const reasonLabel = reason ? REPLACEMENT_REASONS.find((r) => r.id === reason)?.label ?? null : null;
+  const why = [reasonLabel, note].filter(Boolean).join(' — ');
+  return `${labelTrailNote('Bought', purpose, label)}${why ? ` · ${why}` : ''}`;
+}
 
 /** A prior successful purchase under this clientEventId (label doc sourceHash). */
 async function findLabelBySourceHash(
@@ -66,6 +88,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (!rateId) throw ApiError.badRequest('rateId is required');
     if (!clientEventId) throw ApiError.badRequest('clientEventId is required (idempotency key)');
     if (!isLabelPurpose(purpose)) throw ApiError.badRequest('purpose must be outbound, return or replacement');
+    const replacement = ReplacementDetailsSchema.safeParse({
+      replacementReason: body?.replacementReason,
+      replacementNote: body?.replacementNote,
+    });
+    if (!replacement.success) {
+      throw ApiError.badRequest(
+        'replacementReason must be lost, damaged, wrong_item or other; replacementNote at most 500 characters',
+      );
+    }
+    const replacementReason = replacement.data.replacementReason ?? null;
+    const replacementNote = replacement.data.replacementNote || null;
+    if ((replacementReason || replacementNote) && purpose !== 'replacement') {
+      throw ApiError.badRequest('replacementReason / replacementNote need purpose: replacement');
+    }
     // A return is bought from its shipment (v2 POST /labels + is_return_label),
     // never from the rate id — ShipStation ignores the flag there.
     const carrierId = String(body?.carrierId || '').trim();
@@ -129,7 +165,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           }
         : () => v2.purchaseLabelFromRate(rateId, { labelFormat });
     const outcome = await purchaseLabelOnce(
-      { orgId, orderId, clientEventId, rateId, labelFormat, staffId: ctx.staffId ?? null, purpose, isTest: v2.sandbox },
+      {
+        orgId,
+        orderId,
+        clientEventId,
+        rateId,
+        labelFormat,
+        staffId: ctx.staffId ?? null,
+        purpose,
+        isTest: v2.sandbox,
+        replacementReason,
+        replacementNote,
+      },
       buy,
     );
 
@@ -229,7 +276,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       await createOrderNote({
         orderId,
         organizationId: orgId,
-        noteText: labelTrailNote('Bought', purpose, label),
+        noteText: buyTrailNote(purpose, label, replacementReason, replacementNote),
         staffId: ctx.staffId ?? null,
       }).catch((e) => console.warn('[buy-label] order note failed', e));
     }

@@ -864,38 +864,6 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
   return { items, nextCursor, hasMore };
 }
 
-/** "Select all matching filters" — the total row count plus up to `cap` photo ids for the SAME filter set as listPhotoLibrary (shared WHERE… */
-export async function listPhotoLibraryIds(
-  filters: LibraryFilters,
-  opts: { cap?: number } = {},
-): Promise<{ ids: number[]; total: number; capped: boolean }> {
-  const cap = Math.min(Math.max(opts.cap ?? 500, 1), 2000);
-  const { clauses, params } = buildLibraryWhere(filters);
-  const where = clauses.join(' AND ');
-
-  const countRes = await tenantQuery<{ total: number }>(
-    filters.organizationId,
-    `SELECT COUNT(*)::int AS total FROM photos p WHERE ${where}`,
-    params,
-  );
-  const total = countRes.rows[0]?.total ?? 0;
-
-  const sortDir = filters.sort === 'oldest' ? 'ASC' : 'DESC';
-  const idParams = [...params, cap];
-  const idsRes = await tenantQuery<{ id: number }>(
-    filters.organizationId,
-    `SELECT p.id
-       FROM photos p
-      WHERE ${where}
-      ORDER BY p.created_at ${sortDir}, p.id ${sortDir}
-      LIMIT $${idParams.length}`,
-    idParams,
-  );
-  const ids = idsRes.rows.map((r) => Number(r.id)).filter((id) => Number.isFinite(id));
-
-  return { ids, total, capped: total > ids.length };
-}
-
 // ── Folder aggregation (cheap browse — no photo row materialization) ─────────
 
 import type { PhotoLibraryFolderLevel } from '@/lib/photos/folder-level';

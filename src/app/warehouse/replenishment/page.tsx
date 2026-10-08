@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { replenishmentStatusBadgeClass } from '@/lib/replenishment-status';
 import { Panel, Button } from '@/design-system/primitives';
+import { PHONE_CARD_COLUMN, PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 interface TaskRow {
   id: number;
@@ -120,7 +121,7 @@ export default function ReplenishmentPage() {
       </header>
 
       {error && (
-        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className={`${PHONE_CARD_FACE} mb-4 border border-red-200 bg-red-50 p-3 text-sm text-red-800`}>
           {error}
         </div>
       )}
@@ -244,7 +245,7 @@ function Section({ title, count, tone, tasks, actionLabel, onAction, onCancel, w
 
 function EmptyState() {
   return (
-    <div className="grid place-items-center rounded-3xl border border-emerald-200 bg-emerald-50 px-6 py-12 text-center">
+    <div className={`${PHONE_CARD_FACE} grid place-items-center border border-emerald-200 bg-emerald-50 px-6 py-12 text-center`}>
       <div className="grid h-14 w-14 place-items-center rounded-full bg-emerald-600 text-white">
         <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth={3}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -260,7 +261,7 @@ function EmptyState() {
 
 function LoadingRow() {
   return (
-    <Panel radius="2xl" padding="lg" className="text-center text-sm text-text-soft">
+    <Panel radius="2xl" padding="lg" className={`${PHONE_CARD_COLUMN} text-center text-sm text-text-soft`}>
       <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 align-middle" />
       <span className="ml-2 align-middle">Loading tasks…</span>
     </Panel>

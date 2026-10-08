@@ -23,6 +23,7 @@ import { triggerPackPrintBundle } from '@/lib/print/pack-print-bundle-client';
 import { printRepairStationJob } from '@/lib/print/printRepairStationJob';
 import { printFnskuStationJob } from '@/lib/print/printFnskuStationJob';
 import { printQcLabelStationJob } from '@/lib/print/printQcLabel';
+import { printStockLabelStationJob } from '@/lib/print/stockLabel';
 import { deskDocumentsFromStation } from '@/lib/print/print-station-documents';
 import { currentPrintRoute } from '@/lib/label-prints/current-print-route';
 import { printDocuments } from '@/lib/label-prints/print-labels';
@@ -31,8 +32,8 @@ export async function executeStationPrintJob(
   job: StaffPrintJob,
   { workId, onProgress }: { workId: string; onProgress: (done: number, total: number) => void },
 ): Promise<void> {
-  // documents · tote · rack · bin · fnsku run through a print choke point
-  // that reports to the header itself; papers and repair report here.
+  // documents · tote · rack · bin · fnsku · stock label run through a print
+  // choke point that reports to the header itself; papers and repair report here.
   if (job.grain === 'documents' && job.documents) {
     // The one desk pipeline: rebuilt from ids, routed and logged HERE, as this station.
     const docs = deskDocumentsFromStation(job.documents);
@@ -90,6 +91,12 @@ export async function executeStationPrintJob(
 
   if (job.grain === 'qc_label' && job.qcLabel) {
     const error = await printQcLabelStationJob(job.qcLabel, job.request_id, { workId });
+    if (error) toast.error(error);
+    return;
+  }
+
+  if (job.grain === 'stock_label' && job.stockLabel) {
+    const error = await printStockLabelStationJob(job.stockLabel, { workId });
     if (error) toast.error(error);
     return;
   }

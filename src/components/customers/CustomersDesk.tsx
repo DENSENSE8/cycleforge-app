@@ -9,7 +9,6 @@ import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { CUSTOMER_PATHS } from '@/lib/nav/route-tree';
 import { CustomerDirectoryList, CustomerDirectorySummary } from './CustomerDirectoryList';
 import { CustomerDeskActions } from './CustomerDeskActions';
-import { CustomerInvoiceAction } from './CustomerInvoiceAction';
 import { CustomerRecord } from './CustomerRecord';
 import { getCustomerJson } from './customer-format';
 
@@ -56,7 +55,6 @@ export function CustomersDesk() {
         recordNoun="customer"
         recordKey={selectedId == null ? null : String(selectedId)}
         testId="customer-record-plane"
-        actions={selectedId == null ? null : <CustomerInvoiceAction customerId={selectedId} />}
         list={<CustomerDirectoryList rows={rows} loading={directory.isPending} failed={directory.isError} fetching={directory.isFetching} selectedId={selectedId} narrowed={Boolean(query)} onOpen={writeSelected} />}
         summary={<CustomerDirectorySummary rows={rows} />}
       >

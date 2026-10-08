@@ -12,6 +12,8 @@ interface CartonPayloadContext {
   resolveTypeLabel: (code: string | null | undefined) => string;
   /** usePlatformShortLabelLookup() — platform slug/label → org `short_label`. */
   resolvePlatformShortLabel: (platform: string | null | undefined) => string | null;
+  /** useReceivingTypeShortLabelLookup() — type code → org `types.short_label`. */
+  resolveTypeShortLabel: (code: string | null | undefined) => string | null;
 }
 
 /** Assemble a carton-label payload from a (default or hand-edited) label draft — the single carton payload builder shared by the label… */
@@ -30,8 +32,10 @@ export function buildCartonLabelPayloadFromDraft(
     notes: draft.notes.trim(),
     conditionCode: draft.conditionCode,
     receivingType: draft.receivingType || null,
-    // Catalog label so a renamed/custom type prints correctly on the face.
+    // Catalog label so a renamed/custom type prints correctly on the face…
     receivingTypeLabel: ctx.resolveTypeLabel(draft.receivingType) || null,
+    // …unless the org gave the type a label face (`RTR`), which prints instead.
+    receivingTypeShortLabel: ctx.resolveTypeShortLabel(draft.receivingType),
     date: draft.date,
   };
   // Bottom-right corner is operator-chosen — steer the label-corner helper:

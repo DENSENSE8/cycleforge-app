@@ -1,14 +1,13 @@
 'use client';
 
 /**
- * The repair record's desk slot — the open ticket's title, subtitle, header
- * verbs and view for the list's record plane (the inbound twin is
- * `useInboundRecordSlot`). A panel verb's open panel is keyed by the record,
- * so walking J / K closes it.
+ * The repair record's desk slot — the open ticket's title, subtitle and view
+ * (its verbs in the view's Actions panel, operator 2026-10-08) for the list's
+ * record plane (the inbound twin is `useRecordSlot`). A panel verb's open
+ * panel is keyed by the record, so walking J / K closes it.
  */
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { repairRecordModel } from '@/lib/repair/repair-record-model';
@@ -19,7 +18,6 @@ import { useRepairRecordVerbs } from './repair-record-verbs';
 export interface RepairRecordSlot {
   title: ReactNode;
   subtitle: string;
-  actions: ReactNode;
   view: ReactNode;
 }
 
@@ -41,14 +39,12 @@ export function useRepairRecordSlot(
   return {
     title: <RepairRecordTitle title={model.title} />,
     subtitle: model.subtitle,
-    actions: (
-      <RecordActionStrip key={model.key} face="header" verbs={stripVerbs} label={`Repair ${model.title.face} actions`} testId="repair-record-actions" />
-    ),
     view: (
       <RepairServiceRecordView
         key={model.key}
         model={model}
         onUpdate={refresh}
+        actions={{ verbs: stripVerbs, label: `Repair ${model.title.face} actions` }}
         panel={active?.panel ? { title: active.label, body: active.panel(close), onBack: close } : null}
       />
     ),

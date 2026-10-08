@@ -21,7 +21,6 @@ import { LANE_DOORS } from '@/lib/nav/lanes';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -49,7 +48,6 @@ import { Collapse } from '@/design-system/components/Collapse';
 import { AI_CHAT_NEW_EVENT } from '@/lib/app-events';
 import { cn } from '@/utils/_cn';
 import { ChatSessionsNav } from './ChatSessionsNav';
-import { StaffAccountFooter } from './StaffAccountFooter';
 import { useSpineSectionCollapse } from './useSpineSectionCollapse';
 import { useLaneDoorHref } from '@/components/sidebar/contextual/useLaneDoorHref';
 import { spineParentTone } from './spine-parent-tone';
@@ -653,9 +651,6 @@ export function SidebarNavList({
           </SidebarGroup>
         ) : null}
       </SidebarContent>
-      <SidebarFooter>
-        <StaffAccountFooter />
-      </SidebarFooter>
     </Sidebar>
   );
 }

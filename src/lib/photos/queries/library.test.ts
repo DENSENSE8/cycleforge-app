@@ -5,9 +5,7 @@ import {
   libraryFiltersFromSearchParams,
 } from '@/lib/photos/queries/library';
 
-// Pure URL→filters layer only (the SQL builder needs a DB). Shared by
-// /api/photos/library and /api/photos/library/ids, so the parse contract is
-// what keeps the two endpoints from drifting.
+// Pure URL→filters layer only (the SQL builder needs a DB).
 
 test('libraryFiltersFromSearchParams parses the unboxing stage sub-filter', () => {
   const filters = libraryFiltersFromSearchParams(

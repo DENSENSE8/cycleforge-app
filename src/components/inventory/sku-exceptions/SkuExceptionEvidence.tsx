@@ -120,8 +120,11 @@ function SkuExceptionRecordEvidence({
   );
 }
 
-/** The facts column: Photos (when any) → Details (barcode, who made it). */
-export function SkuExceptionFacts({ item }: { item: ProvisionalSkuDetail }) {
+/**
+ * The facts column: Photos (when any) → Details (barcode, who made it).
+ * `photoActions`: Upload · Phone for the Photos header (the stock record, once the SKU has its linked cover).
+ */
+export function SkuExceptionFacts({ item, photoActions }: { item: ProvisionalSkuDetail; photoActions?: ReactNode }) {
   const fieldId = useId();
   const refresh = useRefreshSkuExceptions();
   const created = item.createdAt ? new Date(item.createdAt) : null;
@@ -129,7 +132,7 @@ export function SkuExceptionFacts({ item }: { item: ProvisionalSkuDetail }) {
 
   return (
     <>
-      <SkuExceptionPhotosSection photos={item.photos} stockId={item.stockId} onChanged={refresh} />
+      <SkuExceptionPhotosSection photos={item.photos} stockId={item.stockId} onChanged={refresh} action={photoActions} />
       <RecordGroup title="Details" testId="sku-exception-details">
         <div className={FACTS_BODY_CLASS}>
           <EvidenceFactRow label="Barcode" wide={!item.barcode}>

@@ -5,6 +5,7 @@ import { ClipboardList, Loader2 } from '@/components/Icons';
 import { microBadge, sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { CountRow } from '@/hooks/useInventorySearch';
 import { InventoryDetailPanelShell } from './InventoryDetailPanelShell';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { Panel } from '@/design-system/primitives';
 
 
@@ -68,7 +69,7 @@ export function CountCampaignDetailsPanel({ campaignId, onClose, chrome = 'defau
                 </div>
             ) : error || !campaign ? (
                 <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-                    <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <div className={`${PHONE_CARD_FACE} border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700`}>
                         {error ?? `Campaign ${campaignId} not found.`}
                     </div>
                 </div>

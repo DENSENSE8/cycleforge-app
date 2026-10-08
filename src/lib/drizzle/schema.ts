@@ -2171,6 +2171,8 @@ export const fbaFnskus = pgTable('fba_fnskus', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   /** FK to sku_catalog — central product hub */
   skuCatalogId: integer('sku_catalog_id'),
+  /** House grade a QC pairing binds this FNSKU to (with skuCatalogId); one FNSKU per (SKU, grade). */
+  pairedConditionGrade: conditionGradeEnum('paired_condition_grade'),
   /** Tenant owner (live column; nullable for legacy global rows). */
   organizationId: uuid('organization_id'),
 });

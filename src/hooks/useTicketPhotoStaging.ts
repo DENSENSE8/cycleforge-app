@@ -72,9 +72,17 @@ export function useTicketPhotoStaging(target: TicketPhotoTarget) {
     [link.entityType, link.linkRole, entityId],
   );
 
-  /** Link existing library photos to the target and stage them for the next reply. */
+  /**
+   * Stage existing library photos for the next reply. By default each is linked
+   * to the target now; `{ link: false }` only stages them — for a host that has
+   * not committed to a ticket yet (the send links them server-side).
+   */
   const addLibraryPhotos = useCallback(
-    (photos: { id: number; url: string; thumbUrl: string; caption?: string | null }[]) => {
+    (
+      photos: { id: number; url: string; thumbUrl: string; caption?: string | null }[],
+      opts: { link?: boolean } = {},
+    ) => {
+      const linkNow = opts.link ?? true;
       for (const photo of photos) {
         const tempId = `lib-${photo.id}`;
         setStaged((prev) => {
@@ -85,13 +93,14 @@ export function useTicketPhotoStaging(target: TicketPhotoTarget) {
               tempId,
               name: photo.caption?.trim() || `Photo ${photo.id}`,
               previewUrl: photo.thumbUrl,
-              status: 'uploading' as const,
+              status: linkNow ? ('uploading' as const) : ('done' as const),
               photoId: photo.id,
               url: photo.url,
               thumbUrl: photo.thumbUrl,
             },
           ];
         });
+        if (!linkNow) continue;
         void linkPhotoClient({
           photoId: photo.id,
           entityType: link.entityType,

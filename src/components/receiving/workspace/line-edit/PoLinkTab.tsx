@@ -14,7 +14,7 @@ import {
 } from './PairingLinkButton';
 import { toast } from '@/lib/toast';
 import { requestConfirm } from '@/design-system/components/confirm';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
@@ -335,7 +335,7 @@ export function PoLinkTab({
       {isInboundMerge ? (
         <p
           className={cn(
-            cornerClass('flush'),
+            PHONE_CARD_FACE,
             'border border-accent-border bg-surface-sunken inset-field text-role-eyebrow font-semibold text-accent-bg',
           )}
         >
@@ -359,7 +359,7 @@ export function PoLinkTab({
       {isError ? (
         <p
           className={cn(
-            cornerClass('flush'),
+            PHONE_CARD_FACE,
             'border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600',
           )}
         >
@@ -450,7 +450,7 @@ export function PoLinkTab({
           {!trimmed && candidates.length === 0 && orderCandidates.length === 0 ? (
             <p
               className={cn(
-                cornerClass('flush'),
+                PHONE_CARD_FACE,
                 'border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft',
               )}
             >

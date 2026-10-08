@@ -744,7 +744,7 @@ test('getSidebarRouteKey does not treat retired /o as a dedicated workspace', ()
 // `/search` is header find + browse/detail (no context rail) on `?sel=`.
 test('Home is rail-less — no context column for Today', () => {
   assert.equal(getSidebarRouteKey('/'), 'home');
-  // Pattern E (2026-08-12): saved views moved to Band 3 WorkbenchViewsMenu.
+  // Pattern E (2026-08-12): Home has no sidebar context panel.
   // Declaring the key without a panel would reserve 360px of empty chrome.
   assert.equal(hasSidebarContextPanel('/'), false);
 });

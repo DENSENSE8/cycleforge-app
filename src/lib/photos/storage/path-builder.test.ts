@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGcsObjectKey, buildGcsVideoObjectKey } from '../storage/path-builder';
+import { buildGcsObjectKey, buildGcsVideoObjectKey, displayObjectKey } from '../storage/path-builder';
 import { slugifyImageType } from '../image-types';
 
 test('buildGcsObjectKey nests receiving photos under org/receiving/YYYY/MM/PO-*', () => {
@@ -100,4 +100,14 @@ test('slugifyImageType lowercases, hyphenates, trims, and falls back', () => {
   assert.equal(slugifyImageType('Damage Close-ups'), 'damage-close-ups');
   assert.equal(slugifyImageType('  QC / Defects!! '), 'qc-defects');
   assert.equal(slugifyImageType('***'), 'type');
+});
+
+test('displayObjectKey sits next to the original and is always .jpg', () => {
+  assert.equal(
+    displayObjectKey('org-123/receiving/2026/06/PO-4421/99.jpg'),
+    'org-123/receiving/2026/06/PO-4421/99_display.jpg',
+  );
+  assert.equal(displayObjectKey('org-123/misc/2026/06/7.png'), 'org-123/misc/2026/06/7_display.jpg');
+  // A dot in a directory segment is not an extension.
+  assert.equal(displayObjectKey('org-123/PO-1.5/7'), 'org-123/PO-1.5/7_display.jpg');
 });

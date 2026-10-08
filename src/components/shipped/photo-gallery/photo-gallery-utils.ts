@@ -109,37 +109,50 @@ export type PhotoGalleryInput =
 
 export interface PhotoItem {
   id: number | null;
+  /** The original upload — downloads, open-in-new-tab, the info panel's dimensions. */
   url: string;
+  /** What the viewer stage paints — see {@link viewerDisplayUrl}. */
+  displayUrl: string;
   /** Lightweight thumbnail — used for grid tiles, the strip, and as an instant
-   *  placeholder under the full-res main image so the viewer never shows black. */
+   *  placeholder under the main image so the viewer never shows black. */
   thumbUrl?: string;
   /** The tile (thumb) preload — what the launcher strip paints on. */
   status: 'loading' | 'loaded' | 'error';
-  /** The full-res preload, run only while the viewer is open. */
+  /** The `displayUrl` preload, run only while the viewer is open. */
   full?: 'loaded' | 'error';
   index: number;
   /** Source context for the info panel (when the caller supplied it). */
   meta?: PhotoMeta;
-  /** Intrinsic pixel size, captured during preload — shown in the info panel. */
-  naturalWidth?: number;
-  naturalHeight?: number;
 }
 
-type ParsedPhoto = { id: number | null; url: string; thumbUrl?: string; meta?: PhotoMeta };
+/**
+ * The viewer's main image: an id'd photo's screen-sized derivative
+ * (`?variant=display`, ≤2560px) instead of the multi-MB original; anything
+ * else (legacy/NAS urls) paints its url as-is.
+ */
+export function viewerDisplayUrl(id: number | null, url: string): string {
+  return id != null && id > 0 ? photoContentUrl(id, 'display') : url;
+}
 
-/** Normalize the mixed input shapes into `{id, url, thumbUrl?, meta?}`, dropping blanks. */
+type ParsedPhoto = { id: number | null; url: string; displayUrl: string; thumbUrl?: string; meta?: PhotoMeta };
+
+/** Normalize the mixed input shapes into `{id, url, displayUrl, thumbUrl?, meta?}`, dropping blanks. */
 export function parsePhotos(photos: PhotoGalleryInput[]): ParsedPhoto[] {
   return photos
     .map((photo): ParsedPhoto | null => {
       if (typeof photo === 'string') {
         const trimmed = photo.trim();
-        return trimmed ? { id: null, url: normalizePhotoDisplayUrl(trimmed) } : null;
+        if (!trimmed) return null;
+        const url = normalizePhotoDisplayUrl(trimmed);
+        return { id: null, url, displayUrl: url };
       }
       if (!photo?.url?.trim()) return null;
       const idNum = typeof photo.id === 'number' && Number.isFinite(photo.id) ? photo.id : null;
+      const url = resolvePhotoDisplayUrl({ id: idNum, url: photo.url }, normalizePhotoDisplayUrl);
       return {
         id: idNum,
-        url: resolvePhotoDisplayUrl({ id: idNum, url: photo.url }, normalizePhotoDisplayUrl),
+        url,
+        displayUrl: viewerDisplayUrl(idNum, url),
         // An id'd photo always has a `?variant=thumb` (stored or synthesized) —
         // the strip must not pull the full-res bytes just to paint a tile.
         thumbUrl: photo.thumbUrl?.trim()
@@ -156,9 +169,4 @@ export function parsePhotos(photos: PhotoGalleryInput[]): ParsedPhoto[] {
 /** Stable fingerprint of a parsed list — used to skip no-op re-inits. */
 export function photosFingerprint(parsed: { id: number | null; url: string }[]): string {
   return parsed.map((p) => `${p.id ?? ''}|${p.url}`).join(' ');
-}
-
-/** Shared `layoutId` for the media-library grid tile ↔ fullscreen viewer hero morph — the SAME id on `PhotoThumb` (grid) and the viewer's… */
-export function photoHeroLayoutId(id: number | null | undefined): string | undefined {
-  return typeof id === 'number' && Number.isFinite(id) ? `photo-hero-${id}` : undefined;
 }

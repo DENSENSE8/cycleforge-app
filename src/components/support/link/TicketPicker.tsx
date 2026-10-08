@@ -5,6 +5,7 @@ import {
   DenseComposeLabel,
   DenseComposeSearchInput,
 } from '@/design-system/components/DenseComposeFields';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { ticketLinkResultsEyebrow } from '@/lib/support/ticket-link-query';
 import type { TicketCandidate, UseTicketSearch } from './useTicketSearch';
 
@@ -84,8 +85,10 @@ export function TicketPicker({
 
         <div className="max-h-[280px] overflow-y-auto">
           {searchError ? (
-            <div className="border-y border-dashed border-rose-200 bg-rose-50 px-3 py-8 text-center text-role-micro font-medium text-rose-600">
-              {searchError}
+            <div className="px-3 py-2">
+              <div className={`${PHONE_CARD_FACE} border border-dashed border-rose-200 bg-rose-50 px-3 py-8 text-center text-role-micro font-medium text-rose-600`}>
+                {searchError}
+              </div>
             </div>
           ) : ticketResults.length > 0 ? (
             <div className={searchLoading ? 'opacity-50' : ''}>

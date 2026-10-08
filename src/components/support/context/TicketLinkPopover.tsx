@@ -8,8 +8,19 @@
  * the one Link control in the right pane's footer. Shared by the station
  * composer, the Support Context customer card and the pickup record.
  * {@link TicketLinkPicker} is the compact inline body (repair record).
+ *
+ * The display itself — {@link TicketSplitDialog}, {@link TicketSplitSurface},
+ * {@link TicketCandidateRows} — is exported so the Media Library's "Update
+ * existing" ticket reads a ticket the same way before replying to it.
  */
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Link2, Search, X } from '@/components/Icons';
 import { Button, IconButton, Spinner } from '@/design-system/primitives';
@@ -37,7 +48,10 @@ import {
   type TicketIdentityMatch,
   type TicketLinkCandidate,
 } from '@/lib/support/ticket-link-query';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 
 export type { TicketLinkCandidate };
 export { parseTicketIdQuery, resolveTicketIdForLink };
@@ -201,28 +215,237 @@ export function TicketLinkPopover({
   matchLoading?: boolean;
 }) {
   return (
+    <TicketSplitDialog open={open} onClose={onClose}>
+      <TicketLinkSurface
+        linkable={linkable}
+        initialQuery={initialQuery}
+        title={title}
+        match={match}
+        matchLoading={matchLoading}
+        onClose={onClose}
+        onLinked={(ticketNumber) => {
+          onLinked?.(ticketNumber);
+          onClose();
+        }}
+      />
+    </TicketSplitDialog>
+  );
+}
+
+/** The full-screen two-pane shell on the canvas corner. Mounts its body only while open. */
+export function TicketSplitDialog({
+  open,
+  onClose,
+  children,
+  testId = 'ticket-link-dialog',
+}: {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+  testId?: string;
+}) {
+  return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent
         hideClose
-        className="flex h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none flex-col gap-0 overflow-hidden rounded-3xl border-0 p-0"
-        data-testid="ticket-link-dialog"
+        className={cn(
+          'flex h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none flex-col gap-0 overflow-hidden border-0 p-0',
+          cornerClass('canvas'),
+        )}
+        data-testid={testId}
       >
-        {open ? (
-          <TicketLinkSurface
-            linkable={linkable}
-            initialQuery={initialQuery}
-            title={title}
-            match={match}
-            matchLoading={matchLoading}
-            onClose={onClose}
-            onLinked={(ticketNumber) => {
-              onLinked?.(ticketNumber);
-              onClose();
-            }}
-          />
-        ) : null}
+        {open ? children : null}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Header · left control plane (find + ticket rows) · right pane — read a ticket
+ * before acting on it. The find field takes focus when the surface opens, and
+ * `F` (outside any field) puts the caret back in it.
+ */
+export function TicketSplitSurface({
+  heading,
+  description,
+  paired = false,
+  chrome = 'dialog',
+  onClose,
+  headerTrailing,
+  search,
+  list,
+  children,
+}: {
+  heading: ReactNode;
+  description: ReactNode;
+  /** The identity-match face (orange heading on a success band). */
+  paired?: boolean;
+  /** `dialog` inside {@link TicketSplitDialog}; `panel` inside a host overlay that names itself. */
+  chrome?: 'dialog' | 'panel';
+  onClose: () => void;
+  /** Controls between the description and Close — e.g. a ticket-mode switch. */
+  headerTrailing?: ReactNode;
+  search: {
+    value: string;
+    onChange: (value: string) => void;
+    onKeyDown?: ComponentProps<typeof FindField>['onKeyDown'];
+    /** Host-owned ref (to focus on open); the surface keeps its own otherwise. */
+    inputRef?: ComponentProps<typeof FindField>['inputRef'];
+  };
+  /** The left pane's body under the find field: states or {@link TicketCandidateRows}. */
+  list: ReactNode;
+  /** The right pane. */
+  children: ReactNode;
+}) {
+  const ownInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = search.inputRef ?? ownInputRef;
+
+  // The operator knows which ticket they want: the caret starts in Find.
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [inputRef]);
+
+  // `F` returns to Find from anywhere in the surface but a text field.
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'f' && event.key !== 'F') return;
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isEditableKeyTarget(event.target)) return;
+      event.preventDefault();
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inputRef]);
+
+  const titleClass = cn(paired && 'text-orange-600');
+  const descriptionClass = cn('min-w-0 truncate text-sm', paired && 'text-orange-600');
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <header
+        className={cn(
+          'flex min-w-0 items-center gap-3 border-b border-border-soft px-5 py-2.5',
+          paired && 'bg-surface-success',
+        )}
+        data-testid="ticket-link-header"
+        data-paired={paired || undefined}
+      >
+        {chrome === 'dialog' ? (
+          <>
+            <DialogTitle className={titleClass}>{heading}</DialogTitle>
+            <DialogDescription className={descriptionClass}>{description}</DialogDescription>
+          </>
+        ) : (
+          <>
+            <h2 className={cn('text-lg font-semibold leading-none tracking-tight text-text-default', titleClass)}>
+              {heading}
+            </h2>
+            <p className={cn('text-text-soft', descriptionClass)}>{description}</p>
+          </>
+        )}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {headerTrailing}
+          <IconButton
+            icon={<X />}
+            size="md"
+            radius="control"
+            ariaLabel="Close"
+            onClick={onClose}
+            data-testid="ticket-link-close"
+          />
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        <aside
+          className={cn(
+            'flex shrink-0 flex-col border-r border-border-soft',
+            chrome === 'panel' ? 'w-72' : 'w-96',
+          )}
+          aria-label="Tickets"
+          data-testid="ticket-link-list"
+        >
+          <div className="shrink-0 px-3 py-2.5">
+            <FindField
+              value={search.value}
+              onChange={search.onChange}
+              label="Find a ticket"
+              hints={SEARCH_HINTS}
+              inputRef={inputRef}
+              debounceMs={300}
+              size="bar"
+              onKeyDown={search.onKeyDown}
+              testId="ticket-link-search"
+            />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">{list}</div>
+        </aside>
+
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label="Selected ticket">
+          {children}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/** A row the split list can show — link candidates and helpdesk search hits alike. */
+export interface TicketCandidateRow {
+  id: number;
+  subject: string | null | undefined;
+  status: string;
+  /** Already linked to this anchor — painted, not pickable. */
+  linkedToThis?: boolean;
+}
+
+/** The left pane's ticket rows: soft-cornered, one selected at a time. */
+export function TicketCandidateRows({
+  rows,
+  selectedId,
+  onSelect,
+}: {
+  rows: readonly TicketCandidateRow[];
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+}) {
+  return (
+    <ul className="flex flex-col gap-0.5 p-1.5">
+      {rows.map((t) => {
+        const selected = selectedId === t.id;
+        return (
+          <li key={t.id}>
+            {/* ds-raw-button: full-width master-detail row around a composite TicketPickRow; Button's fixed control heights do not fit a two-line identity. */}
+            <button
+              type="button"
+              disabled={t.linkedToThis}
+              aria-current={selected || undefined}
+              onClick={() => onSelect(t.id)}
+              className={cn(
+                'ds-raw-button w-full px-3 py-2.5 text-left transition-colors',
+                cornerClass('field'),
+                focusRing('control', 'accent'),
+                selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
+                t.linkedToThis && 'opacity-50',
+              )}
+              data-testid="ticket-link-row"
+              data-ticket-id={t.id}
+            >
+              <TicketPickRow
+                ticketId={t.id}
+                subject={t.subject}
+                emptySubject="Untitled"
+                trailing={
+                  <span className="shrink-0 text-role-eyebrow text-text-faint">
+                    {t.linkedToThis ? 'linked' : t.status}
+                  </span>
+                }
+              />
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -257,10 +480,6 @@ function TicketLinkSurface({
     if (matchId != null) setSelectedId((current) => current ?? matchId);
   }, [matchId]);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
   const trimmed = query.trim();
   const candidates = useTicketLinkCandidates(linkable, trimmed, !matchLoading);
   const preview = useZendeskTicket(selectedId);
@@ -294,148 +513,78 @@ function TicketLinkSurface({
   };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header
-        className={cn(
-          'flex min-w-0 items-center gap-3 border-b border-border-soft px-5 py-2.5',
-          paired && 'bg-surface-success',
+    <TicketSplitSurface
+      heading={heading}
+      paired={paired}
+      description={
+        matchLoading
+          ? 'Checking this tracking and order…'
+          : paired
+            ? `Already on this ${match?.via === 'order' ? 'order' : 'tracking'} — read it, then pair.`
+            : 'Pick a ticket, read it, then link.'
+      }
+      onClose={onClose}
+      search={{ value: query, onChange: setQuery, onKeyDown: onSearchKey, inputRef }}
+      list={
+        <>
+          {matchLoading ? (
+            <p className="flex items-center gap-2 px-4 py-4 text-role-caption text-text-soft">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Checking tracking and order…
+            </p>
+          ) : candidates.isError ? (
+            <p className="px-4 py-4 text-role-caption text-text-danger">{candidates.error.message}</p>
+          ) : candidates.isLoading ? (
+            <p className="flex items-center gap-2 px-4 py-4 text-role-caption text-text-soft">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Loading tickets…
+            </p>
+          ) : listed.length === 0 ? (
+            <p className="px-4 py-4 text-role-caption text-text-faint">
+              {trimmed
+                ? parsedId != null
+                  ? `Press Enter to open #${parsedId}`
+                  : 'No tickets found — try pasting #ticket id'
+                : hiddenLinked > 0
+                  ? `${hiddenLinked} recent ticket(s) already linked elsewhere — search by #`
+                  : 'Recent tickets appear here — or paste #ticket id'}
+            </p>
+          ) : (
+            <TicketCandidateRows rows={listed} selectedId={selectedId} onSelect={setSelectedId} />
+          )}
+          {/* A search whose only match is anchored to ANOTHER item would otherwise read as "no tickets found". */}
+          {hiddenLinked > 0 && listed.length > 0 ? (
+            <p className="px-4 py-2.5 text-role-micro text-text-faint">
+              {hiddenLinked} more match{hiddenLinked === 1 ? '' : 'es'} already linked to another item
+            </p>
+          ) : null}
+        </>
+      }
+    >
+      <div data-conversation-port className="min-h-0 flex-1 overflow-y-auto" data-testid="ticket-link-preview">
+        {selectedId == null ? (
+          <p className="flex h-full items-center justify-center text-role-body text-text-faint">
+            Select a ticket to read it.
+          </p>
+        ) : (
+          <TicketLinkPreview ticketId={selectedId} preview={preview} />
         )}
-        data-testid="ticket-link-header"
-        data-paired={paired || undefined}
-      >
-        <DialogTitle className={cn(paired && 'text-orange-600')}>{heading}</DialogTitle>
-        <DialogDescription className={cn('min-w-0 truncate text-sm', paired && 'text-orange-600')}>
-          {matchLoading
-            ? 'Checking this tracking and order…'
-            : paired
-              ? `Already on this ${match?.via === 'order' ? 'order' : 'tracking'} — read it, then pair.`
-              : 'Pick a ticket, read it, then link.'}
-        </DialogDescription>
-        <IconButton
-          icon={<X />}
-          size="md"
-          radius="control"
-          ariaLabel="Close"
-          onClick={onClose}
-          className="ml-auto shrink-0"
-          data-testid="ticket-link-close"
-        />
-      </header>
-
-      <div className="flex min-h-0 flex-1">
-        <aside
-          className="flex w-96 shrink-0 flex-col border-r border-border-soft"
-          aria-label="Tickets"
-          data-testid="ticket-link-list"
-        >
-          <div className="shrink-0 px-3 py-2.5">
-            <FindField
-              value={query}
-              onChange={setQuery}
-              label="Find a ticket"
-              hints={SEARCH_HINTS}
-              inputRef={inputRef}
-              debounceMs={300}
-              size="bar"
-              onKeyDown={onSearchKey}
-              testId="ticket-link-search"
-            />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {matchLoading ? (
-              <p className="flex items-center gap-2 px-4 py-4 text-role-caption text-text-soft">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Checking tracking and order…
-              </p>
-            ) : candidates.isError ? (
-              <p className="px-4 py-4 text-role-caption text-text-danger">{candidates.error.message}</p>
-            ) : candidates.isLoading ? (
-              <p className="flex items-center gap-2 px-4 py-4 text-role-caption text-text-soft">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Loading tickets…
-              </p>
-            ) : listed.length === 0 ? (
-              <p className="px-4 py-4 text-role-caption text-text-faint">
-                {trimmed
-                  ? parsedId != null
-                    ? `Press Enter to open #${parsedId}`
-                    : 'No tickets found — try pasting #ticket id'
-                  : hiddenLinked > 0
-                    ? `${hiddenLinked} recent ticket(s) already linked elsewhere — search by #`
-                    : 'Recent tickets appear here — or paste #ticket id'}
-              </p>
-            ) : (
-              <ul>
-                {listed.map((t) => {
-                  const selected = selectedId === t.id;
-                  return (
-                    <li key={t.id}>
-                      {/* ds-raw-button: full-width master-detail row around a composite TicketPickRow; Button's fixed control heights do not fit a two-line identity. */}
-                      <button
-                        type="button"
-                        disabled={t.linkedToThis}
-                        aria-current={selected || undefined}
-                        onClick={() => setSelectedId(t.id)}
-                        className={cn(
-                          'ds-raw-button w-full border-b border-border-hairline px-4 py-2.5 text-left',
-                          selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
-                          t.linkedToThis && 'opacity-50',
-                        )}
-                        data-testid="ticket-link-row"
-                        data-ticket-id={t.id}
-                      >
-                        <TicketPickRow
-                          ticketId={t.id}
-                          subject={t.subject}
-                          emptySubject="Untitled"
-                          trailing={
-                            <span className="shrink-0 text-role-eyebrow text-text-faint">
-                              {t.linkedToThis ? 'linked' : t.status}
-                            </span>
-                          }
-                        />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {/* A search whose only match is anchored to ANOTHER item would otherwise read as "no tickets found". */}
-            {hiddenLinked > 0 && listed.length > 0 ? (
-              <p className="px-4 py-2.5 text-role-micro text-text-faint">
-                {hiddenLinked} more match{hiddenLinked === 1 ? '' : 'es'} already linked to another item
-              </p>
-            ) : null}
-          </div>
-        </aside>
-
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label="Selected ticket">
-          <div data-conversation-port className="min-h-0 flex-1 overflow-y-auto" data-testid="ticket-link-preview">
-            {selectedId == null ? (
-              <p className="flex h-full items-center justify-center text-role-body text-text-faint">
-                Select a ticket to read it.
-              </p>
-            ) : (
-              <TicketLinkPreview ticketId={selectedId} preview={preview} />
-            )}
-          </div>
-          <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-border-soft px-5 py-2.5">
-            <Button
-              variant="primary"
-              icon={<Link2 />}
-              loading={link.isPending}
-              disabled={!canLink}
-              onClick={() => {
-                if (canLink && selectedId != null) link.mutate(selectedId);
-              }}
-              data-testid="ticket-link-submit"
-            >
-              {paired ? 'Pair' : 'Link ticket'}
-            </Button>
-          </footer>
-        </section>
       </div>
-    </div>
+      <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-border-soft px-5 py-2.5">
+        <Button
+          variant="primary"
+          icon={<Link2 />}
+          loading={link.isPending}
+          disabled={!canLink}
+          onClick={() => {
+            if (canLink && selectedId != null) link.mutate(selectedId);
+          }}
+          data-testid="ticket-link-submit"
+        >
+          {paired ? 'Pair' : 'Link ticket'}
+        </Button>
+      </footer>
+    </TicketSplitSurface>
   );
 }
 

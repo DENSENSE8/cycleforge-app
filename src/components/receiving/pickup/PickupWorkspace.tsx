@@ -285,7 +285,6 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
         cut={cut}
         record={{
           title: slot?.title ?? 'Local pickup',
-          actions: slot?.actions,
           noun: VIEW.noun.one,
           testId: 'pickup-history-record',
           summary: <RecordLedgerSummaryPane summary={summary} />,

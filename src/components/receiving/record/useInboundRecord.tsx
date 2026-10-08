@@ -2,7 +2,7 @@
 
 /**
  * The inbound record's reads — an incoming delivery or a carton — as a
- * `RecordModel` + header verbs for the shared `useRecordSlot`.
+ * `RecordModel` + verbs (its Actions panel) for the shared `useRecordSlot`.
  */
 
 import { useQuery } from '@tanstack/react-query';

@@ -10,10 +10,12 @@
  *           shipped-in ticket; the SLA top-right) → Device (the reported
  *           issue, the serial, the price) → Status history → Staff notes.
  *   right — Photos → alerts → the product exactly as the inbound item →
- *           Customer → Ticket (channel, tracking, carton, Zendesk #).
+ *           Customer → Ticket (channel, tracking, carton, Zendesk #) → Actions.
  *
- * Verbs live in the record header (`RecordActionStrip face="header"`, built in
- * `repair-record-verbs.tsx`); a panel verb swaps this body for its panel.
+ * Verbs live in the Actions panel right under Customer · Ticket
+ * (`RecordActionStrip face="panel"`, built in `repair-record-verbs.tsx`;
+ * operator 2026-10-08), never the header; a panel verb swaps the main body
+ * for its panel and the Actions panel stays beside it.
  */
 
 import { useCallback, type ReactNode } from 'react';
@@ -31,6 +33,7 @@ import {
   SerialEditor,
 } from './repair-record-parts';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
+import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { RecordFulfillmentSources } from '@/design-system/components/record-ledger/RecordFulfillmentSources';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { RecordItem } from '@/design-system/components/record-ledger/RecordItem';
@@ -66,10 +69,13 @@ export function RepairRecordTitle({ title }: { title: RepairRecordModel['title']
 export function RepairServiceRecordView({
   model,
   panel,
+  actions,
   onUpdate,
 }: {
   model: RepairRecordModel;
   panel: RepairRecordPanel | null;
+  /** The ticket's verbs — painted in the Actions panel under Customer · Ticket, never the header (operator 2026-10-08). */
+  actions: { verbs: readonly RecordActionVerb[]; label: string };
   /** Refetch the record after a write. */
   onUpdate: () => void;
 }) {
@@ -85,6 +91,13 @@ export function RepairServiceRecordView({
     },
     [model.id, onUpdate],
   );
+  // The panel stays beside a verb's open panel too, so the ticket's keys keep firing.
+  const actionsPanel =
+    actions.verbs.length > 0 ? (
+      <RecordGroup title="Actions" testId="repair-record-actions-panel">
+        <RecordActionStrip face="panel" verbs={actions.verbs} label={actions.label} testId="repair-record-actions" />
+      </RecordGroup>
+    ) : null;
 
   if (panel) {
     return (
@@ -103,6 +116,7 @@ export function RepairServiceRecordView({
               <div className="px-4 pb-4 pt-1">{panel.body}</div>
             </RecordGroup>
           }
+          aside={actionsPanel}
         />
       </div>
     );
@@ -219,6 +233,7 @@ export function RepairServiceRecordView({
       <RepairRecordPhotos key={`photos:${model.key}`} repairId={model.id} />
       <RepairRecordAlerts model={model} />
       <RepairRecordFlow model={model} />
+      {actionsPanel}
     </div>
   );
 

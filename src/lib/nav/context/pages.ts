@@ -110,9 +110,6 @@ import {
   SOURCING_SUPPLIER_TYPE_OPTIONS,
   SOURCING_WATCH_STATUS_OPTIONS,
 } from '@/components/sourcing/sourcing-shared';
-import {
-  REPLENISH_STATUS_OPTIONS,
-} from '@/lib/inventory/inventory-nav-choices';
 import { SHEET_SAVED_VIEW_CONFIG } from '@/lib/saved-views/surfaces';
 import { JOURNEY_FILTER_KEYS, OPERATIONS_SAVED_VIEWS_KEY } from '@/lib/operations/saved-view-presets';
 import { DEFAULT_REPAIR_SORT, REPAIR_SORT_OPTIONS, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
@@ -147,6 +144,7 @@ import {
 } from '@/lib/support/list/support-list';
 import { RECEIVING_PHOTO_STAGES } from '@/lib/receiving/photo-intent';
 import { photoStageLabel } from '@/lib/photos/stages';
+import { MEDIA_SAVED_VIEWS_KEY, PHOTO_LIBRARY_SAVED_VIEW_PARAM_KEYS } from '@/lib/photos/library-filter-state';
 
 /**
  * The import record (`/operations/imports`, `src/lib/imports/params.ts`) —
@@ -723,8 +721,17 @@ const ORDERS_CONTROLS = {
  * Media Library selection (operator law 2026-10-04): the body's Filters menu
  * (`PhotoLibraryFilterDropdown`, retired) lives here. Every param is one
  * `parsePhotoLibraryFilters` already reads (`src/lib/photos/library-filter-state.ts`).
+ * Sort paints first (operator 2026-10-08: "sorting on the left contextual side right at the top").
  */
 const MEDIA_LIBRARY_CONTROLS = {
+  sort: {
+    param: 'sort',
+    defaultValue: 'recent',
+    options: [
+      { value: 'recent', label: 'Newest first' },
+      { value: 'oldest', label: 'Oldest first' },
+    ],
+  },
   staff: [{ id: 'taken-by', param: 'staffId', label: 'Taken by' }],
   dateRanges: [
     { id: 'taken', label: 'Taken', fromParam: 'dateFrom', toParam: 'dateTo', clearParams: [], placeholder: 'All dates' },
@@ -970,28 +977,13 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       qc: { search: { placeholder: 'Filter products…', source: 'url-param', param: 'q' } },
     },
   },
+  // One list — all stock. Health and the Room › Aisle › Bay › Level ›
+  // Position drill are the `stock.all` facets.
   stock: {
-    viewKeys: true,
     items: {
       all: {
         search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
         controls: { sort: STOCK_LIST_SORT },
-      },
-      'low-stock': {
-        search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
-        controls: { sort: STOCK_LIST_SORT },
-      },
-      'out-of-stock': {
-        search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
-        controls: { sort: STOCK_LIST_SORT },
-      },
-      replenish: {
-        search: { placeholder: 'Filter SKU…', source: 'url-param', param: 'rsku' },
-        controls: {
-          choices: [
-            { id: 'rstatus', label: 'Status', param: 'rstatus', options: [...REPLENISH_STATUS_OPTIONS], clearParams: [] },
-          ],
-        },
       },
     },
   },
@@ -1062,6 +1054,9 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   'ops-photos': {
     viewKeys: true,
+    // Server-backed views (`/api/photos/saved-views`), one-click blocks at the
+    // top of the sidebar body (operator 2026-10-08), not header tabs.
+    savedViews: { storageKey: MEDIA_SAVED_VIEWS_KEY, paramKeys: PHOTO_LIBRARY_SAVED_VIEW_PARAM_KEYS },
     search: {
       placeholder: 'Find order, tracking, serial, SKU, ticket or text…',
       source: 'url-param',

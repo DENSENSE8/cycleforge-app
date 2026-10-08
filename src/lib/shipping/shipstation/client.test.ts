@@ -52,6 +52,8 @@ test('getRates: maps fields, sorts cheapest-first, drops errored rates, keeps in
     assert.equal(result.rates[0].amount, 7.53);
     assert.equal(result.rates[0].currency, 'USD', 'currency upper-cased');
     assert.equal(result.rates[0].otherAmount, 1.5, 'insurance summed into otherAmount');
+    assert.equal(result.rates[0].insuranceAmount, 1.5, 'insurance reported on its own too');
+    assert.equal(result.rates[1].insuranceAmount, null, 'no insurance_amount → null');
     assert.equal(result.rates[0].deliveryDays, 2);
     assert.equal(result.rates[1].rateId, 'r-ups');
     assert.equal(result.invalidRates.length, 1);
@@ -59,6 +61,29 @@ test('getRates: maps fields, sorts cheapest-first, drops errored rates, keeps in
     assert.equal(result.rateRequestId, 'rr-1');
   } finally {
     restore();
+  }
+});
+
+test('getRates: a declared value asks for carrier insurance; absent leaves the request untouched', async () => {
+  const orig = globalThis.fetch;
+  const bodies: Array<{ shipment: Record<string, unknown> }> = [];
+  globalThis.fetch = (async (_url: string | URL, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body ?? '{}')));
+    return new Response(JSON.stringify({ rate_response: { rates: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
+  }) as typeof fetch;
+  try {
+    const client = createShipStationV2Client('TEST-KEY');
+    const base = { shipTo: addr(), shipFrom: addr(), parcels: [{ weight: { value: 16, unit: 'ounce' as const } }], carrierIds: ['se-1'] };
+    await client.getRates({ ...base, insuredValue: { amount: 249.99, currency: 'USD' } });
+    await client.getRates(base);
+    assert.equal(bodies[0].shipment.insurance_provider, 'carrier');
+    assert.deepEqual(bodies[0].shipment.packages, [
+      { weight: { value: 16, unit: 'ounce' }, insured_value: { currency: 'usd', amount: 249.99 } },
+    ]);
+    assert.equal('insurance_provider' in bodies[1].shipment, false);
+    assert.deepEqual(bodies[1].shipment.packages, [{ weight: { value: 16, unit: 'ounce' } }]);
+  } finally {
+    globalThis.fetch = orig;
   }
 });
 

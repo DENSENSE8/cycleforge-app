@@ -76,7 +76,7 @@ export function PhotoLabelEditor({
     });
   };
 
-  /** Inline create — the same DS input path `MediaSavedViewsSection` and the Band-1 media-type cube use. */
+  /** Inline create — the same DS input path the Band-1 media-type cube uses. */
   const addLabel = async () => {
     const name = newLabel.trim();
     if (!name || creatingLabel) return;
@@ -169,8 +169,8 @@ export function PhotoLabelEditor({
                       checked
                         ? 'ring-2 ring-offset-1 ring-blue-500'
                         : indeterminate
-                          ? 'opacity-60 ring-1 ring-dashed ring-border-emphasis'
-                          : 'opacity-50 hover:opacity-90',
+                          ? 'ring-1 ring-dashed ring-border-emphasis'
+                          : 'hover:brightness-95',
                     )}
                   >
                     {checked ? <Check className="h-3 w-3" /> : <Tag className="h-3 w-3" />}

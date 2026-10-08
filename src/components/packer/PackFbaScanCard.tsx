@@ -6,16 +6,18 @@ import { Package } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { getLast8 } from '@/components/ui/CopyChip';
 import type { PackActiveFbaPane } from '@/components/packer/usePackerOrderPane';
+import { PHONE_CARD_COLUMN } from '@/design-system/tokens/phone-card';
+import { cornerClass } from '@/design-system/tokens/radius';
 
 export function PackFbaScanCard({ scan }: { scan: PackActiveFbaPane }) {
   return (
-    <div className="rounded-none border border-purple-200 bg-surface-card">
+    <div className={`overflow-hidden border border-purple-200 bg-surface-card ${PHONE_CARD_COLUMN} ${cornerClass('canvas')}`}>
       <div className="flex items-center justify-between gap-3 border-b border-purple-100 px-3 py-2.5">
         <div className="flex items-center gap-2">
           <Package className="h-3.5 w-3.5 shrink-0 text-purple-500" />
           <p className="text-role-micro text-purple-500">Amazon Prep Scan</p>
           {scan.isNew ? (
-            <span className="rounded-none border border-blue-200 bg-blue-100 px-1.5 py-0.5 text-role-eyebrow text-blue-700">
+            <span className={`${cornerClass('pill')} border border-blue-200 bg-blue-100 px-1.5 py-0.5 text-role-eyebrow text-blue-700`}>
               Added to Today
             </span>
           ) : null}

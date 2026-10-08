@@ -36,6 +36,8 @@ import { useWorkspaceTicketDraft } from '../workspace/line-edit/hooks/useWorkspa
 import { StationTicketPane } from '@/components/composer';
 import { StationPhotosTask } from '@/components/station/StationPhotosTask';
 import { useStationTaskController } from '@/components/station/useStationTaskController';
+import { useStationHasPhotos } from '@/components/station/useStationHasPhotos';
+import { SCAN_STATION_TONES } from '@/lib/sidebar-navigation';
 import { PackageCheck } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
@@ -71,6 +73,7 @@ export function TriagePanel({
   const [savingTriage, setSavingTriage] = useState(false);
   const [triageSaved, setTriageSaved] = useState(false);
 
+  const hasPhotos = useStationHasPhotos(row.receiving_id, row.photo_count);
   const {
     activeTask,
     activeDisplay: activeSideTab,
@@ -84,7 +87,12 @@ export function TriagePanel({
     owner: 'arrival',
     workLabel: 'Arrival',
     workIcon: PackageCheck,
+    workTone: SCAN_STATION_TONES.triage,
     scopeKey: row.receiving_id ?? row.id,
+    context: {
+      hasPhotos,
+      hasTicket: Boolean(String(row.zendesk_ticket ?? '').trim()),
+    },
   });
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;

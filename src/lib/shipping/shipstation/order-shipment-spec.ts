@@ -42,6 +42,8 @@ interface OrderShipmentSpecInput {
   dimensions?: Parcel['dimensions'];
   carrierIds?: string[];
   purpose?: LabelPurpose;
+  /** Declared value to insure with the carrier; null/absent = no insurance. */
+  insuredValue?: ShipmentSpec['insuredValue'];
 }
 
 interface OrderShipmentSpec {
@@ -117,6 +119,7 @@ export async function buildOrderShipmentSpec(
       shipFrom: isReturn ? shipTo : warehouse,
       parcels: [parcel],
       carrierIds: input.carrierIds && input.carrierIds.length ? input.carrierIds : undefined,
+      ...(input.insuredValue ? { insuredValue: input.insuredValue } : {}),
     },
     buyerAddress: shipTo,
     parcel,

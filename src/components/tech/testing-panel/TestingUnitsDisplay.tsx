@@ -4,7 +4,7 @@
  * Testing Units display — the right-edge push column ({@link StationDisplaysPushStack}):
  * the line's unit strip, then the selected unit as the shared QC unit record
  * (`useQcUnitRecord` → `useRecordSlot(…, 'qc-record')` → `RecordView`) —
- * verdict verbs (P / T / F) in its header, the bench (session, readings, next
+ * verdict verbs (P / T / F) in its Actions panel, the bench (session, readings, next
  * steps) under the unit.
  */
 
@@ -105,9 +105,8 @@ export function TestingUnitsDisplay({
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-mode-rule" data-testid="testing-unit-record">
           {slot ? (
             <>
-              <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 border-b border-mode-rule px-3 py-2 font-mono text-role-caption font-semibold text-mode-ink">
+              <div className="flex min-w-0 shrink-0 items-center border-b border-mode-rule px-3 py-2 font-mono text-role-caption font-semibold text-mode-ink">
                 <span className="min-w-0 overflow-x-auto">{slot.title}</span>
-                <span className="ml-auto min-w-0">{slot.actions}</span>
               </div>
               {slot.view}
             </>

@@ -28,12 +28,11 @@ export function UnboxLabelPreview({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- controller return is a large bag
   c: any;
   /**
-   * Open the Label band. Fired when notes first arrive or the dock asks to
-   * edit the sticker — the band is the only disclose, so this is how those
-   * signals reach it.
+   * Ask the station label peek to show. Fired when notes first arrive or the
+   * dock asks to edit the sticker.
    */
   onReveal?: () => void;
-  /** `procedure` fills the QC Label band; `peek` is the Unbox label bubble (small face, hover grows it). */
+  /** `procedure` fills the station label peek; `peek` is the small face whose hover grows it. */
   chrome?: 'procedure' | 'peek';
 }) {
   const [cartonEditorOpen, setCartonEditorOpen] = useState(false);
@@ -115,7 +114,14 @@ export function UnboxLabelPreview({
     setUnitEditorOpen(kind === 'unit');
   }, [labelEditorRequestId, c.activeLabelKind, onReveal]);
 
-  if (options.length === 0) return null;
+  // Nothing to draw: the peek still opens and says why — never an empty box.
+  if (options.length === 0) {
+    return (
+      <p className="px-1 pb-1 text-role-caption text-text-muted" data-testid="unbox-label-preview-empty">
+        No label to draw yet: this line has no carton, PO or SKU.
+      </p>
+    );
+  }
 
   const active = (c.activeLabelKind ?? 'carton') as WorkspaceLabelKind;
   const showCarton = active === 'carton';

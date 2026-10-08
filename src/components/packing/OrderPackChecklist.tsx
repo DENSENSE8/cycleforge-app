@@ -12,6 +12,7 @@ import {
 } from '@/design-system/components/DocumentSlideOver';
 import { PackChecklistLineRow } from './PackChecklistLineRow';
 import { kitPartDocumentContentPath } from '@/lib/blob/vercel-blob-url';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 interface OrderPackChecklistProps {
   lines: PackChecklistLineDto[];
@@ -256,31 +257,33 @@ export function OrderPackChecklist({
         </ul>
 
         {readiness.requiredTotal > 0 ? (
-          <div
-            className={`flex items-center gap-1.5 border-t px-3 py-2 text-role-eyebrow font-semibold ${
-              readiness.allRequiredIn
-                ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-                : readiness.blocked
-                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                  : 'border-amber-100 bg-amber-50 text-amber-700'
-            }`}
-          >
-            {readiness.allRequiredIn ? (
-              <>
-                <Check className="h-3.5 w-3.5 shrink-0" />
-                All required items in the box
-              </>
-            ) : readiness.blocked ? (
-              <>
-                <Info className="h-3.5 w-3.5 shrink-0" />
-                {readiness.missingRequiredIds.length} required to include
-              </>
-            ) : (
-              <>
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {readiness.missingRequiredIds.length} required not confirmed
-              </>
-            )}
+          <div className="px-3 pb-3 pt-2">
+            <div
+              className={`flex items-center gap-1.5 border px-3 py-2 text-role-eyebrow font-semibold ${PHONE_CARD_FACE} ${
+                readiness.allRequiredIn
+                  ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                  : readiness.blocked
+                    ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                    : 'border-amber-100 bg-amber-50 text-amber-700'
+              }`}
+            >
+              {readiness.allRequiredIn ? (
+                <>
+                  <Check className="h-3.5 w-3.5 shrink-0" />
+                  All required items in the box
+                </>
+              ) : readiness.blocked ? (
+                <>
+                  <Info className="h-3.5 w-3.5 shrink-0" />
+                  {readiness.missingRequiredIds.length} required to include
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {readiness.missingRequiredIds.length} required not confirmed
+                </>
+              )}
+            </div>
           </div>
         ) : null}
       </div>

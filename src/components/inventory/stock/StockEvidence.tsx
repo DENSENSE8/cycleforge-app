@@ -10,7 +10,8 @@
  * the SKU sits in, each countable, plus Add location (`StockLocationsGroup`).
  * A placeholder (`TMP-`) swaps main for its own work column (this item card
  * first) and leads the aside with its own facts
- * (`placeholder`). Aside = [placeholder facts →] Send to staff → Movement.
+ * (`placeholder`). Aside = [placeholder facts →] Send to staff → Movement →
+ * Actions (the record's verbs, operator 2026-10-08).
  */
 
 import { useSyncExternalStore, type ReactNode } from 'react';
@@ -65,16 +66,19 @@ function LocalStamp({ iso, fallback }: { iso: string | null; fallback: string })
 export function StockEvidence({
   record,
   onCounted,
+  actions,
   placeholder,
 }: {
   /** The open pair (live row), or null when the link names a pair no longer listed. */
   record: LocationStockTableRow | null;
   /** A count landed — re-read the loader. */
   onCounted: () => void;
+  /** The record's Actions panel — painted right under Movement. */
+  actions: ReactNode;
   /** A `TMP-` placeholder's own record parts. */
   placeholder?: PlaceholderParts;
 }) {
-  if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} placeholder={placeholder} />;
+  if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} actions={actions} placeholder={placeholder} />;
   return (
     <DeskRecordLayout
       main={
@@ -89,10 +93,12 @@ export function StockEvidence({
 function StockRecordEvidence({
   record,
   onCounted,
+  actions,
   placeholder,
 }: {
   record: LocationStockTableRow;
   onCounted: () => void;
+  actions: ReactNode;
   placeholder?: PlaceholderParts;
 }) {
   // Empty and populated records share this exact item layout. Only the empty
@@ -100,7 +106,7 @@ function StockRecordEvidence({
   const itemBody = <StockItemCard record={record} skuContent={placeholder?.skuContent} onChanged={onCounted} />;
 
   const itemRow = (
-    <RecordGroup title="Item" titleHidden>
+    <RecordGroup title="Item" titleHidden className="relative">
       {itemBody}
     </RecordGroup>
   );
@@ -120,7 +126,7 @@ function StockRecordEvidence({
 
   const aside = (
     <div className="flex min-w-0 flex-col gap-4">
-      {placeholder ? placeholder.aside : record.sku ? <StockPhotosGroup sku={record.sku} stockId={record.stock_id} /> : null}
+      {placeholder ? placeholder.aside : record.sku ? <StockPhotosGroup sku={record.sku} stockId={record.stock_id} linked={record.cover_photo_url != null} /> : null}
       <RecordGroup title="Movement" testId="stock-record-location">
         <div className={FACTS_BODY_CLASS}>
           <EvidenceFactRow label="Last moved"><LocalStamp iso={record.last_moved} fallback="—" /></EvidenceFactRow>
@@ -129,6 +135,7 @@ function StockRecordEvidence({
           ) : null}
         </div>
       </RecordGroup>
+      {actions}
     </div>
   );
 

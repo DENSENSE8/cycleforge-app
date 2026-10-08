@@ -6,8 +6,8 @@ import { inferMarketplaceFromOrderId, resolveMarketplacePlatformMeta } from '@/l
 import { sourcePlatformMeta, type SourcePlatformMeta } from '@/lib/source-platform';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 
-/** `platforms.short_label` / `platform_accounts.short_label` CHECK bound. */
-export const PLATFORM_SHORT_LABEL_MAX = 8;
+/** `short_label` CHECK bound on `platforms`, `platform_accounts` and `types` — the 2x1 slot. */
+export const SHORT_LABEL_MAX = 8;
 
 /**
  * Built-in dense faces — what the 2x1 label hard-coded before orgs could set
@@ -153,16 +153,22 @@ export function buildOrderChannelResolver(
   };
 }
 
-/** `lookup(platformText)` → the org's dense face for a platform named by slug OR display label (the carton label draft holds the label),… */
-export function buildPlatformShortLabelLookup(
-  platforms: readonly Pick<PlatformRow, 'slug' | 'label' | 'short_label'>[],
+/**
+ * `lookup(text)` → the org's label face (`short_label`) for a catalog row
+ * named by slug OR display label, else null. One builder for platforms and
+ * receiving types: the carton label draft holds the platform's display label
+ * and the type's upper-case slug, so both keys are indexed case-insensitively.
+ * A display label that collides with another row's slug never shadows it.
+ */
+export function buildShortLabelLookup(
+  rows: readonly { slug: string; label: string; short_label?: string | null }[],
 ): (value: string | null | undefined) => string | null {
   const byKey = new Map<string, string>();
-  for (const p of platforms) {
-    const short = p.short_label?.trim();
+  for (const r of rows) {
+    const short = r.short_label?.trim();
     if (!short) continue;
-    byKey.set(lower(p.slug), short);
-    if (!byKey.has(lower(p.label))) byKey.set(lower(p.label), short);
+    byKey.set(lower(r.slug), short);
+    if (!byKey.has(lower(r.label))) byKey.set(lower(r.label), short);
   }
   return (value) => {
     const key = lower(String(value ?? ''));

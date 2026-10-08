@@ -125,7 +125,7 @@ export function UnboxedReceiptsLedger({
     onOpen: open,
     onClose: close,
   });
-  // The open carton's read — shared by the record view and its header verbs.
+  // The open carton's read — shared by the record view and its Actions panel verbs.
   const carton = useInboundCartonRecord(openRow, close);
   const slot = useRecordSlot(carton?.model ?? null, carton?.verbs ?? [], openRow ? `${cartonRecordTitle(openRow)} actions` : 'Receipt actions', 'inbound-record');
 
@@ -168,7 +168,6 @@ export function UnboxedReceiptsLedger({
           allClear={<TriageAllClear title={emptyMessage} detail="Nothing unboxed yet." />}
           record={{
             title: slot?.title ?? (openRow ? cartonRecordTitle(openRow) : 'Receipt'),
-            actions: slot?.actions,
             noun: VIEW.noun.one,
             showIndex: false,
             testId: 'unboxed-receipts-ledger-record',

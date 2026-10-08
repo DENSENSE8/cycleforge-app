@@ -122,6 +122,20 @@ export function NavSwitcherMenu({
   };
 
   const CurrentIcon = current.icon;
+  // One view is no choice: the block names where you are, with no menu or chevron to open.
+  if (rows.length === 0) {
+    return (
+      <div data-nav-switcher="view" className={cn(NAV_BLOCK_CLASS, 'h-8 cursor-default text-role-body font-medium ring-1 ring-border-hairline')}>
+        {CurrentIcon ? (
+          <span aria-hidden className="flex shrink-0">
+            <CurrentIcon className={navIconStrokeClass(cn('size-4', current.iconTone ?? 'text-text-default'))} />
+          </span>
+        ) : null}
+        <span className="min-w-0 flex-1 truncate">{current.label}</span>
+        {current.trailing}
+      </div>
+    );
+  }
   return (
     // Owns ↑/↓ while focus is inside, so the desk's record cursor stands down.
     <div

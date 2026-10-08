@@ -2,12 +2,13 @@
 
 /**
  * The Scan Station next-step bubble's content (operator 2026-10-07): the step
- * top-left, underlined in the accent, the location code bottom-left (the
- * rack / shelf linked to this Type, else "No location linked"), the arrow
- * bottom-right. No motion, no subtitle. The bubble itself (surface, radius,
- * shadow) is the {@link StationContextBar} headline row's — one primitive for
- * all three bubbles. `hoverAction` shows only while the bubble (`group/bubble`)
- * is hovered or holds focus.
+ * top-left (no underline — operator 2026-10-08), the location code bottom-left
+ * (the rack / shelf linked to this Type, else "No location linked"). No arrow
+ * (operator 2026-10-08); the bottom-right holds the host's `trailing` facts
+ * (Unbox: what to check on a return). No motion, no subtitle. The bubble
+ * itself (surface, radius, shadow) is the {@link StationContextBar} bubble
+ * row's. `hoverAction` shows only while the bubble (`group/bubble`) is
+ * hovered or holds focus.
  */
 
 import type { ReactNode } from 'react';
@@ -25,10 +26,13 @@ const HEADLINE_TONE: Record<StationNextActionTone, string> = {
 export function StationNextActionHeadline({
   action,
   hoverAction,
+  trailing,
 }: {
   action: StationNextAction;
   /** Revealed on hover / focus of the bubble (Unbox: link the rack for this Type). */
   hoverAction?: ReactNode;
+  /** Bottom-right, on the destination's row — one line, so the bubble keeps its height. */
+  trailing?: ReactNode;
 }) {
   useClaimStationHeadline();
   const code = action.destination?.code ?? null;
@@ -42,7 +46,7 @@ export function StationNextActionHeadline({
     >
       <p
         className={cn(
-          'text-role-display font-semibold leading-snug underline decoration-text-accent decoration-4 underline-offset-8',
+          'text-role-display font-semibold leading-snug',
           HEADLINE_TONE[action.tone],
         )}
       >
@@ -56,9 +60,7 @@ export function StationNextActionHeadline({
             <span className="text-role-caption text-text-muted">No location linked</span>
           )}
         </div>
-        <span aria-hidden className="shrink-0 font-mono text-role-display leading-none text-text-muted">
-          →
-        </span>
+        {trailing ? <div className="min-w-0 text-right">{trailing}</div> : null}
       </div>
       {hoverAction ? (
         <div className="pointer-events-none absolute right-0 top-0 opacity-0 transition-opacity duration-150 group-hover/bubble:pointer-events-auto group-hover/bubble:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">

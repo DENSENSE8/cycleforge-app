@@ -5,8 +5,8 @@ import { getStaffName } from '@/utils/staff';
 import { toPSTDateKey } from '@/utils/date';
 import { resolveFulfillmentLane, hasLeftWarehouse } from '@/lib/order-lifecycle';
 
-/** Has this order shipped (left the warehouse)? */
-function isOrderShipped(shipped: ShippedOrder): boolean {
+/** Has this order shipped (left the warehouse)? Urgency is moot then; a replacement label is the verb. */
+export function isOrderShipped(shipped: ShippedOrder): boolean {
   if (shipped.is_shipped === true || shipped.is_delivered === true) return true;
   return hasLeftWarehouse({
     shipConfirmedAt: shipped.ship_confirmed_at ?? null,

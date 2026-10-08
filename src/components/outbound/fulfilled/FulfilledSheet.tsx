@@ -206,7 +206,6 @@ function FulfilledSheet() {
       open={open}
       onClose={close}
       title={slot?.title ?? 'Package'}
-      actions={slot?.actions}
       recordNoun="package"
       recordKey={shipmentId != null ? String(shipmentId) : packageless != null ? `order-${packageless}` : null}
       splitPane="open"

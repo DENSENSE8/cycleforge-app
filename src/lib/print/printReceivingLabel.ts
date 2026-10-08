@@ -46,6 +46,12 @@ export interface ReceivingLabelPayload {
    * When set, it overrides the built-in slug→label map on the printed face.
    */
   receivingTypeLabel?: string | null;
+  /**
+   * Org-catalog label face for `receivingType` (`types.short_label`, e.g.
+   * `RTR`). When set it prints verbatim in place of the display label —
+   * stickers say `RTR`, pickers say `Return`.
+   */
+  receivingTypeShortLabel?: string | null;
   date: string;
 }
 
@@ -65,14 +71,20 @@ function receivingLabelPlatformCompact(platform: string, shortLabel: string, typ
 
 /** Top-left label face — "Platform - Type" (e.g. */
 export function receivingLabelPlatformDisplay(
-  payload: Pick<ReceivingLabelPayload, 'platform' | 'platformShortLabel' | 'receivingType' | 'receivingTypeLabel'>,
+  payload: Pick<
+    ReceivingLabelPayload,
+    'platform' | 'platformShortLabel' | 'receivingType' | 'receivingTypeLabel' | 'receivingTypeShortLabel'
+  >,
 ): string {
   const platform = String(payload.platform ?? '').trim();
   const shortLabel = String(payload.platformShortLabel ?? '').trim();
-  // Prefer the org-catalog label (custom / renamed types); else the built-in map.
-  const type = sentenceCaseLabel(
-    (payload.receivingTypeLabel ?? '').trim() || receivingLabelTypeDisplay(payload.receivingType),
-  );
+  // The org's label face wins verbatim (`RTR`); else the org-catalog display
+  // label (custom / renamed types); else the built-in map — sentence-cased.
+  const type =
+    String(payload.receivingTypeShortLabel ?? '').trim() ||
+    sentenceCaseLabel(
+      (payload.receivingTypeLabel ?? '').trim() || receivingLabelTypeDisplay(payload.receivingType),
+    );
   const compact = receivingLabelPlatformCompact(platform, shortLabel, type);
   if (!type) return compact;
   const typeU = type.toUpperCase();

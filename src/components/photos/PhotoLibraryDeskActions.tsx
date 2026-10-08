@@ -98,8 +98,8 @@ export function PhotoLibraryDeskActions({
 
   const exportControl = useMemo(() => {
     const empty = shownCount === 0;
-    // Download face — ZIP of the shown window (never library/ids). Empty stays
-    // visible and disabled so the header CTA altitude is always present.
+    // Download face — ZIP of the shown window. Empty stays visible and
+    // disabled so the header CTA altitude is always present.
     const label = empty ? 'Download' : `Download ${shownCount}`;
     return (
       <DeskHeaderAction

@@ -7,6 +7,7 @@ import { MetricLineRow, StatusBadge } from '@/design-system';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { refreshDomain } from '@/lib/refresh/bus';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 
 type ZohoHealthResponse = {
   success: boolean;
@@ -91,7 +92,7 @@ export function ZohoInboundStatusBanner() {
   }, [zoho?.circuit.isOpen]);
 
   return (
-    <section className={`border-b px-4 py-3 ${tone.shell}`}>
+    <section className={`${PHONE_CARD_FACE} my-3 border px-4 py-3 ${tone.shell}`}>
       <div className="mb-2 flex items-start justify-between gap-4 border-b border-[var(--color-neutral-200)] pb-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">

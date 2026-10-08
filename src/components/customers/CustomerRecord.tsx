@@ -17,6 +17,7 @@ import { formatPhoneNumber } from '@/utils/phone';
 import {
   customerDateFace, customerDateTimeFace, customerMoney, customerPlatformFace, getCustomerJson, type StatsResponse,
 } from './customer-format';
+import { CustomerInvoiceAction } from './CustomerInvoiceAction';
 
 interface CustomerResponse { ok: true; customer: CustomerRecordData }
 
@@ -47,6 +48,7 @@ export function CustomerRecord({ customerId }: { customerId: number }) {
                 {!phone && !record.email && address.length === 0 ? <EvidenceFactRow label="Contact">No contact details on file</EvidenceFactRow> : null}
               </div>
             </RecordGroup>
+            <CustomerInvoiceAction customerId={customerId} />
             <RecordGroup title="Throughput" testId="customer-record-throughput">
               <div className="px-4 pb-1">
                 <EvidenceFactRow label="Orders">{count}</EvidenceFactRow>

@@ -4,6 +4,7 @@
 
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens';
+import { PHONE_CARD_COLUMN, PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { SerialPreviewStrip, BoxMembershipHint } from '@/components/receiving/SerialPreviewStrip';
 import { getLast8 } from '@/lib/copy-chip-format';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -31,27 +32,29 @@ export function TestingScanPickPanel({ pick, onPick, onCancel }: Props) {
       className="flex h-full min-h-0 w-full flex-col bg-surface-canvas"
       aria-label="Select the line to test"
     >
-      <header className="shrink-0 border-b border-amber-200 bg-amber-50 px-6 py-4">
-        <p className="text-role-eyebrow text-amber-700">
-          Select this first
-        </p>
-        <h2 className="mt-1 text-lg font-semibold text-text-default">
-          {pickHeadline(pick)}
-        </h2>
-        {pick.value ? (
-          <p className="mt-0.5 font-mono text-role-caption text-text-soft">{pick.value}</p>
-        ) : null}
-      </header>
+      <div className="shrink-0 px-6 pt-3">
+        <header className={`border border-amber-200 bg-amber-50 px-6 py-4 ${PHONE_CARD_FACE}`}>
+          <p className="text-role-eyebrow text-amber-700">
+            Select this first
+          </p>
+          <h2 className="mt-1 text-lg font-semibold text-text-default">
+            {pickHeadline(pick)}
+          </h2>
+          {pick.value ? (
+            <p className="mt-0.5 font-mono text-role-caption text-text-soft">{pick.value}</p>
+          ) : null}
+        </header>
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-        <ul className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+        <ul className={`flex flex-col gap-2 ${PHONE_CARD_COLUMN}`}>
           {pick.rows.map((row) => (
             <li key={row.id}>
               {/* ds-raw-button: station candidate row (title + qty/status + serial chips) — not the Button primitive shape */}
               <button
                 type="button"
                 onClick={() => onPick(row)}
-                className={`ds-raw-button w-full ${cornerClass('flush')} bg-surface-card px-4 py-3 text-left ring-1 ring-amber-200 transition-colors hover:bg-amber-100`}
+                className={`ds-raw-button w-full ${cornerClass('field')} bg-surface-card px-4 py-3 text-left ring-1 ring-amber-200 transition-colors hover:bg-amber-100`}
               >
                 <span className="block truncate text-role-body font-semibold text-text-default">
                   {row.item_name || row.sku || `Line #${row.id}`}

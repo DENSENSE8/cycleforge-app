@@ -14,14 +14,6 @@ export interface ClaimPhotoInput {
   caption?: string | null;
 }
 
-/** A ticket chosen in "Update existing" mode. */
-export interface PickedTicket {
-  id: number;
-  subject: string | null;
-  status: string;
-  priority: string | null;
-}
-
 export interface ClaimResult {
   ticketId: number;
   number: string; // "#123"
@@ -30,17 +22,14 @@ export interface ClaimResult {
   attached: number;
 }
 
-export type ClaimWizardStep = 'pick' | 'compose';
-
 export interface ZendeskClaimModalProps {
   open: boolean;
   onClose: () => void;
   /** Library photos pre-selected to attach. */
   photos: ClaimPhotoInput[];
   defaultMode?: ClaimMode;
-  /** When launched from a ticket context, preselect update + this ticket. */
+  /** When launched from a ticket context, open Link on this ticket. */
   defaultTicketId?: number | null;
-  defaultTicketSubject?: string | null;
   /** Fired after a successful create/update (parent can refresh / clear selection). */
   onDone?: (result: ClaimResult) => void;
 }

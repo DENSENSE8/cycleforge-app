@@ -38,6 +38,8 @@ export interface TypeRow {
   organization_id: string;
   slug: string;
   label: string;
+  /** Label face (≤ 8, upper-case) for the 2x1 sticker; null = print `label`. */
+  short_label: string | null;
   kind: string;
   /** Optional `#RRGGBB` accent; ink/softFill derived via color-contrast SoT. */
   color_hex: string | null;
@@ -556,6 +558,8 @@ export async function updateType(
     // `null` clears the accent back to the built-in registry tone — so this
     // takes the same sentinel treatment as the bindings below, never COALESCE.
     colorHex?: string | null;
+    // Label face for the 2x1 sticker; `null` clears back to the display label.
+    shortLabel?: string | null;
     isReturn?: boolean;
     sortOrder?: number;
     isActive?: boolean;
@@ -569,6 +573,9 @@ export async function updateType(
   const setBinding = Object.prototype.hasOwnProperty.call(data, 'platformAccountId');
   const setWorkflow = Object.prototype.hasOwnProperty.call(data, 'workflowNodeId');
   const setColor = Object.prototype.hasOwnProperty.call(data, 'colorHex');
+  // short_label is only named when the caller sends it, so every other edit
+  // keeps working on a database that predates migration 2026-10-08b.
+  const setShortLabel = Object.prototype.hasOwnProperty.call(data, 'shortLabel');
   const res = await tenantQuery<TypeRow>(
     organizationId,
     `UPDATE types SET
@@ -579,7 +586,9 @@ export async function updateType(
        is_active           = COALESCE($7, is_active),
        platform_account_id = CASE WHEN $8::boolean THEN $9::bigint ELSE platform_account_id END,
        workflow_node_id    = CASE WHEN $10::boolean THEN $11::text ELSE workflow_node_id END,
-       color_hex           = CASE WHEN $12::boolean THEN $13::varchar ELSE color_hex END
+       color_hex           = CASE WHEN $12::boolean THEN $13::varchar ELSE color_hex END${
+         setShortLabel ? ',\n       short_label         = $14::text' : ''
+       }
      WHERE organization_id = $1 AND id = $2
      RETURNING *`,
     [
@@ -596,6 +605,7 @@ export async function updateType(
       data.workflowNodeId ?? null,
       setColor,
       data.colorHex ?? null,
+      ...(setShortLabel ? [data.shortLabel ?? null] : []),
     ],
   );
   return res.rows[0] ?? null;

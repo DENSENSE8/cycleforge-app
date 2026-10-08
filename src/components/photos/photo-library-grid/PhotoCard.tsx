@@ -21,6 +21,8 @@ import {
   photoRefLabel,
 } from './photo-grid-format';
 import type { TileSelectMods } from './types';
+import { preloadImage } from '@/components/shipped/photo-gallery/image-preload';
+import { viewerDisplayUrl } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 
 function documentTypeLabel(documentType?: string): string {
   if (documentType === 'shipping_label') return 'Shipping label';
@@ -99,12 +101,19 @@ export function PhotoCard({
           cornerClass('flush'),
           focusRing('control', 'accent'),
         )}
+        onPointerDown={(e) => {
+          // Press intent: start the viewer's display image now, so by the time
+          // the click opens the viewer it is already in flight (or decoded).
+          if (isDocument || !onOpen || e.button !== 0 || clickSelectsInstead(e, selectionActive)) return;
+          preloadImage(viewerDisplayUrl(photo.id, photo.displayUrl)).catch(() => {});
+        }}
         onClick={(e) => {
           if (clickSelectsInstead(e, selectionActive)) {
             e.preventDefault();
             onSelect({ shift: e.shiftKey });
           } else if (isDocument) {
-            window.open(imageUrl, '_blank', 'noopener,noreferrer');
+            // Open the file itself, never the tile's image URL.
+            window.open(photo.displayUrl, '_blank', 'noopener,noreferrer');
           } else {
             // Single click = the fullscreen viewer. One click, no debounce, no
             // dblclick-detection delay in front of the tile's primary action.

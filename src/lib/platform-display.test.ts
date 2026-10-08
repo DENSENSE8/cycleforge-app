@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { PlatformAccountRow, PlatformRow } from '@/lib/neon/catalog-queries';
 import {
   buildOrderChannelResolver,
-  buildPlatformShortLabelLookup,
+  buildShortLabelLookup,
   normalizeShortLabelInput,
   orderPlatformChoices,
   platformDisplayName,
@@ -116,11 +116,24 @@ test('an empty catalog falls back to the static order-id inference', () => {
 });
 
 test('short-label lookup matches a platform by slug or display label, org overrides only', () => {
-  const lookup = buildPlatformShortLabelLookup([amazon, renewed]);
+  const lookup = buildShortLabelLookup([amazon, renewed]);
   assert.equal(lookup('Amazon Renewed'), 'AMZRN');
   assert.equal(lookup('amazon_renewed'), 'AMZRN');
   assert.equal(lookup('Amazon'), null);
   assert.equal(lookup(''), null);
+});
+
+test('short-label lookup resolves a receiving type by its upper-case code or display label', () => {
+  const lookup = buildShortLabelLookup([
+    { slug: 'return', label: 'Return', short_label: 'RTR' },
+    { slug: 'po', label: 'PO', short_label: null },
+    // Pre-migration rows carry no `short_label` key at all.
+    { slug: 'repair', label: 'Repair' },
+  ]);
+  assert.equal(lookup('RETURN'), 'RTR');
+  assert.equal(lookup('Return'), 'RTR');
+  assert.equal(lookup('PO'), null);
+  assert.equal(lookup('REPAIR'), null);
 });
 
 test('short-label input is trimmed and upper-cased; blank clears', () => {

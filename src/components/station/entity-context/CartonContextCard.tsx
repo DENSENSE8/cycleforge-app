@@ -428,7 +428,6 @@ export function CartonContextCard({
         options={typeOptions}
         value={receivingType}
         onSelect={onTypeSelect}
-        collapsedLabel={classifyCompact ? (typeOptions.find((o) => o.value === receivingType)?.shortLabel) : undefined}
         collapsedFace={classifyFace}
         presentation="menu"
         open={openPicker === 'type'}

@@ -196,7 +196,6 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
       open={openUnitId != null}
       onClose={closeRecord}
       title={slot?.title ?? (openRecord ? qcLabelHandle(openRecord) : 'QC label')}
-      actions={slot?.actions}
       recordNoun="QC label"
       recordKey={openUnitId == null ? null : String(openUnitId)}
       testId="qc-label-record"

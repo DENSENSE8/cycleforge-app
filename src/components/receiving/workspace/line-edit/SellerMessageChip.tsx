@@ -13,6 +13,7 @@ import { normalizeClaimSellerMessageRefs } from '@/lib/receiving-claim-seller-re
 import { copySellerClaimMessageWithPersist } from '@/lib/receiving-claim-seller-copy';
 import { sellerDraftMatchesTicket } from '@/lib/receiving-claim-seller-ticket-match';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 
 
@@ -304,7 +305,7 @@ function SellerMessagePanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {isLoading ? null : isError ? (
-          <p className="rounded-md bg-rose-50 px-2 py-1.5 text-role-caption text-rose-600">
+          <p className={`${PHONE_CARD_FACE} bg-rose-50 px-3 py-1.5 text-role-caption text-rose-600`}>
             {error instanceof Error ? error.message : 'Could not load message'}
           </p>
         ) : !data && !draft.trim() ? (

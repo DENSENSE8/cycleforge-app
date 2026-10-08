@@ -48,6 +48,10 @@ interface WorkspaceNotesCardProps {
   reaction?: ReactNode;
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
   trailingAction?: ReactNode;
+  /** Renders immediately left of the location control in the composer footer. */
+  locationLeading?: ReactNode;
+  /** The station label peek (see StationLabelPeek): the Label button at the top-left of the row above the composer. */
+  labelPeek?: ReactNode;
   /** Enter → same primary as the trailing Receive CTA (print + receive). */
   onPrimaryAction?: () => void;
   /** Mirrors the disabled Receive pill so Enter is a no-op when blocked. */
@@ -64,6 +68,8 @@ interface WorkspaceNotesCardProps {
   onTicketDraftFilledChange?: (filled: boolean) => void;
   /** Linked ticket is on the row. Switch the station thread onto it. */
   onTicketLinked?: (ticketNumber: string) => void;
+  /** "Link existing ticket?" pressed — the station reveals its Ticket tab. */
+  onLinkTicketOpen?: () => void;
   onComposerFocus?: () => void;
   /** Procedure fill for the composer bottom-right {@link ScanStationProgressRing}. */
   progressPercent?: number;
@@ -85,6 +91,8 @@ export function WorkspaceNotesCard({
   chrome = 'raised',
   reaction,
   trailingAction,
+  locationLeading,
+  labelPeek,
   onPrimaryAction,
   primaryActionDisabled,
   onOpenStatusHistory,
@@ -92,6 +100,7 @@ export function WorkspaceNotesCard({
   onComposerModeChange,
   onTicketDraftFilledChange,
   onTicketLinked,
+  onLinkTicketOpen,
   onComposerFocus,
   progressPercent,
   progressTone,
@@ -129,6 +138,8 @@ export function WorkspaceNotesCard({
         chrome={chrome}
         reaction={reaction}
         trailingAction={trailingAction}
+        locationLeading={locationLeading}
+        labelPeek={labelPeek}
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}
         onOpenStatusHistory={onOpenStatusHistory}
@@ -136,6 +147,7 @@ export function WorkspaceNotesCard({
         onComposerModeChange={onComposerModeChange}
         onTicketDraftFilledChange={onTicketDraftFilledChange}
         onTicketLinked={onTicketLinked}
+        onLinkTicketOpen={onLinkTicketOpen}
         trackingNumber={row.tracking_number}
         orderNumber={row.return_source_order_id || row.source_order_id || null}
         onComposerFocus={onComposerFocus}

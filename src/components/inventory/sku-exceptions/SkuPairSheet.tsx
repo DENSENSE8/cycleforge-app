@@ -2,7 +2,7 @@
 
 /**
  * Pair to SKU — the stock record's action for a floor-minted `TMP-` SKU,
- * opened from the header verb (Z) or the pencil on the temporary SKU.
+ * opened from its Actions panel verb (Z) or the pencil on the temporary SKU.
  *
  * Display method (owner 2026-10-05): an action, not a combobox. A tiny
  * popover hid the product photo the operator identifies the item by, so this

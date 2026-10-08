@@ -14,7 +14,8 @@ import {
   type DbPhotoRow,
   type ListForEntityInput,
 } from './queries/list-for-entity';
-import { buildGcsObjectKey } from './storage/path-builder';
+import { buildGcsObjectKey, displayObjectKey } from './storage/path-builder';
+import { generateDisplayImage, putDisplayImage } from './display-derivative';
 import { resolveGcsPrefix } from './image-types';
 import { gcsAdapter, isGcsConfigured, resolveGcsBucket } from './storage/gcs-adapter';
 import { getDefaultStorageProvider } from './storage/resolve-primary';
@@ -253,6 +254,12 @@ async function uploadPhotoToAdapter(input: UploadPhotoInput): Promise<UploadPhot
       thumbBuffer = null;
     }
 
+    // The viewer's display derivative: encode it while the original uploads,
+    // store it once the original is safe. Best-effort — the content route
+    // backfills it on first view if this fails.
+    const displayBytes =
+      providerCfg.provider === 'gcs' ? generateDisplayImage(input.fileBuffer).catch(() => null) : null;
+
     const putResult = await adapter.putObject({
       organizationId: input.organizationId,
       bucket,
@@ -262,6 +269,16 @@ async function uploadPhotoToAdapter(input: UploadPhotoInput): Promise<UploadPhot
       thumbBuffer,
       contentType: input.contentType,
     });
+
+    const display = await displayBytes;
+    if (display) {
+      await putDisplayImage(
+        { organizationId: input.organizationId, bucket: putResult.bucket, objectKey: putResult.objectKey },
+        display,
+      ).catch((err: unknown) => {
+        console.warn('[photos/upload] display derivative store failed', { photoId }, err instanceof Error ? err.message : err);
+      });
+    }
 
     await createPhotoEntityLink(client, {
       photoId,
@@ -354,6 +371,7 @@ export async function deletePhoto(photoId: number, organizationId: string): Prom
         if (row.thumb_object_key) {
           await adapter.deleteObject({ bucket: row.bucket, objectKey: row.thumb_object_key });
         }
+        await adapter.deleteObject({ bucket: row.bucket, objectKey: displayObjectKey(row.object_key) });
       } catch {
         /* non-fatal */
       }

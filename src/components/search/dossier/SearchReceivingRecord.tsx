@@ -139,7 +139,7 @@ export function SearchReceivingRecord({
       data-testid="search-inbound-record"
     >
       <div className={cn(DESK_STAGE_FIXED_CLASS, 'shrink-0')}>
-        <DeskStageRecordHeader title={slot.title} actions={slot.actions} onClose={onBack} />
+        <DeskStageRecordHeader title={slot.title} onClose={onBack} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         <div className={cn(DESK_STAGE_FIXED_CLASS, '@container flex flex-1 flex-col')}>

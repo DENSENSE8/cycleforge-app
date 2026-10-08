@@ -31,6 +31,7 @@ import {
 } from '@/lib/queries/receiving-queries';
 import { StationContextBar, StationNextActionHeadline } from '@/components/station/entity-context';
 import { UnboxLabelPreview } from './line-edit/UnboxLabelPreview';
+import { StationLabelPeek } from '@/components/station/label-peek/StationLabelPeek';
 import { UnboxPutawayLinkControl } from './line-edit/UnboxPutawayLinkControl';
 import { UnboxReceivedByBubble } from './line-edit/UnboxReceivedByBubble';
 import { putawayKindForType, unboxNextAction } from '@/lib/station/next-action/receiving';
@@ -44,6 +45,7 @@ import {
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
 import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
+import { PHONE_CARD_COLUMN } from '@/design-system/tokens/phone-card';
 
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import { buildUnboxOverview } from './line-edit/terminal/unbox-overview';
@@ -62,7 +64,11 @@ import {
   useBandCollapse,
   useLineCollapse,
 } from '@/components/station/collapse';
-import { UnboxReturnCallout } from '@/components/receiving/unbox/UnboxReturnCallout';
+import { UnboxReturnCheck } from '@/components/receiving/unbox/UnboxReturnCheck';
+import { useStationHasPhotos } from '@/components/station/useStationHasPhotos';
+import { SCAN_STATION_TONES } from '@/lib/sidebar-navigation';
+import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
+import { UnboxPairTask } from './line-edit/UnboxPairTask';
 import { useStationTaskController } from '@/components/station/useStationTaskController';
 import { STATION_DISPLAY_INDEX } from '@/components/station/displays/display-index';
 
@@ -126,20 +132,30 @@ export function LineEditPanel({
   const bandCollapse = useAutoCollapse();
   const bands = useBandCollapse(bandCollapse);
   const lineCollapse = useLineCollapse(row.id ?? null);
+  const hasPhotos = useStationHasPhotos(row.receiving_id, row.photo_count);
+  const unmatched = shouldUseUnmatchedItemsSurface(row);
   const {
     activeTask,
     activeDisplay: activeDisplayTab,
     ticketActive: ticketMode,
     photosActive: photosMode,
+    pairActive: pairMode,
     displaysActive: displaysOpen,
     selectTask,
+    revealTask,
     openDisplay,
     closeDisplays,
   } = useStationTaskController({
     owner: 'unbox',
     workLabel: 'Unbox',
     workIcon: PackageOpen,
+    workTone: SCAN_STATION_TONES.receive,
     scopeKey: row.receiving_id ?? row.id,
+    context: {
+      hasPhotos,
+      hasTicket: Boolean(String(row.zendesk_ticket ?? '').trim()),
+      pair: { needed: unmatched },
+    },
   });
   const [trackingEditorOpen, setTrackingEditorOpen] = useState(false);
   const trackingTriggerRef = useRef<HTMLElement | null>(null);
@@ -511,13 +527,13 @@ export function LineEditPanel({
         nextStep: (
           <StationNextActionHeadline
             action={unboxNextAction(c.receivingType, putawayTargets)}
+            trailing={<UnboxReturnCheck row={row} />}
             hoverAction={
               <UnboxPutawayLinkControl kind={putawayKind} linked={putawayTargets?.[putawayKind] ?? null} />
             }
           />
         ),
         summary: <UnboxReceivedByBubble row={row} />,
-        label: <UnboxLabelPreview row={row} c={c} chrome="peek" />,
       }}
       identity={
         <LineCartonContextSection
@@ -527,6 +543,8 @@ export function LineEditPanel({
           linkedOrderNumber={linkedOrder?.orderId ?? null}
           onToggleTicketView={toggleTicketView}
           ticketViewActive={ticketViewActive}
+          onEditPo={() => selectTask('pair')}
+          poEditOpen={pairMode}
           onToggleClaimView={() => {
             if (claimViewActive) closeClaimView();
             else onOpenClaim('link');
@@ -616,6 +634,15 @@ export function LineEditPanel({
                         chrome="raised"
                         reaction={receiveFeedback}
                         trailingAction={bubbleTerminal}
+                        labelPeek={
+                          <StationLabelPeek
+                            key={row.id}
+                            signal={`${c.itemNote ?? ''}|${row.condition_grade ?? ''}|${c.activeLabelKind ?? ''}|${c.labelEditorRequestId ?? 0}`}
+                            testId="unbox-label-peek"
+                          >
+                            {({ reveal }) => <UnboxLabelPreview row={row} c={c} onReveal={reveal} />}
+                          </StationLabelPeek>
+                        }
                         onPrimaryAction={() => {
                           if (c.isReceived) {
                             c.runPrintLabel();
@@ -629,6 +656,7 @@ export function LineEditPanel({
                         onOpenStatusHistory={() => openDisplay('timeline')}
                         onTicketDraftFilledChange={setTicketDraftFilled}
                         onTicketLinked={onClaimTicketCreated}
+                        onLinkTicketOpen={() => revealTask('ticket')}
                         progressPercent={procedurePercent}
                         headerAction={
                           recentVerdict && !liveReceiveFeedback
@@ -655,7 +683,15 @@ export function LineEditPanel({
                 }
                 data-active-unbox-task={activeTask}
               >
-                {ticketMode ? (
+                {pairMode ? (
+                  <UnboxPairTask
+                    row={row}
+                    staffId={staffId}
+                    unmatched={unmatched}
+                    onFindTicket={() => selectTask('ticket')}
+                    onDone={() => selectTask('work')}
+                  />
+                ) : ticketMode ? (
                   <StationTicketPane
                     row={row}
                     ticketId={c.providerTicketId}
@@ -671,8 +707,7 @@ export function LineEditPanel({
                   />
                 ) : (
                 <>
-                  <AsListedBlock line={row} className="mx-2 mt-2" />
-                  <UnboxReturnCallout row={row} />
+                  <AsListedBlock line={row} className={`${PHONE_CARD_COLUMN} mt-2`} />
                   <motion.div initial={false} animate="show" variants={revealContainer}>
                     <motion.div variants={revealItem}>{unboxOverview}</motion.div>
                   </motion.div>

@@ -8,6 +8,7 @@ import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButt
 import { GlobalHeaderAdd } from './GlobalHeaderAdd';
 import { GlobalHeaderSync } from './GlobalHeaderSync';
 import { HeaderNextAction, PrintJobOverlay } from './HeaderWork';
+import { StaffAccountMenu } from '@/components/sidebar/master-nav/StaffAccountFooter';
 import { HeaderCenter } from './HeaderCenter';
 import {
   HEADER_ICON_CLUSTER,
@@ -103,6 +104,7 @@ export function GlobalHeader({
         <GlobalHeaderAdd />
         <ActivityInboxButton />
         <GlobalHeaderSync />
+        <StaffAccountMenu />
         <PrintJobOverlay />
       </div>
     </header>

@@ -9,6 +9,23 @@
   ],
   "entries": [
     {
+      "id": "stock-view-list-fork",
+      "state": "retired",
+      "category": "workspace-placement",
+      "problem": "Operator 2026-10-08: the Inventory (stock) panel forked the sidebar head contract every page panel shares (search, then the local back row, then the mode card, then the ONE view switcher): its views painted as an always-open vertical list under a bespoke [G] then Stock hint header. One page, another face — the sidebar must be the same mobile-app-like stack everywhere.",
+      "replacementPaths": [
+        "src/components/sidebar/contextual/NavViewSwitcher.tsx"
+      ],
+      "exitCriteria": "Every page panel — stock included — renders its views through NavViewSwitcher; ContextualSidebar carries no page-id fork in the view tier.",
+      "deletedPaths": [
+        "src/components/sidebar/contextual/StockViewList.tsx"
+      ],
+      "forbiddenSource": [
+        "StockViewList",
+        "data-nav-stock-views"
+      ]
+    },
+    {
       "id": "nav-find-side-bulk-list",
       "state": "retired",
       "category": "search-field",
@@ -752,19 +769,26 @@
     },
     {
       "id": "workbench-views-menu-in-body",
-      "state": "queued",
+      "state": "retired",
       "category": "table-controls",
-      "problem": "Ruling A1 removed WorkbenchViewsMenu from DataTable's bar (the `views` slot and its `sheetSavedViewConfigForTable` default, now locked by `record-selection-controls-left-the-body`). The menu still renders in a page body through MediaViewsMenu on PhotoLibraryFindRow, above the photo grid. Views are sidebar navigation children (SIDEBAR_PAGE_NAV) or the global-header saved views — never a body menu.",
-      "currentPaths": [
-        "src/components/saved-views/WorkbenchViewsMenu.tsx",
-        "src/components/photos/MediaViewsMenu.tsx"
-      ],
+      "problem": "Ruling A1 removed WorkbenchViewsMenu from DataTable's bar (the `views` slot and its `sheetSavedViewConfigForTable` default, now locked by `record-selection-controls-left-the-body`). The menu still rendered in a page body through MediaViewsMenu on PhotoLibraryFindRow, above the photo grid. Operator 2026-10-08: the Media Library's saved views move into the left contextual sidebar as one-click blocks above the filters (NAV_PAGE_DECLS['ops-photos'].savedViews, painted by MediaSavedViewsPanel).",
       "replacementPaths": [
-        "src/lib/sidebar-navigation.ts",
         "src/lib/nav/context/pages.ts",
-        "src/components/sidebar/contextual/NavFilters.tsx"
+        "src/components/sidebar/contextual/ContextualSidebar.tsx",
+        "src/components/sidebar/contextual/MediaSavedViewsPanel.tsx"
       ],
-      "exitCriteria": "PhotoLibraryFindRow mounts no views menu: the photo library's views are SIDEBAR_PAGE_NAV children / NAV_PAGE_DECLS['ops-photos'] declarations proved at :3050; WorkbenchViewsMenu and MediaViewsMenu then have 0 body importers (loop rule `layout.sidebar-owns-table-controls`) and either move under src/components/sidebar/** or are deleted and retired with forbiddenSource ['WorkbenchViewsMenu', 'MediaViewsMenu']."
+      "deletedPaths": [
+        "src/components/saved-views/WorkbenchViewsMenu.tsx",
+        "src/components/photos/MediaViewsMenu.tsx",
+        "src/components/photos/MediaSavedViewsSection.tsx"
+      ],
+      "forbiddenSource": [
+        "WorkbenchViewsMenu",
+        "MediaViewsMenu",
+        "ViewsMenuShell",
+        "MediaSavedViewsSection"
+      ],
+      "exitCriteria": "PhotoLibraryFindRow mounts no views menu: the photo library's saved views are declared in NAV_PAGE_DECLS['ops-photos'].savedViews and painted at the top of the contextual sidebar body; no body views menu exists."
     },
     {
       "id": "picker-cell-assignee-actor-fallback",
@@ -880,8 +904,7 @@
         "src/lib/nav/records/service.ts"
       ],
       "exitCriteria": "The Records statement models a scan-out no order owns as an outbound package record, carries the journey's package inputs (acceptance, first transit, out for delivery, promise, poll stamps, attempts, label cost) and the order's check-in, and uses one hand-off rule; GET /api/nav/fulfilled is then the Records read with a journey preset (or is deleted), buildFulfilledSql is deleted, and the board, its zoom and /records agree on the shipped set for the same window."
-    }
-    ,
+    },
     {
       "id": "pick-or-create-platform-field",
       "state": "queued",

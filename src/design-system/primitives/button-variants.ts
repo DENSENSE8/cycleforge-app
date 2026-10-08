@@ -24,6 +24,13 @@ export const BUTTON_VARIANTS = {
     'bg-amber-50 text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100 active:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-400/30 dark:hover:bg-amber-500/25 dark:active:bg-amber-500/30',
   yellow:
     'bg-yellow-400 text-yellow-950 shadow-sm shadow-yellow-400/30 hover:bg-yellow-300 active:bg-yellow-500',
+  /**
+   * The vivid escalation fill (Create customer ticket, operator 2026-10-08): bright orange, dark ink.
+   * orange-950 ink reads 5.6:1 on -500, 6.9:1 on the -400 hover; press returns to -500. Same fill in
+   * dark mode — dark ink on a bright fill needs no theme flip.
+   */
+  orange:
+    'bg-orange-500 text-orange-950 shadow-sm shadow-orange-500/30 hover:bg-orange-400 active:bg-orange-500',
   /** White on emerald-600 / -500 read 3.8 / 2.5:1 — the fill starts at -700 (≥4.5:1) and only deepens on hover/press. */
   success:
     'bg-emerald-700 text-white shadow-sm shadow-emerald-700/25 hover:bg-emerald-800 active:bg-emerald-900',
@@ -57,4 +64,5 @@ export const BUTTON_DEPTH_EDGE: Partial<Record<ButtonVariant, string>> = {
   danger: 'shadow-rose-800',
   warning: 'shadow-amber-900',
   yellow: 'shadow-yellow-600',
+  orange: 'shadow-orange-700',
 };

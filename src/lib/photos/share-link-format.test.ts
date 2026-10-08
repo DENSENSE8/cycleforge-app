@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatShareLinksText, formatUriList } from '@/lib/photos/share-link-format';
+import { formatShareLinksText } from '@/lib/photos/share-link-format';
 
 test('formatShareLinksText returns a bare URL for a single link', () => {
   const text = formatShareLinksText([{ filename: 'PO-1-01.jpg', url: 'https://x/a' }]);
@@ -28,14 +28,4 @@ test('formatShareLinksText prepends a group header and appends an expiry note', 
 
 test('formatShareLinksText returns empty string for no links', () => {
   assert.equal(formatShareLinksText([]), '');
-});
-
-test('formatUriList joins URLs one per line', () => {
-  assert.equal(
-    formatUriList([
-      { filename: 'a', url: 'https://x/a' },
-      { filename: 'b', url: 'https://x/b' },
-    ]),
-    'https://x/a\nhttps://x/b',
-  );
 });

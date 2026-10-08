@@ -103,6 +103,12 @@ export const NavFilterGroupSchema = z
   inline: z.boolean().optional(),
   /** A long open set (vendors): a filter field narrows the options by name. */
   searchable: z.boolean().optional(),
+  /**
+   * Drill step: the group id this group narrows (Room › Aisle › Bay …). It
+   * paints only once that parent holds a value, and changing the parent
+   * clears this group (and its own children).
+   */
+  parent: z.string().min(1).optional(),
   })
   .strict();
 export type NavFilterGroup = z.infer<typeof NavFilterGroupSchema>;

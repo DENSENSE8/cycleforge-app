@@ -13,6 +13,7 @@ import {
 } from '@/design-system/components/Dialog';
 import { FormField } from '@/design-system/components/FormField';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { customerFullName, type CustomerRecord } from '@/lib/customers/customer-display';
@@ -23,7 +24,10 @@ import { customerDateFace, getCustomerJson } from './customer-format';
 
 interface CustomerResponse { ok: true; customer: CustomerRecord }
 
-/** One explicit customer-record verb: choose an order, then email its purchase invoice. */
+/**
+ * The customer record's Actions panel (under Identity, operator 2026-10-08):
+ * one explicit verb — choose an order, then email its purchase invoice.
+ */
 export function CustomerInvoiceAction({ customerId }: { customerId: number }) {
   const customer = useQuery({
     queryKey: ['customers.record', customerId],
@@ -85,7 +89,9 @@ export function CustomerInvoiceAction({ customerId }: { customerId: number }) {
 
   return (
     <>
-      <RecordActionStrip face="header" verbs={verbs} label={`${name} actions`} testId="customer-record-actions" />
+      <RecordGroup title="Actions" testId="customer-record-actions-panel">
+        <RecordActionStrip face="panel" verbs={verbs} label={`${name} actions`} testId="customer-record-actions" />
+      </RecordGroup>
       <Dialog open={open} onOpenChange={(next) => { if (!sending) { setOpen(next); setError(null); } }}>
         <DialogContent data-testid="email-invoice-dialog">
           <form className="grid gap-4" onSubmit={submit}>

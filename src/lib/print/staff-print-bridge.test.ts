@@ -23,6 +23,7 @@ import {
   thisDeviceCanFulfillPrintJob,
   upsertStaffPrintStation,
   type StaffPrintStatus,
+  STOCK_LABELS_PER_JOB,
 } from './staff-print-bridge';
 
 const BENCH = 'ps_bench_a';
@@ -187,6 +188,37 @@ describe('parseStaffPrintJob', () => {
     for (const unitKey of ['', '../../api/x', 'https://evil.test/u', 'SN 123', 'x'.repeat(101)]) {
       assert.equal(parseStaffPrintJob({ ...base, qcLabel: { unitKey } }), null, unitKey);
     }
+    assert.equal(parseStaffPrintJob(base), null);
+  });
+
+  it('a stock label job carries its faces as text and each photo only as a same-origin photo / item image', () => {
+    const base = { request_id: 'req-stock', targetStationId: BENCH, grain: 'stock_label' };
+    const face = {
+      sku: ' APL-2639 ',
+      title: 'Bose  SoundDock\nSeries II',
+      notes: ' Fragile\r\nTop shelf only\u0007 ',
+      image: '/api/photos/88/content',
+    };
+    const job = parseStaffPrintJob({ ...base, role: 'paper', stockLabel: { labels: [face, { sku: 'APL-2640', title: 'Dock', notes: '', image: null }] } });
+    assert.equal(job?.role, 'label');
+    assert.deepEqual(job?.stockLabel, {
+      labels: [
+        { sku: 'APL-2639', title: 'Bose SoundDock Series II', notes: 'Fragile\nTop shelf only', image: '/api/photos/88/content' },
+        { sku: 'APL-2640', title: 'Dock', notes: '', image: null },
+      ],
+    });
+    const one = (over: Record<string, unknown>) => parseStaffPrintJob({ ...base, stockLabel: { labels: [{ ...face, ...over }] } });
+    assert.equal(one({ image: '/api/zoho/items/4411/image' })?.stockLabel?.labels[0]?.image, '/api/zoho/items/4411/image');
+    assert.equal(one({ image: null, title: '' })?.stockLabel?.labels[0]?.title, 'APL-2639');
+    for (const image of ['https://evil.test/a.png', '//evil.test/a.png', '/api/photos/88/content?x=1', '/api/../secret', 'data:image/png;base64,AAAA']) {
+      assert.equal(one({ image }), null, image);
+    }
+    assert.equal(one({ sku: '  ' }), null);
+    // A run is 1..STOCK_LABELS_PER_JOB faces; one junk face refuses the job, never a partial print.
+    assert.equal(parseStaffPrintJob({ ...base, stockLabel: { labels: [] } }), null);
+    assert.equal(parseStaffPrintJob({ ...base, stockLabel: { labels: Array.from({ length: STOCK_LABELS_PER_JOB + 1 }, () => face) } }), null);
+    assert.equal(parseStaffPrintJob({ ...base, stockLabel: { labels: [face, { sku: '' }] } }), null);
+    assert.equal(parseStaffPrintJob({ ...base, stockLabel: face }), null);
     assert.equal(parseStaffPrintJob(base), null);
   });
 

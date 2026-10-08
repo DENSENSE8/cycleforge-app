@@ -25,6 +25,7 @@ import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { SearchableSelectField, WorkspaceCard } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 
 /** Flush Displays body — sits in the push column `px-4`; no card radius / inset. */
@@ -168,7 +169,7 @@ export function CartonMatchHub({
     const teaching = (
       <p
         className={cn(
-          cornerClass('flush'),
+          PHONE_CARD_FACE,
           'border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft',
         )}
       >

@@ -8,6 +8,8 @@ import { PhotoPolicyOverrideSheet } from '@/components/receiving/PhotoPolicyOver
 import { readPhotoPolicyBlock } from '@/lib/receiving/photo-policy-override-wire';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import { toast } from '@/lib/toast';
+import { PHONE_CARD_COLUMN, PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
+import { cornerClass } from '@/design-system/tokens/radius';
 import {
   classifyReceiveResponse,
   type ReceiveResponseClassifyInput,
@@ -167,7 +169,7 @@ export function ReceiveResponsePanel({
           </p>
         ) : null}
         {showApiErrorCallout ? (
-          <div className="rounded border border-rose-200 bg-rose-50/90 px-1.5 py-1">
+          <div className={`${PHONE_CARD_FACE} border border-rose-200 bg-rose-50/90 px-3 py-2`}>
             <p className="text-role-micro text-rose-800">API response</p>
             <p className="break-words font-mono text-role-micro leading-snug text-rose-950">
               {String(body.error)}
@@ -181,8 +183,8 @@ export function ReceiveResponsePanel({
   }
 
   return (
-    <div className={`-mx-2 mt-1.5 border-t ${toneStyles.border} px-2 pt-1.5 pb-2`}>
-      <div className={`relative overflow-hidden rounded-md border ${toneStyles.border} ${toneStyles.bg}`}>
+    <div className={`${PHONE_CARD_COLUMN} mt-1.5 pb-2`}>
+      <div className={`relative overflow-hidden ${cornerClass('card')} border ${toneStyles.border} ${toneStyles.bg}`}>
         <span className={`absolute inset-y-0 left-0 w-[3px] ${toneStyles.bar}`} aria-hidden />
         <div className="flex items-start gap-2 px-2 py-1.5">
           <span className={`mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${toneStyles.dot}`} aria-hidden />

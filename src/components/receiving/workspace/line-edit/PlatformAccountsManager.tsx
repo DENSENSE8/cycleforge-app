@@ -10,7 +10,7 @@ import { requestConfirm } from '@/design-system/components/confirm';
 import type { PlatformAccountRow } from '@/lib/neon/catalog-queries';
 import { usePlatformAccountCatalog, usePlatformCatalog, useInvalidateCatalog } from '@/hooks/useCatalog';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { isPlatformDefaultAccount, normalizeShortLabelInput, PLATFORM_SHORT_LABEL_MAX } from '@/lib/platform-display';
+import { isPlatformDefaultAccount, normalizeShortLabelInput, SHORT_LABEL_MAX } from '@/lib/platform-display';
 import { cn } from '@/utils/_cn';
 
 
@@ -145,7 +145,7 @@ export function PlatformAccountsManager() {
                         />
                         <input
                           value={editShort}
-                          maxLength={PLATFORM_SHORT_LABEL_MAX}
+                          maxLength={SHORT_LABEL_MAX}
                           aria-label="Connection short label"
                           placeholder="SHORT"
                           onChange={(ev) => setEditShort(ev.target.value.toUpperCase())}

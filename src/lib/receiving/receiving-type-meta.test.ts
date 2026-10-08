@@ -15,7 +15,7 @@ test('built-in types include Repair with a wrench icon', () => {
 
 test('receivingTypeMeta is case-insensitive', () => {
   assert.equal(receivingTypeMeta('trade_in').value, 'TRADE_IN');
-  assert.equal(receivingTypeMeta('Return').short, 'Ret');
+  assert.equal(receivingTypeMeta('Return').label, 'Return');
 });
 
 test('receivingLabelTypeDisplay mirrors the meta label', () => {

@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Link-existing-ticket CTA — top-left, above the station composer, only while
+ * Link-existing-ticket CTA — in the row above the station composer, right of
+ * the Label button (LineNotesCard owns the row), only while
  * nothing is linked. Light amber (`warningSoft`, operator 2026-10-07) and rounder than the composer shell (`rounded-3xl`
  * over `COMPOSER_SHELL_CORNER`). Opens the full-screen read-before-link surface.
  * Tracking / order identity is prefetched so a hit opens already selected.
@@ -24,6 +25,7 @@ export function ComposerLinkTicket({
   trackingNumber,
   orderNumber,
   onLinked,
+  onOpen,
 }: {
   receivingId: number;
   lineId?: number | null;
@@ -31,6 +33,8 @@ export function ComposerLinkTicket({
   orderNumber?: string | null;
   /** After the row is patched — switch the station onto the linked ticket thread. */
   onLinked?: (ticketNumber: string) => void;
+  /** Pressed — the station shows its Ticket tab (operator 2026-10-08). */
+  onOpen?: () => void;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -64,20 +68,21 @@ export function ComposerLinkTicket({
 
   return (
     <>
-      <div className="flex justify-start px-3 pb-1.5">
-        <Button
-          type="button"
-          variant="warningSoft"
-          className="rounded-3xl"
-          size="sm"
-          icon={<Link2 className="h-3.5 w-3.5" aria-hidden />}
-          aria-expanded={open}
-          data-testid="composer-link-ticket"
-          onClick={() => setOpen(true)}
-        >
-          Link existing ticket?
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="warningSoft"
+        className="rounded-3xl"
+        size="sm"
+        icon={<Link2 className="h-3.5 w-3.5" aria-hidden />}
+        aria-expanded={open}
+        data-testid="composer-link-ticket"
+        onClick={() => {
+          setOpen(true);
+          onOpen?.();
+        }}
+      >
+        Link existing ticket?
+      </Button>
       <TicketLinkPopover
         linkable={linkable}
         open={open}

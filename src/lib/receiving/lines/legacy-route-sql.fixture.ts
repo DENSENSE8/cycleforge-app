@@ -335,6 +335,19 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                   -- collapsed → the just-received carton sank below the top-N and
                   -- DISAPPEARED. Mirror the other SELECT branches (view=activity).
                   ru.unboxed_at::text           AS receiving_unboxed_at,
+                  -- Who-and-when stamps, same columns as ?id=. Without them this
+                  -- package refresh merged null staff over the open row, and the
+                  -- Unbox "Received by" bubble read "Not scanned in yet" on a carton
+                  -- that was scanned in (operator 2026-10-08).
+                  rt.door_received_by          AS receiving_received_by,
+                  ru.unboxed_by                AS receiving_unboxed_by,
+                  ru.opened_by                 AS receiving_unbox_opened_by,
+                  staff_rb.name                AS received_by_name,
+                  staff_ub.name                AS unboxed_by_name,
+                  staff_uo.name                AS unbox_opened_by_name,
+                  COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text AS first_scanned_at,
+                  scan_first.scanned_by        AS first_scanned_by,
+                  staff_sb.name                AS scanned_by_name,
                   -- Scan-based "last touched" time, matching view=activity so
                   -- package-sibling refreshes merged into the rail keep the
                   -- correct timestamp (see single-row branch above).
@@ -378,6 +391,25 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
               WHERE rs.receiving_id = r.id
            ) rs_agg ON TRUE
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+           LEFT JOIN staff staff_rb                ON staff_rb.id = rt.door_received_by
+           LEFT JOIN staff staff_ub                ON staff_ub.id = ru.unboxed_by
+           LEFT JOIN staff staff_uo                ON staff_uo.id = ru.opened_by
+           LEFT JOIN LATERAL (
+             SELECT rs.scanned_at, rs.scanned_by
+             FROM receiving_scans rs
+             WHERE rs.receiving_id = r.id
+             ORDER BY rs.scanned_at ASC NULLS LAST, rs.id ASC
+             LIMIT 1
+           ) scan_first ON TRUE
+           LEFT JOIN LATERAL (
+             SELECT MIN(oe.occurred_at) AS first_scanned_at
+             FROM ops_events oe
+             WHERE oe.organization_id = rl.organization_id
+               AND oe.entity_type = 'receiving'
+               AND oe.entity_id = r.id
+               AND oe.event_type = 'TRACKING_SCANNED'
+           ) ops_scan ON TRUE
+           LEFT JOIN staff staff_sb                ON staff_sb.id = scan_first.scanned_by
            -- SKU IDENTITY LAW — exact + org-scoped (src/lib/sku/sku-identity-law.ts).
            LEFT JOIN sku_catalog sc                ON ${SKU_CATALOG_JOIN_ON_SQL}
            WHERE rl.receiving_id = $1 AND rl.organization_id = $2

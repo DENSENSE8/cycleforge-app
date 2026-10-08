@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-07T22:04:55Z",
-  "totalRoutes": 1234,
+  "generatedAt": "2026-10-08T09:31:20Z",
+  "totalRoutes": 1237,
   "summary": {
-    "permissionGated": 1002,
+    "permissionGated": 1005,
     "authenticatedNoPermission": 145,
     "anonymousIntentional": 37,
     "serviceToService": 50,
@@ -5193,6 +5193,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/merge-stub/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.void",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/missing-parts/route.ts",
       "methods": [
         "POST"
@@ -5733,15 +5742,6 @@
     },
     {
       "path": "/api/photos/library/folders/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "photos.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/photos/library/ids/route.ts",
       "methods": [
         "GET"
       ],
@@ -6321,6 +6321,24 @@
       ],
       "gate": "withAuth",
       "permission": "tech.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/fnsku-candidates/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/fnsku-pair/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "tech.qc_pass",
       "exemptReason": null
     },
     {
@@ -10073,6 +10091,15 @@
         "DELETE",
         "GET",
         "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "integrations.zendesk",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/tickets/recent/route.ts",
+      "methods": [
+        "GET"
       ],
       "gate": "withAuth",
       "permission": "integrations.zendesk",

@@ -8,6 +8,7 @@ import { Button } from '@/design-system/primitives';
 import type { ShipAddress, ShippingRateOption } from '@/lib/shipping/shipstation/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 import { LABEL_PURPOSES, LABEL_PURPOSE_FACE, type LabelPurpose } from '@/lib/shipping/label-purpose';
 import { orderLabelPdfSrc, orderPriceBreakdownKey } from '@/components/outbound/orders/order-labels-client';
@@ -116,7 +117,7 @@ interface BuyLabelSectionProps {
    * the Labels queue (no order documents, no void pane — print from the rail).
    */
   manual?: LabelBuyManualSource | null;
-  /** The purpose the section opens on — the Send-replacement dialog presets 'replacement'. */
+  /** The purpose the section opens on — the record's Return label dialog presets 'return'. */
   initialPurpose?: LabelPurpose;
 }
 
@@ -410,7 +411,7 @@ export function BuyLabelSection({
         {/* ── Success ───────────────────────────────────────────────────── */}
         {bought ? (
           <motion.div key="bought" {...paneMotion} className="space-y-2">
-            <div className={`${face} border border-border-success bg-surface-success px-3 py-2.5`}>
+            <div className={`${PHONE_CARD_FACE} border border-border-success bg-surface-success px-3 py-2.5`}>
               <div className="flex items-center gap-1.5 text-text-success">
                 <Check className="h-4 w-4" />
                 <span className="text-role-caption font-semibold">
@@ -437,7 +438,7 @@ export function BuyLabelSection({
             </div>
 
             {bought.warning ? (
-              <div className={`flex items-start gap-1.5 ${faceSm} border border-dashed border-border-warning bg-surface-warning px-3 py-2 text-role-eyebrow text-text-warning`}>
+              <div className={`flex items-start gap-1.5 ${PHONE_CARD_FACE} border border-dashed border-border-warning bg-surface-warning px-3 py-2 text-role-eyebrow text-text-warning`}>
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{bought.warning}</span>
               </div>
@@ -481,7 +482,7 @@ export function BuyLabelSection({
 
                 {/* Void / refund */}
                 {voidOpen ? (
-                  <div className={`space-y-1.5 ${faceSm} border border-border-danger bg-surface-danger px-3 py-2.5`}>
+                  <div className={`space-y-1.5 ${PHONE_CARD_FACE} border border-border-danger bg-surface-danger px-3 py-2.5`}>
                     <label className="mode-label block text-text-danger">Reason to void</label>
                     <input
                       value={voidReason}
@@ -535,7 +536,7 @@ export function BuyLabelSection({
         ) : ratesMutation.isError ? (
           /* ── Error ──────────────────────────────────────────────────── */
           <motion.div key="error" {...paneMotion}>
-            <div className={`${face} border border-dashed border-border-danger bg-surface-danger px-4 py-4 text-center`}>
+            <div className={`${PHONE_CARD_FACE} border border-dashed border-border-danger bg-surface-danger px-4 py-4 text-center`}>
               <p className="text-role-caption font-semibold text-text-danger">{ratesMutation.error.message}</p>
               <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                 type="button"
@@ -550,7 +551,7 @@ export function BuyLabelSection({
           /* ── Rate list ──────────────────────────────────────────────── */
           <motion.div key="rates" {...paneMotion} className="space-y-2">
             {rates.length === 0 ? (
-              <p className={`${faceSm} border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-center text-role-caption text-text-soft`}>
+              <p className={`${PHONE_CARD_FACE} border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-center text-role-caption text-text-soft`}>
                 No rates returned for this parcel.
               </p>
             ) : (

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import { ApiError, errorResponse } from '@/lib/api';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -13,6 +14,16 @@ import { buildOrderShipmentSpec } from '@/lib/shipping/shipstation/order-shipmen
 import { isLabelPurpose } from '@/lib/shipping/label-purpose';
 
 export const dynamic = 'force-dynamic';
+
+/** Declared value to insure with the carrier (Zod 4 numbers are finite). */
+const InsuredValueSchema = z.object({
+  amount: z.number().positive(),
+  currency: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/)
+    .transform((c) => c.toUpperCase()),
+});
 
 /** POST /api/shipping/order-rates */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -43,6 +54,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
       bodyDimensions = parsed.data;
     }
+    let insuredValue = null;
+    if (body?.insuredValue != null) {
+      const parsed = InsuredValueSchema.safeParse(body.insuredValue);
+      if (!parsed.success) {
+        throw ApiError.badRequest('insuredValue must be { amount: positive number, currency: 3-letter code }');
+      }
+      insuredValue = parsed.data;
+    }
 
     const { spec, buyerAddress, parcel } = await buildOrderShipmentSpec(orgId, {
       orderId,
@@ -50,6 +69,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       dimensions: bodyDimensions,
       carrierIds,
       purpose: body?.purpose ?? 'outbound',
+      insuredValue,
     });
 
     const client = await getShipStationV2(orgId);

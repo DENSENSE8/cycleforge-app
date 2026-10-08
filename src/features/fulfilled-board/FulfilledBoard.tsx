@@ -138,7 +138,7 @@ export function FulfilledBoard({
       </div>
       {/* A failing carrier sync is ONE board-level banner, never a badge on each card. */}
       {syncWarning && !firstLoad ? (
-        <div className="mx-4 mb-3 shrink-0" role="status" data-testid="fulfilled-board-sync-warning">
+        <div className="mb-3 shrink-0" role="status" data-testid="fulfilled-board-sync-warning">
           <InlineNotice tone="warning" size="sm">
             {syncWarning}
           </InlineNotice>

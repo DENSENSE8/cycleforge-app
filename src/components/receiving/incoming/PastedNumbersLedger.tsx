@@ -484,7 +484,6 @@ export function PastedNumbersLedger({
             record={{
               title: slot?.title ?? 'Number',
               subtitle: recordSubtitle,
-              actions: slot?.actions,
               noun: 'number',
               showIndex: false,
               testId: 'incoming-deliveries-ledger-record',

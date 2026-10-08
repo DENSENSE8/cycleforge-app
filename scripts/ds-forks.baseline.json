@@ -165,8 +165,6 @@
     "src/components/photos/PhotoLabelEditor.tsx": 1,
     "src/components/photos/PhotoLibraryDeskActions.tsx": 1,
     "src/components/photos/PhotoLibraryPage.tsx": 1,
-    "src/components/photos/photo-inspector/PhotoBatchInspectorPanel.tsx": 2,
-    "src/components/photos/photo-inspector/PhotoInspectorPanel.tsx": 1,
     "src/components/photos/photo-library-grid/GroupSelectionMark.tsx": 1,
     "src/components/photos/photo-library-grid/PhotoCard.tsx": 1,
     "src/components/photos/photo-library-grid/PhotoListView.tsx": 1,

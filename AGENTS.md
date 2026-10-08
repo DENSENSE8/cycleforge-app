@@ -10,15 +10,23 @@ scope (`cf_kiosk` → `cf_kiosk__l7`), so a probe aimed at a lane port exercises
 different cookie namespace than the operator's browser.
 
 - All curl / Playwright / browser probes / screenshots: `:3050`.
+- **One origin.** Registry ports (`3071`–`3089`) are switchboard upstreams.
+  Agents never open them, never bind them, and never set `PW_BASE_URL` to them.
+  Switching the dev server replaces the single Next process. The browser stays
+  on `:3050`. `npm run dev` hitting `EADDRINUSE` on `:3050` is correct.
 - **Lane lifecycle is operator-only.** Agents never start, restart, stop, kill,
   clear, or switch any `cycleforge-lane@…` service — including to test their own
   worktree. Use read-only `status` and logs only. Never hand-start `next dev`.
-- Test only the one lane the operator has already selected. If another worktree
-  owns the active testing lane, finish non-runtime work and wait for the
-  operator to complete it and explicitly hand off the lane. A dead or `503`
-  lane is reported with evidence; it is never automatically or agent-started.
-- Never bind another port or move `PW_BASE_URL`. `npm run dev` hitting
-  `EADDRINUSE` on `:3050` is correct.
+- **Test only when this worktree is the one on `:3050`.** Read
+  `~/.config/cycleforge/switch-pin` and `curl -sI http://localhost:3050`.
+  The pin and the `x-switch-lane` header must both be `lane-<this directory's
+  name>`, and the response must not carry `x-switch-error`. A `503` means the
+  pinned dev server is not up yet.
+- **If this worktree is not that lane, stop.** Do not probe, start, or switch.
+  Finish non-runtime work, then leave a test report for when the operator
+  brings this worktree up: the lane name, the pages and flows, the phone and
+  desktop checks, and what "working" looks like. Wait for the operator to pin
+  this lane and for `:3050` to answer as this worktree before any runtime test.
 - DSNs live in the worktree `.env` only. A lane env file that sets `DATABASE_URL`
   silently overrides `.env` and splits reads across Neon branches.
 - `request-shape` is an operator-only exception for an isolated production-build

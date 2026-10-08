@@ -2,7 +2,6 @@
 
 import { useRef, type KeyboardEvent } from 'react';
 import { Bookmark, X } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { KeyboardKey } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useHeader, type HeaderCenterTask } from '@/contexts/HeaderContext';
@@ -14,13 +13,10 @@ import {
   useShiftHeld,
 } from '@/hooks/useSavedViewDigitHotkeys';
 import { OPERATIONS_SAVED_VIEWS_KEY } from '@/lib/operations/saved-view-presets';
+import { MEDIA_SAVED_VIEWS_KEY } from '@/lib/photos/library-filter-state';
 import type { NavContext } from '@/lib/nav/context/schema';
 import { cn } from '@/utils/_cn';
-import {
-  HEADER_CONTROL_CORNER,
-  HEADER_ICON_BTN_CLASS,
-  HEADER_ICON_BTN_OPEN_CLASS,
-} from './header-shell';
+import { HEADER_CONTROL_CORNER } from './header-shell';
 import { useCurrentNavPath, useNavContext } from '@/components/sidebar/contextual/useNavContext';
 
 type SavedViewsSpec = NonNullable<NavContext['savedViews']>;
@@ -87,36 +83,38 @@ function HeaderTaskTabs({
         const active = task.id === activeId;
         const Icon = task.icon;
         return (
-          <HoverTooltip key={task.id} label={task.label} placement="below" asChild>
-            <button
-              ref={(node) => {
-                refs.current[index] = node;
-              }}
-              type="button"
-              role="tab"
-              aria-label={task.label}
-              aria-selected={active}
-              tabIndex={active ? 0 : -1}
-              onClick={() => onSelect(task.id)}
-              className={cn(
-                'ds-raw-button relative grid place-content-center',
-                HEADER_ICON_BTN_CLASS,
-                focusRing('control', 'accent'),
-                active && HEADER_ICON_BTN_OPEN_CLASS,
-                active && 'text-text-default shadow-elev-soft',
-                task.tone,
-              )}
-            >
-              <span aria-hidden>
-                <Icon className="size-4" />
+          // ds-raw-button: role="tab" in a roving-tabindex tablist — Button has no tab role / tabIndex contract.
+          <button
+            key={task.id}
+            ref={(node) => {
+              refs.current[index] = node;
+            }}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            tabIndex={active ? 0 : -1}
+            onClick={() => onSelect(task.id)}
+            data-task={task.id}
+            className={cn(
+              'ds-raw-button relative inline-flex h-8 min-w-0 shrink-0 items-center gap-1.5 px-2.5 text-role-caption transition-colors',
+              HEADER_CONTROL_CORNER,
+              focusRing('control', 'accent'),
+              // Selected = the Scan Stations switcher's selected face: white
+              // card, soft ring, semibold word (operator 2026-10-08).
+              active
+                ? 'bg-surface-card font-semibold shadow-sm ring-1 ring-border-soft'
+                : 'font-medium hover:bg-surface-sunken',
+              task.labelTone ?? 'text-text-default',
+            )}
+          >
+            <Icon className={cn('size-4 shrink-0', task.tone)} aria-hidden />
+            <span className="truncate">{task.label}</span>
+            {task.count != null ? (
+              <span className="min-w-3 rounded-full bg-surface-inverse px-1 text-center text-role-micro tabular-nums text-text-inverse">
+                {task.count}
               </span>
-              {task.count != null ? (
-                <span className="absolute -right-0.5 -top-0.5 min-w-3 rounded-full bg-surface-inverse px-0.5 text-center text-role-micro tabular-nums text-text-inverse">
-                  {task.count}
-                </span>
-              ) : null}
-            </button>
-          </HoverTooltip>
+            ) : null}
+          </button>
         );
       })}
     </div>
@@ -216,7 +214,8 @@ export function HeaderCenter() {
   const { centerTasks } = useHeader();
   const path = useCurrentNavPath();
   const nav = useNavContext(path).data;
-  const savedViews = nav?.rollout === 'contextual' && nav.scope === 'section'
+  // Media's views are sidebar blocks (ContextualSidebar), never header tabs.
+  const savedViews = nav?.rollout === 'contextual' && nav.scope === 'section' && nav.savedViews?.storageKey !== MEDIA_SAVED_VIEWS_KEY
     ? nav.savedViews
     : undefined;
   const registration = centerTasks;

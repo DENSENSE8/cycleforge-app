@@ -62,7 +62,7 @@ export function AsListedBlock({
   if (!grade && photos.length === 0 && serials.length === 0) return null;
 
   return (
-    <RecordGroup title="As listed" testId="as-listed-block" className={className}>
+    <RecordGroup title="As listed" testId="as-listed-block" className={cn(cornerClass('card'), className)}>
       <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
         {photos.length > 0 ? (
           <EvidenceFactRow label="Photos">

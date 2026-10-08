@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { cn } from '@/utils/_cn';
 import { getLast8Serial } from '@/lib/copy-chip-format';
 import { Loader2 } from '@/components/Icons';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { SubstitutePanel } from './SubstitutePanel';
 import { OrderAmendmentsSection } from './OrderAmendmentsSection';
 import {
@@ -100,7 +101,7 @@ export function SubstituteUnitCard({
           />
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
+        <div className={cn('border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft', PHONE_CARD_FACE)}>
           No open allocations to substitute on this order.
         </div>
       )}

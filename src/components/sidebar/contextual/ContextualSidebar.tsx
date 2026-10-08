@@ -12,18 +12,19 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-presets-hooks';
-import { SidebarContent, SidebarFooter, SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarContent, SidebarProvider } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronLeft } from '@/components/Icons';
 import { SidebarCollapseControl } from '@/components/layout/SidebarCollapseControl';
 import { TOP_CHROME_BAND_CLASS } from '@/components/layout/header-shell';
 import { SPINE_SCROLLPORT_SCROLLBAR_CLASS } from '@/components/sidebar/sidebar-spine';
-import { StaffAccountFooter } from '@/components/sidebar/master-nav/StaffAccountFooter';
 import { cn } from '@/utils/_cn';
 import { navContextQueryKey, useCurrentNavPath, useNavContext } from './useNavContext';
 import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { NavSectionList } from './NavSectionList';
 import { NavFilters } from './NavFilters';
+import { MediaSavedViewsPanel } from './MediaSavedViewsPanel';
+import { MEDIA_SAVED_VIEWS_KEY } from '@/lib/photos/library-filter-state';
 import { NAV_BLOCK_CLASS } from './nav-block';
 import { NavRecentsList } from './NavRecentsList';
 import { NavPanelActions } from './NavPanelActions';
@@ -32,7 +33,6 @@ import { NavFind } from './NavFind';
 import { NavSlotError } from './NavSlotError';
 import { NavModeSwitcher, isNavModeSection } from './NavModeSwitcher';
 import { NavViewSwitcher } from './NavViewSwitcher';
-import { StockViewList } from './StockViewList';
 import { NavGoKeys } from './NavGoKeys';
 import { useRememberLaneView } from './useLaneDoorHref';
 import { handleSidebarNavigationKeyDown } from '@/components/sidebar/sidebar-keyboard-navigation';
@@ -186,11 +186,9 @@ export function ContextualSidebar() {
             ) : null}
             {modeSection && !peekTop ? <NavModeSwitcher section={modeSection} currentPageId={nav.page.id} /> : null}
             {/* Scan Stations stay one tier deep: their working rail owns the
-                page-level state instead of adding an Arrival/QC view switcher. */}
-            {!peekTop && !inlineScanStation && nav.page.id === 'stock' ? (
-              <StockViewList items={viewSections.flatMap((section) => section.items)} />
-            ) : null}
-            {!peekTop && !inlineScanStation && nav.page.id !== 'stock' ? (
+                page-level state instead of adding an Arrival/QC view switcher.
+                Every other page — stock included — is the one view switcher. */}
+            {!peekTop && !inlineScanStation ? (
               <NavViewSwitcher sections={viewSections} pageId={nav.page.id} viewKeys={nav.viewKeys === true} />
             ) : null}
           </div>
@@ -257,14 +255,6 @@ export function ContextualSidebar() {
           </motion.div>
         )}
       </SidebarContent>
-
-      {/* The account bar belongs to the PARENT level (the page map), not to
-          every page's panel: a panel reaches it through `‹`. */}
-      {showTop ? (
-        <SidebarFooter className="shrink-0 p-0" data-sidebar-account>
-          <StaffAccountFooter />
-        </SidebarFooter>
-      ) : null}
     </SidebarProvider>
   );
 }
@@ -320,6 +310,8 @@ function SectionBody({ nav }: { nav: NavContext }) {
       {!hasModes && !hasViews && !hasFilters && !hasHeaderSavedViews && !nav.recents ? (
         <p className="px-4 py-2 text-role-caption text-text-faint">No views on this page</p>
       ) : null}
+      {/* The Media Library's server-backed views paint here, above the filters (the rest of `savedViews` are header tabs, HeaderCenter). */}
+      {nav.savedViews?.storageKey === MEDIA_SAVED_VIEWS_KEY ? <MediaSavedViewsPanel /> : null}
       {hasFilters ? (
         <NavFilters key={nav.filters?.facetContext ?? nav.page.id} filters={nav.filters} controls={nav.controls} />
       ) : null}

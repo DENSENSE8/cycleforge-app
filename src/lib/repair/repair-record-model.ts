@@ -3,7 +3,7 @@
  * two-column record paints (owner 2026-09-30): the header identity, the
  * Fulfillment band's status points (`REPAIR_LIFECYCLE`, who / when from
  * `status_history`), the device, the history, the customer and movement facts,
- * and which header verbs the ticket offers now. Pure — the view
+ * and which verbs the ticket offers now. Pure — the view
  * (`RepairServiceRecordView`) and the verbs (`useRepairRecordVerbs`) read it.
  */
 
@@ -210,7 +210,7 @@ function hasChargeablePrice(price: string | null | undefined): boolean {
 }
 
 /**
- * Which header verbs the ticket offers now. Mark done hides once closed;
+ * Which verbs the ticket offers now. Mark done hides once closed;
  * Mark pending hides while pending; Start pickup shows only while the device
  * is ready to leave (never once closed); Print receipt needs the counter visit it prints.
  */

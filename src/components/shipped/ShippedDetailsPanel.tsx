@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
 import type { ShippedActiveInput } from './stacks/types';
-import { deriveShippedHeaderMeta } from './details-panel/shipped-details-logic';
+import { deriveShippedHeaderMeta, isOrderShipped } from './details-panel/shipped-details-logic';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { toast } from '@/lib/toast';
 import {
@@ -110,7 +110,8 @@ export function ShippedDetailsPanel({
 
   const { isDeleteArmed, isDeleting, handleDelete } = useShippedDeletion(shipped, onUpdate);
   const assignOrder = useOrderAssignment();
-  const isUrgent = Boolean((shipped as { is_urgent?: unknown }).is_urgent);
+  const isUrgent = Boolean(shipped.is_urgent);
+  const isShipped = isOrderShipped(shipped);
 
   const updateActions = useMemo(
     () =>
@@ -118,8 +119,9 @@ export function ShippedDetailsPanel({
         showDispatchExtras: showDashboardExtras,
         showAssign,
         isUrgent,
+        isShipped,
       }),
-    [showDashboardExtras, showAssign, isUrgent],
+    [showDashboardExtras, showAssign, isUrgent, isShipped],
   );
 
   const moreItems = useMemo(

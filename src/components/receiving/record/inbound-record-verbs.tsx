@@ -31,7 +31,7 @@ import { requestConfirm } from '@/design-system/components/confirm';
 import { evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { TimelineSection } from '@/components/ui/TimelineSection';
-import { buildRecordTaskVerbs } from '@/components/tasks/RecordTaskActions';
+import { buildRecordTaskVerb } from '@/components/tasks/RecordTaskActions';
 import { ReceivingClaimPanel } from '@/components/receiving/workspace/ReceivingClaimPanel';
 import { ReceivingAuditPanel } from '@/components/receiving/workspace/ReceivingAuditPanel';
 import { MovePhotosBetweenPoPanel } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoPanel';
@@ -63,6 +63,7 @@ import { dispatchReceivingOpenPairingPo } from '@/utils/events';
 import { cn } from '@/utils/_cn';
 import type { RecordVerb } from '@/design-system/components/record-ledger/record-model';
 import { cartonIdOf } from './inbound-record-model';
+import { DELETE_HOTKEY } from '@/lib/keyboard/key-registry';
 
 const NO_CARTON = 'Available after the door scan — no carton yet';
 
@@ -274,12 +275,9 @@ export function buildInboundDeliveryVerbs({
       icon: <Copy aria-hidden />,
       run: () => copyValue(formatReceivingCopyRow(row), 'Details'),
     },
-    ...(cartonId
-      ? buildRecordTaskVerbs({ entityType: 'receiving', entityId: cartonId, label: po ? `PO ${po}` : `Carton ${cartonId}` })
-      : [
-          { id: 'task-mine', label: 'Add task', disabled: true, disabledReason: NO_CARTON },
-          { id: 'task-staff', label: 'Send to staff as task', disabled: true, disabledReason: NO_CARTON },
-        ]),
+    cartonId
+      ? buildRecordTaskVerb({ entityType: 'receiving', entityId: cartonId, label: po ? `PO ${po}` : `Carton ${cartonId}` })
+      : { id: 'task', label: 'Assign task', disabled: true, disabledReason: NO_CARTON },
     {
       id: 'remove',
       label: 'Remove from Incoming',
@@ -369,7 +367,7 @@ function ItemFace({ line }: { line: ReceivingLineRow }): ReactNode {
 }
 
 /**
- * The open carton's header verbs — `[]` when nothing is open. Lead verb by
+ * The open carton's Actions panel verbs — `[]` when nothing is open. Lead verb by
  * the carton's state: an unfound carton leads with Resolve, one on the bench
  * with Open in Unbox, a finished one with Print labels.
  */
@@ -494,12 +492,13 @@ export function useInboundCartonVerbs(record: CartonRecord | null, onClose: () =
           );
         },
       },
-      ...buildRecordTaskVerbs({ entityType: 'receiving', entityId: record.receivingId, label: poNumber ? `PO ${poNumber}` : recordLabel }),
+      buildRecordTaskVerb({ entityType: 'receiving', entityId: record.receivingId, label: poNumber ? `PO ${poNumber}` : recordLabel }),
       {
         id: 'delete',
         label: 'Delete carton',
         icon: <Trash2 aria-hidden />,
         tone: 'danger',
+        hotkey: DELETE_HOTKEY,
         run: deleteCarton,
       },
     ];

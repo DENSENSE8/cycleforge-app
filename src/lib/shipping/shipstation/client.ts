@@ -145,7 +145,15 @@ function toSsAddress(a: ShipAddress): Record<string, unknown> {
   };
 }
 
-function toSsPackages(parcels: Parcel[]): Array<Record<string, unknown>> {
+/** The v2 money shape (`currency` lower-case ISO-4217, as the engine echoes it). */
+function toSsMoney(m: { amount: number; currency: string }): Record<string, unknown> {
+  return { currency: m.currency.toLowerCase(), amount: m.amount };
+}
+
+function toSsPackages(
+  parcels: Parcel[],
+  insuredValue?: ShipmentSpec['insuredValue'],
+): Array<Record<string, unknown>> {
   return parcels.map((p) => ({
     weight: { value: p.weight.value, unit: p.weight.unit },
     ...(p.dimensions
@@ -158,6 +166,7 @@ function toSsPackages(parcels: Parcel[]): Array<Record<string, unknown>> {
           },
         }
       : {}),
+    ...(insuredValue ? { insured_value: toSsMoney(insuredValue) } : {}),
   }));
 }
 
@@ -166,8 +175,10 @@ function toSsShipment(spec: ShipmentSpec, extra?: Record<string, unknown>): Reco
     validate_address: 'no_validation',
     ship_to: toSsAddress(spec.shipTo),
     ship_from: toSsAddress(spec.shipFrom),
-    packages: toSsPackages(spec.parcels),
+    packages: toSsPackages(spec.parcels, spec.insuredValue),
     confirmation: spec.confirmation ?? 'none',
+    // Declared value → carrier-provided coverage; absent keeps the request as before.
+    ...(spec.insuredValue ? { insurance_provider: 'carrier' } : {}),
     ...extra,
   };
 }
@@ -214,8 +225,8 @@ const RateResponseSchema = z.object({
 });
 
 function mapRate(raw: z.infer<typeof RawRateSchema>): ShippingRateOption {
-  const other =
-    money(raw.insurance_amount) + money(raw.confirmation_amount) + money(raw.other_amount);
+  const insurance = money(raw.insurance_amount);
+  const other = insurance + money(raw.confirmation_amount) + money(raw.other_amount);
   return {
     rateId: raw.rate_id,
     carrierId: raw.carrier_id ?? '',
@@ -226,6 +237,7 @@ function mapRate(raw: z.infer<typeof RawRateSchema>): ShippingRateOption {
     amount: money(raw.shipping_amount),
     currency: raw.shipping_amount?.currency?.toUpperCase() ?? 'USD',
     otherAmount: other > 0 ? other : null,
+    insuranceAmount: insurance > 0 ? insurance : null,
     deliveryDays: raw.delivery_days ?? null,
     estimatedDeliveryDate: raw.estimated_delivery_date ?? null,
     carrierDeliveryDays: raw.carrier_delivery_days ?? null,

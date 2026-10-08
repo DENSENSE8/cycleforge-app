@@ -40,6 +40,10 @@ import {
   workspaceLabelToFace,
   type WorkspaceLabelContext,
 } from '@/lib/print/workspace-label-kinds';
+import { conditionLabel, resolveConditionGrade } from '@/lib/conditions';
+import { qcFnskuFace, resolveQcFnsku, type QcFnskuCandidate } from '@/lib/qc/fnsku-pairing';
+import { useQcFnskuCandidates } from '@/components/tech/testing-panel/useQcFnskuCandidates';
+import type { FnskuLabelFace } from '@/lib/print/fnskuLabel';
 
 /** `POST /api/qc/units/:id/print-pass` — 202 once the outbox row is queued. */
 interface PrintPassResponse {
@@ -48,6 +52,20 @@ interface PrintPassResponse {
   /** The id the label wears — minted by the route when the unit had none. */
   unit_uid?: string | null;
   error?: string;
+}
+
+/**
+ * Print the paired FNSKU's sticker in the Pass gesture. Fire and forget: the
+ * unit label and the verdict never wait on it — a failure is a toast. Dynamic
+ * import on purpose: a static one would put bwip-js (~250 KB gz) on every
+ * desk page that mounts a composer — see printFnskuStationJob.
+ */
+function printQcFnskuFace(face: FnskuLabelFace): void {
+  void import('@/lib/print/fnskuLabel')
+    .then((m) => m.printFnskuLabelJob(face, 1))
+    .catch((err: unknown) => {
+      toast.error(err instanceof Error ? `FBA label did not print: ${err.message}` : 'FBA label did not print');
+    });
 }
 
 /** First re-read after a print-pass 202; each re-read that still finds the Pass unsaved doubles the wait. */
@@ -198,7 +216,7 @@ export function useTestingLineController(
     (
       lineId: number,
       serialId: number,
-      patch: { current_status?: string; unit_uid?: string | null },
+      patch: { current_status?: string; unit_uid?: string | null; condition_grade?: string | null },
     ) => {
       const current = rowRef.current;
       if (lineId === current.id) {
@@ -378,42 +396,42 @@ export function useTestingLineController(
     [row.id, notes, paintSerial, pinSlot, openClaimModal, queryClient],
   );
 
+  /**
+   * Re-grade one unit (`POST /api/serial-units/:id/grade`): paints at once
+   * through {@link paintSerial} — so the live label, the Pass print and the
+   * FNSKU resolution all read the new grade on the very next press — and rolls
+   * back with a toast when the server refuses.
+   */
   const handleSlotCondition = useCallback(
     async (lineId: number, serial: UnitSlotSerial, nextGrade: string) => {
       if (serial.id == null) return;
-      const priorGrade = serial.condition_grade;
+      const live = (rowRef.current.serials ?? []).find((s) => s.id === serial.id);
+      const priorGrade = live?.condition_grade ?? serial.condition_grade ?? null;
+      if (priorGrade === nextGrade) return;
 
-      const applyGrade = (grade: string | null | undefined) => {
-        if (lineId === row.id) {
-          const nextSerials = (row.serials ?? []).map((s) =>
-            s.id === serial.id ? { ...s, condition_grade: grade } : s,
-          );
-          dispatchTestingLineUpdated({ id: lineId, serials: nextSerials });
-        }
-      };
-
-      applyGrade(nextGrade);
+      paintSerial(lineId, serial.id, { condition_grade: nextGrade });
       try {
         const res = await fetch(`/api/serial-units/${serial.id}/grade`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             new_grade: nextGrade,
-            client_event_id: `testing-grade-${serial.id}-${nextGrade}-${Date.now()}`,
+            client_event_id: `testing-grade-${serial.id}-${nextGrade}-${safeRandomUUID()}`,
           }),
         });
-        const data = await res.json().catch(() => null);
+        const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
         if (!res.ok || !data?.ok) {
           toast.error(data?.error || `Condition update failed (${res.status})`);
-          applyGrade(priorGrade);
+          paintSerial(lineId, serial.id, { condition_grade: priorGrade });
           return;
         }
+        toast.success(`Graded ${conditionLabel(nextGrade, 'full')}`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Condition request failed');
-        applyGrade(priorGrade);
+        paintSerial(lineId, serial.id, { condition_grade: priorGrade });
       }
     },
-    [row.id, row.serials],
+    [paintSerial],
   );
 
   const deriveLineVerdict = useCallback(
@@ -600,8 +618,24 @@ export function useTestingLineController(
     [row, activeSlot],
   );
 
+  // ── FBA pairing ────────────────────────────────────────────────────────────
+  // The line's FNSKU candidates (paired to the catalog row), shared with the
+  // label band's QcFnskuPairBar through the same query. The press resolves the
+  // grade-matched candidate from this ref — no request in front of the print.
+  const fnskuCandidatesQuery = useQcFnskuCandidates(row);
+  const fnskuCandidatesRef = useRef<QcFnskuCandidate[]>([]);
+  useEffect(() => {
+    fnskuCandidatesRef.current = fnskuCandidatesQuery.candidates;
+  }, [fnskuCandidatesQuery.candidates]);
+
   /** The id the active unit wears (minted at receiving) — its label prints it as is. */
   const activeUnitUid = (row.serials ?? [])[activeSlot]?.unit_uid?.trim() || null;
+  /**
+   * The grade the active unit's labels print: its own `condition_grade`
+   * (re-graded on this bench), else the line's grade, else USED_A.
+   */
+  const activeGrade =
+    (row.serials ?? [])[activeSlot]?.condition_grade || row.condition_grade || 'USED_A';
 
   useEffect(() => {
     setHeaderSerialEdit(null);
@@ -632,9 +666,25 @@ export function useTestingLineController(
       const unitUid = live?.unit_uid?.trim() || null;
       const priorStatus = live?.current_status ?? serial.current_status;
       const title = (draft?.title ?? lineTitle).trim() || lineTitle;
-      const condition = draft?.condition ?? (current.condition_grade || 'USED_A');
+      const condition = draft?.condition ?? (live?.condition_grade || current.condition_grade || 'USED_A');
       const color = (draft?.color ?? labelColor).trim() || undefined;
-      const printedToast = pass ? 'Passed · label printed' : 'Label printed';
+      // The FNSKU paired to (this SKU, this unit's house grade), resolved from
+      // the line-open fetch: its sticker prints in the same gesture as the unit
+      // label, and the outbox job records it from `body.fnsku`.
+      const fnskuResolution = resolveQcFnsku(
+        fnskuCandidatesRef.current,
+        current.sku_catalog_id,
+        resolveConditionGrade(condition),
+      );
+      const fnskuFace =
+        fnskuResolution.kind === 'paired' ? qcFnskuFace(fnskuResolution.candidate, title) : null;
+      const printedToast = pass
+        ? fnskuFace
+          ? 'Passed · unit + FBA labels printed'
+          : 'Passed · label printed'
+        : fnskuFace
+          ? 'Unit + FBA labels printed'
+          : 'Label printed';
       const print = (id: string) =>
         printProductLabel({
           sku: id,
@@ -647,6 +697,7 @@ export function useTestingLineController(
         });
 
       const printed = unitUid ? print(unitUid) : Promise.resolve();
+      if (fnskuFace) printQcFnskuFace(fnskuFace);
       if (pass) {
         paintSerial(lineId, serial.id, { current_status: verdictToUnitStatus('PASS') });
         patchRailTestedCount(lineId);
@@ -669,6 +720,7 @@ export function useTestingLineController(
         symbology,
         condition,
         notes: notes.trim() || null,
+        fnsku: fnskuFace?.fnsku ?? null,
       });
       if (unitUid) toast.success(printedToast);
       // The request never leads the print; a print that throws still records the press.
@@ -886,12 +938,12 @@ export function useTestingLineController(
       serialNumber: activeSerial?.serial_number ?? undefined,
       gtin: labelGtin ?? undefined,
       orgSlug,
-      condition: row.condition_grade || 'USED_A',
+      condition: activeGrade,
       color: labelColor || undefined,
     };
   }, [
     row.sku,
-    row.condition_grade,
+    activeGrade,
     activeSerial,
     activeUnitUid,
     labelGtin,
@@ -964,6 +1016,18 @@ export function useTestingLineController(
 
   const isUnfound = shouldUseLocalReceiveOnly(row);
 
+  /** Re-grade the active unit — the inline condition row and its `1`–`7` keys. */
+  const regradeActive = useCallback(
+    (nextGrade: string) => {
+      if (!activeSerial?.id) {
+        toast.info('Scan a serial first, then grade it.');
+        return;
+      }
+      void handleSlotCondition(row.id, activeSerial, nextGrade);
+    },
+    [activeSerial, handleSlotCondition, row.id],
+  );
+
   return {
     ...core,
     itemNote, setItemNote,
@@ -972,6 +1036,7 @@ export function useTestingLineController(
     activeSlotByLine, setActiveSlotByLine, activeSlot, activeSerial,
     handleSlotVerdict, requestSlotVerdict, requestLineVerdict, refreshLineWithSerials,
     handleSlotCondition, applyLineVerdict, deriveLineVerdict,
+    activeGrade, regradeActive,
     pendingFail, confirmPendingFail, cancelPendingFail,
     enqueueSerial, deleteSerial, replaceSerial,
     handlePrimary, handleApplyAndPrint,

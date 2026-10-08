@@ -30,19 +30,19 @@ export function normalizeLabelColor(color: string | null | undefined): LabelColo
   return isLabelColorToken(color) ? color : DEFAULT_LABEL_COLOR;
 }
 
-/** Full literal chip classes per token (3-layer: bg / text / ring). */
+/** Full literal chip classes per token (3-layer: bg / text / ring) — a medium tint, vivid enough to read at a glance. */
 export const LABEL_CHIP_CLASSES: Record<LabelColorToken, string> = {
-  slate: 'bg-surface-canvas text-text-muted ring-1 ring-inset ring-border-soft',
-  blue: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200',
-  violet: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200',
-  indigo: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200',
-  cyan: 'bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200',
-  teal: 'bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200',
-  emerald: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200',
-  amber: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
-  orange: 'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200',
-  rose: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200',
-  fuchsia: 'bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-200',
+  slate: 'bg-surface-sunken text-text-default ring-1 ring-inset ring-border-emphasis',
+  blue: 'bg-blue-100 text-blue-800 ring-1 ring-inset ring-blue-300',
+  violet: 'bg-violet-100 text-violet-800 ring-1 ring-inset ring-violet-300',
+  indigo: 'bg-indigo-100 text-indigo-800 ring-1 ring-inset ring-indigo-300',
+  cyan: 'bg-cyan-100 text-cyan-800 ring-1 ring-inset ring-cyan-300',
+  teal: 'bg-teal-100 text-teal-800 ring-1 ring-inset ring-teal-300',
+  emerald: 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-300',
+  amber: 'bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-300',
+  orange: 'bg-orange-100 text-orange-800 ring-1 ring-inset ring-orange-300',
+  rose: 'bg-rose-100 text-rose-800 ring-1 ring-inset ring-rose-300',
+  fuchsia: 'bg-fuchsia-100 text-fuchsia-800 ring-1 ring-inset ring-fuchsia-300',
 };
 
 /** Solid dot classes per token (used in the color picker swatch). */

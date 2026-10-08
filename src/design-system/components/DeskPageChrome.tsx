@@ -59,6 +59,12 @@ interface DeskPageChromeProps {
    * Fullscreen is flush either way.
    */
   measure?: 'fixed' | 'full';
+  /**
+   * `false` on a desk that opens no record pane (Media): In place · Split
+   * would change nothing, so ⌘/Ctrl+Shift+S is not bound or advertised here.
+   * The host also holds `view` at `in-place`.
+   */
+  recordViews?: boolean;
   /** The desk body — a grid, a board, a form host. Mounted inside the card. */
   children: ReactNode;
   className?: string;
@@ -75,6 +81,7 @@ export function DeskPageChrome({
   children,
   className,
   measure: measureKind = 'fixed',
+  recordViews = true,
 }: DeskPageChromeProps) {
   const fullscreen = view !== 'in-place';
   // List focus mode (`useListFocusMode`): the title band slides away with the shell's
@@ -105,6 +112,7 @@ export function DeskPageChrome({
   // ⌘/Ctrl+Shift+S — In place ⇄ Split: a chord, so no scanner can type it and
   // it may fire from a text field; an open overlay still owns the keys.
   useEffect(() => {
+    if (!recordViews) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || !isDeskSplitChord(event) || hasOpenOverlay()) return;
       event.preventDefault();
@@ -121,7 +129,7 @@ export function DeskPageChrome({
       window.removeEventListener('keydown', onKeyDown);
       unregister();
     };
-  }, []);
+  }, [recordViews]);
 
   return (
     <DeskStageProvider view={view} setView={onViewChange}>

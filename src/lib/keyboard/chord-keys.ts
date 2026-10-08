@@ -69,5 +69,6 @@ export function platformKeyFace(key: string, apple: boolean): string {
   if (MOD_TOKENS.has(token)) return apple ? '⌘' : 'Ctrl';
   if (SHIFT_TOKENS.has(token)) return apple ? '⇧' : 'Shift';
   if (ALT_TOKENS.has(token)) return apple ? '⌥' : 'Alt';
+  if (token === 'backspace') return apple ? '⌫' : 'Backspace';
   return key;
 }

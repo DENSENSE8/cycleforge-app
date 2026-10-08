@@ -7,10 +7,11 @@
  * `PATCH /api/photos/links` (SKU_STOCK `sort_order`). Controls hover-reveal
  * on a mouse and stay resident at a tap size on touch (`coarse:`). Only when
  * it HAS photos; uploading is the item tile's own Upload / Phone
- * (`StockPhotoTile`), never an empty "No photo" tile here.
+ * (`StockPhotoTile`), or — once the SKU has its linked cover — the header
+ * `action` beside "Photos · N" (the stock record, owner 2026-10-08).
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Star, Trash2 } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
@@ -39,12 +40,15 @@ export function SkuExceptionPhotosSection({
   stockId,
   onChanged,
   testId = 'sku-exception-photos',
+  action,
 }: {
   photos: readonly EvidencePhotoItem[];
   /** The `sku_stock.id` (SKU_STOCK photo entity); null hides the order controls. */
   stockId: number | null;
   onChanged: () => Promise<void> | void;
   testId?: string;
+  /** Header verbs, right of "Photos · N" on the same row. */
+  action?: ReactNode;
 }) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   // Optimistic order, pinned to the `photos` snapshot it was made from — a
@@ -110,7 +114,7 @@ export function SkuExceptionPhotosSection({
   if (shown.length === 0) return null;
 
   return (
-    <RecordGroup title={`Photos · ${shown.length}`} testId={testId}>
+    <RecordGroup title={`Photos · ${shown.length}`} testId={testId} action={action}>
       <ul className="grid grid-cols-4 gap-2 px-4 pb-3 pt-1 coarse:grid-cols-2">
         {shown.map((photo, index) => (
           <li key={photo.id}>

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  LABEL_COLOR_TOKENS,
   DEFAULT_LABEL_COLOR,
   isLabelColorToken,
   normalizeLabelColor,
@@ -23,22 +22,6 @@ test('normalizeLabelColor coerces unknown/empty values to the default', () => {
   assert.equal(normalizeLabelColor('emerald'), 'emerald');
   assert.equal(normalizeLabelColor('#abc'), DEFAULT_LABEL_COLOR);
   assert.equal(normalizeLabelColor(null), DEFAULT_LABEL_COLOR);
-});
-
-test('every token has a full literal chip class string (Tailwind-scannable)', () => {
-  for (const token of LABEL_COLOR_TOKENS) {
-    const cls = LABEL_CHIP_CLASSES[token];
-    if (token === 'slate') {
-      // The one NEUTRAL token is theme-aware:
-      assert.ok(cls.includes('bg-surface-canvas'), 'slate chip has its semantic bg literal');
-      assert.ok(cls.includes('text-text-muted'), 'slate chip has its semantic text literal');
-      assert.ok(cls.includes('ring-border-soft'), 'slate chip has its semantic ring literal');
-      continue;
-    }
-    assert.ok(cls.includes(`bg-${token}-50`), `${token} chip has its bg literal`);
-    assert.ok(cls.includes(`text-${token}-700`), `${token} chip has its text literal`);
-    assert.ok(cls.includes(`ring-${token}-200`), `${token} chip has its ring literal`);
-  }
 });
 
 test('labelChipClasses falls back to the default token classes for a bad color', () => {

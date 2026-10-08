@@ -221,7 +221,6 @@ function shipmentModel(record: ShipmentRecord, onOpenShipment: (shipmentId: numb
 
 export interface ShipmentRecordSlot {
   title: ReactNode;
-  actions?: ReactNode;
   view: ReactNode;
 }
 
@@ -320,7 +319,6 @@ export function useShipmentRecordSlot(
         {entry ? <OrderHead entry={entry} /> : null}
       </span>
     ),
-    actions: slot.actions,
     view: (
       <>
         {slot.view}

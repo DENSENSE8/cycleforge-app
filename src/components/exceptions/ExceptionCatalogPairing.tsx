@@ -29,7 +29,7 @@ export function ExceptionUnpairedBanner({ row }: { row: OrderExceptionRow }) {
   if (row.skuCatalogId) return null;
   const siblings = row.siblingUnpairedCount;
   return (
-    <Alert variant="warning" className={TRIAGE_PANEL_INNER_CORNER}>
+    <Alert variant="warning">
       <AlertCircle aria-hidden />
       {/* AlertTitle, not AlertDescription: with one line, that line IS the
           message — description tone (dimmed, regular weight) would render the
@@ -67,7 +67,7 @@ export function ExceptionCatalogPairing({
 }) {
   if (row.skuCatalogId) {
     return (
-      <Alert variant="success" className={TRIAGE_PANEL_INNER_CORNER}>
+      <Alert variant="success">
         <Check aria-hidden />
         <AlertTitle>
           Paired to <span className="font-mono">{row.catalogSku}</span>

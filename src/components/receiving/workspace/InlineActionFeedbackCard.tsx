@@ -8,6 +8,8 @@ import { AlertTriangle, Check, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { useMotionPresence } from '@/design-system/foundations/motion-presets-hooks';
+import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
+import { cn } from '@/utils/_cn';
 import {
   INLINE_ACTION_FEEDBACK_TONE,
   type InlineActionFeedbackTone,
@@ -118,7 +120,8 @@ export function InlineActionFeedbackCard({
       : null;
 
   return (
-    <div className={`relative overflow-hidden rounded-lg border ${palette.border} ${palette.bg} ${className}`.trim()}>
+    // Phone card, never a full-width band (operator 2026-10-08).
+    <div className={cn('relative overflow-hidden border', PHONE_CARD_FACE, palette.border, palette.bg, className)}>
       <span className={`absolute inset-y-0 left-0 w-[3px] ${palette.bar}`} aria-hidden />
       <div className="flex items-start gap-2 px-3 py-2.5">
         <div className="min-w-0 flex-1">
