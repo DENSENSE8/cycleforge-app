@@ -24,7 +24,7 @@ import { Button } from '@/design-system/primitives/Button';
 import { TextField } from '@/design-system/primitives/TextField';
 import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
 import { readStockLabelNotes, rememberStockLabelNotes, stockLabelNotesStorage } from '@/lib/inventory/stock-label-notes';
-import { stockRecordTitle } from '@/lib/inventory/stock-record';
+import { stockRecordState, stockRecordTitle } from '@/lib/inventory/stock-record';
 import { photoContentUrl } from '@/lib/photos/display-url';
 import { STOCK_LABEL_NOTES_MAX } from '@/lib/print/staff-print-bridge';
 import type { StockLabelFace } from '@/lib/print/stockLabel';
@@ -75,7 +75,7 @@ export function StockLabelDialog({ record, done }: { record: LocationStockTableR
   const chosenPrint = chosen?.print ?? null;
 
   const face = useMemo(
-    (): StockLabelFace => ({ sku, title: stockRecordTitle(record), notes: notes.trim(), image: chosenPrint }),
+    (): StockLabelFace => ({ sku, title: stockRecordTitle(record), notes: notes.trim(), image: chosenPrint, onHold: stockRecordState(record) === 'onHold' }),
     [chosenPrint, notes, record, sku],
   );
   const faces = useMemo(() => [face], [face]);
@@ -132,7 +132,7 @@ export function StockLabelDialog({ record, done }: { record: LocationStockTableR
               autoFocus
               data-testid="stock-label-notes"
             />
-            <p className="text-role-caption text-text-muted">Prints under the title. Kept for {sku} on this computer.</p>
+            <p className="text-role-caption text-text-muted">Prints at the bottom of the label; left blank, it prints write-in lines. Kept for {sku} on this computer.</p>
           </div>
         ) : null}
 

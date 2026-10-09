@@ -17,7 +17,8 @@ import {
 test('getExternalUrlByItemNumber maps ASIN / eBay / short ids', () => {
   assert.equal(getExternalUrlByItemNumber('B0ABCDEF12'), 'https://www.amazon.com/dp/B0ABCDEF12');
   assert.equal(getExternalUrlByItemNumber('123456789012'), 'https://www.ebay.com/itm/123456789012');
-  assert.ok(getExternalUrlByItemNumber('SKU-1')?.includes('usavshop.com'));
+  assert.equal(getExternalUrlByItemNumber('SKU-1'), null);
+  assert.equal(getExternalUrlByItemNumber('00014-P-5'), null);
 });
 
 test('listingMatchesOrderPlatform: a listing on another storefront than the order is a mismatch', () => {

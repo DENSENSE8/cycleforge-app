@@ -1,0 +1,32 @@
+import { chromium } from '@playwright/test';
+import { BASE_URL, STORAGE } from './auth-preflight.mjs';
+
+const browser = await chromium.launch();
+const ctx = await browser.newContext({ storageState: STORAGE, baseURL: BASE_URL, viewport: { width: 1600, height: 900 } });
+const page = await ctx.newPage();
+const logs = [];
+page.on('pageerror', (e) => logs.push('pageerror ' + String(e).slice(0, 300)));
+await page.goto('/fulfilled', { waitUntil: 'domcontentloaded', timeout: 120_000 });
+await page.waitForSelector('[data-testid="fulfilled-board-card"]', { timeout: 120_000 });
+console.log('board cards', await page.locator('[data-testid="fulfilled-board-card"]').count());
+// Zoom a column from its header.
+const stalledHeader = page.locator('[data-journey-column="stalled"] button').first();
+await stalledHeader.click();
+await page.waitForSelector('[data-testid="fulfilled-column-crumb"]', { timeout: 60_000 });
+await page.waitForTimeout(2500);
+console.log('zoom url', page.url());
+const orders = await page.locator('[data-pasted-list-row] span').evaluateAll((els) => els.slice(0, 0).length);
+const firstClocks = await page.$$eval('[data-pasted-list-row]', (rows) => rows.slice(0, 6).map((r) => r.textContent?.match(/\d+[dhm] \/ \d+[dhm]/)?.[0] ?? ''));
+console.log('clocks in order', firstClocks, orders);
+await page.locator('[data-pasted-list-row] button[aria-label^="Select"], [data-pasted-list-row] [role="checkbox"]').first().click();
+await page.waitForTimeout(800);
+const dockText = await page.locator('text=/1 (line|order) selected|1 selected/').first().textContent().catch(() => null);
+console.log('dock', dockText);
+await page.screenshot({ path: '/tmp/p3-zoom-selected.png' });
+await page.keyboard.press('Escape');
+await page.waitForTimeout(400);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(2500);
+console.log('after Esc', page.url());
+console.log(logs.join('\n'));
+await browser.close();

@@ -59,6 +59,12 @@ interface WorkspaceNotesCardProps {
   /** Header ⓘ → this station's Displays → Timeline leaf (see LineNotesCard). */
   onOpenStatusHistory?: () => void;
   /**
+   * Open this station's Displays → Locations leaf (the footer location pill's
+   * **New location**). Omitted on a surface with no Displays column — the menu
+   * then has no such row.
+   */
+  onOpenLocations?: () => void;
+  /**
    * Repoint the header ⓘ (dev receive-panel tester). Outranks
    * {@link onOpenStatusHistory} — see the prop's docblock on LineNotesCard.
    */
@@ -96,6 +102,7 @@ export function WorkspaceNotesCard({
   onPrimaryAction,
   primaryActionDisabled,
   onOpenStatusHistory,
+  onOpenLocations,
   headerAction,
   onComposerModeChange,
   onTicketDraftFilledChange,
@@ -143,6 +150,7 @@ export function WorkspaceNotesCard({
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}
         onOpenStatusHistory={onOpenStatusHistory}
+        onOpenLocations={onOpenLocations}
         headerAction={headerAction}
         onComposerModeChange={onComposerModeChange}
         onTicketDraftFilledChange={onTicketDraftFilledChange}

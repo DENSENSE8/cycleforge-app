@@ -109,3 +109,53 @@ export function MobileRowPhotoActions({
     </div>
   );
 }
+
+const TILE_WITH_PHOTOS =
+  'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 active:bg-blue-100';
+const TILE_EMPTY =
+  'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-blue-200 bg-blue-50/80 text-blue-600';
+
+/**
+ * The big photo CTA on a feed's newest (bottom) row — gallery tile as status
+ * plus the full-width camera. One face for the Unbox photo feed and the
+ * Packing photo feed.
+ */
+export function MobileRowPhotoCta({
+  photoCount,
+  galleryHref,
+  captureHref,
+  className,
+  onOpenGallery,
+}: MobileRowPhotoActionsProps) {
+  const safeCount = Math.max(0, photoCount);
+  const galleryLabel = safeCount > 0 ? `View ${safeCount} photos` : 'No photos yet';
+  const tileClass = safeCount > 0 ? TILE_WITH_PHOTOS : TILE_EMPTY;
+  const tileFace = (
+    <span className="inline-flex items-center gap-1.5 leading-none">
+      <ImageIcon className="h-7 w-7" />
+      <GalleryPhotoCount count={safeCount} className="text-xl leading-none" />
+    </span>
+  );
+  return (
+    <div className={cn('flex h-16 gap-2', className)}>
+      {onOpenGallery ? (
+        // ds-raw-button: the 64px gallery status tile shares its face with the Link fallback below; no primitive paints a square count tile.
+        <button type="button" onClick={onOpenGallery} aria-label={galleryLabel} className={cn('ds-raw-button', tileClass)}>
+          {tileFace}
+        </button>
+      ) : (
+        <Link href={galleryHref} prefetch={false} aria-label={galleryLabel} className={tileClass}>
+          {tileFace}
+        </Link>
+      )}
+      <Link
+        href={captureHref}
+        prefetch={false}
+        aria-label={`Take photos${safeCount > 0 ? ` (${safeCount} so far)` : ''}`}
+        className="inline-flex h-16 min-w-0 flex-1 items-center justify-center rounded-xl bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.99] active:bg-blue-700"
+      >
+        <Camera className="h-7 w-7" />
+      </Link>
+    </div>
+  );
+}

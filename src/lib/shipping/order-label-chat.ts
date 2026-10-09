@@ -21,7 +21,6 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { publishOrderChanged, publishShipmentChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { sendEmailBestEffort } from '@/lib/email/send';
-import { readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 import { createOrderNote } from '@/lib/orders/order-notes';
 import { labelTrailNote } from '@/lib/shipping/order-label-links';
 import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
@@ -168,11 +167,6 @@ export async function buyChatLabel(orgId: OrgId, p: ChatLabelBuyPayload): Promis
   try {
     const order = await loadLabelOrder(orgId, p.orderId);
     if (!order) return { ok: false, status: 404, error: `Order ${p.orderRef} no longer exists. Nothing was bought.` };
-    const hold = await readBuyerNoteHold({ query: (text, params) => tenantQuery(orgId, text, params) }, orgId, p.orderId);
-    if (hold) {
-      return { ok: false, status: 409, error: `Order ${p.orderRef} has a buyer note nobody has acknowledged yet: "${hold.buyerNote.slice(0, 200)}". Read and acknowledge it on the order first. Nothing was bought.` };
-    }
-
     const v2 = await chatLabelEngine.resolve(orgId);
     const buy =
       p.purpose === 'return'

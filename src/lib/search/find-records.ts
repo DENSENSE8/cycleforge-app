@@ -141,14 +141,20 @@ async function withAllocateStatus(
   });
 }
 
-/** Attach the brand facet of the chosen rows; a facet failure never costs the rows. */
+/**
+ * Stamp the Allocate chips and attach the brand facet of the chosen rows —
+ * two independent reads, run together (one round trip, not two: a serial
+ * lookup paid both back to back). A facet failure never costs the rows.
+ */
 async function withBrandFacet(
   orgId: OrgId,
   result: Omit<FindRecordsResult, 'brandFacet'>,
   deps: FindRecordsDeps,
 ): Promise<FindRecordsResult> {
-  const rows = await withAllocateStatus(orgId, result.rows, deps);
-  const brandFacet = rows.length > 0 ? await deps.brandFacet(orgId, rows).catch(() => []) : [];
+  const [rows, brandFacet] = await Promise.all([
+    withAllocateStatus(orgId, result.rows, deps),
+    result.rows.length > 0 ? deps.brandFacet(orgId, result.rows).catch(() => []) : Promise.resolve([]),
+  ]);
   return { ...result, rows, brandFacet };
 }
 

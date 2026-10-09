@@ -8,22 +8,18 @@ import {
   ArrowRight,
   Camera,
   Check,
-  ChevronRight,
   ExternalLink,
   Images,
   MoreVertical,
-  Package,
-  ScanBarcode,
   ChevronsRight,
   SlidersHorizontal,
   Trash2,
 } from '@/components/Icons';
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button, IconButton, TextField } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
 import { ArmedDangerButton } from '@/design-system/components/ArmedDangerButton';
 import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
 import { InlineEditableValue } from '@/design-system/components/InlineEditableValue';
-import { TouchQtyStepper } from '@/design-system/components/TouchQtyStepper';
 import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
 import { useAuth } from '@/contexts/AuthContext';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
@@ -31,16 +27,23 @@ import { resolveScannedItemSku } from '@/lib/inventory/scanned-item-sku';
 import { routeScan } from '@/lib/barcode-routing';
 import { recordStockAdjust } from '@/lib/mobile/stock-adjust-session';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { compressPhotoForUpload } from '@/lib/image/compress-for-upload';
+import { captureTimeFromFile, shutterCaptureTime } from '@/lib/photos/capture-time';
+import { canUseContinuousWebCamera } from '@/lib/photos/capture-session';
+import { MobileSwipePhotoViewer, type SwipePhotoSlide } from '@/components/mobile/station/MobileSwipePhotoViewer';
 import { commitStockRequest, stockSetRequest } from '@/lib/inventory/stock-bin-verb-writes';
-import { announceStockTransfer, postStockTransfer } from '@/lib/inventory/stock-transfer-client';
+import { announceStockTransfer, postStockTransfer, type StockTransferReceipt } from '@/lib/inventory/stock-transfer-client';
 import { takeReasonPayload, type TakeReasonChoice } from '@/lib/inventory/take-reason';
-import { locationHubPath, locationKeypadHref } from '@/lib/mobile/location-hub-href';
-import { withJobReturn } from '@/lib/mobile/nav-trail';
+import { locationKeypadHref } from '@/lib/mobile/location-hub-href';
+import { useLocalStorage } from '@/hooks/_storage';
+import { OPEN_TOTES_QUERY_KEY, TOTE_PREFS_DEFAULT, TOTE_PREFS_KEY, type TotePrefs } from '@/components/mobile/v2/stock/open-totes';
+import { moveTargetFace, StockMoveStage, type MoveTab, type MoveTarget } from './StockMoveStage';
 import { photoContentUrl } from '@/lib/photos/display-url';
-import { uploadSkuStockShots } from '@/lib/photos/sku-stock-photo-upload';
+import { ensureSkuStockId, uploadSkuStockShots } from '@/lib/photos/sku-stock-photo-upload';
 import { vibrateScan } from '@/lib/scan-feedback/play';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { DetailFact, DetailFacts } from '@/components/mobile/detail/DetailParts';
 import { TakeReasonChooser } from '@/components/mobile/pair/TakeReasonChooser';
@@ -52,6 +55,7 @@ import type { LocationBindContent, LocationRecord } from '@/components/mobile/sc
 import { SkuLinkedPhotoStrip } from '@/components/mobile/stock/SkuLinkedPhotoStrip';
 import {
   MobileNativePhotoCapture,
+  MobileNativePhotoInput,
   MobilePhotoLibraryInput,
   type CapturedShot,
 } from '@/components/mobile/photos/MobileNativePhotoCapture';
@@ -59,16 +63,19 @@ import {
 /** One task at a time in ONE sheet (docs/mobile-first/V2_OBJECT_FIRST.md §5). */
 type Stage = 'rest' | 'adjust' | 'move' | 'more' | 'photos';
 type TitleSave = { state: 'idle' | 'saving' | 'saved' } | { state: 'error'; message: string };
-type StageVerb = 'adjust' | 'move' | 'back' | 'done' | 'count' | 'commit' | 'next';
+type StageVerb = 'adjust' | 'move' | 'back' | 'done' | 'count' | 'commit' | 'next' | 'camera' | 'library';
 
 const MORE_ROW_CLASS = 'w-full justify-start';
 /** The same unit is scanned again on purpose when counting: a short same-code cooldown. */
 const ITEM_SCAN_DEDUP_MS = 900;
 
 /**
- * Stock at one location as flat rows; a tap opens the stock position bottom
- * sheet: identity → evidence → next verb (Adjust · Move); the header owns Camera
- * and the exact count. Adjust is ±1 first; the keypad lives under More.
+ * Stock at one location as flat rows: photo flush on the left (tap = full
+ * screen), title, count, a blue camera, chevron. The camera opens the camera
+ * itself — the live camera, else the phone's camera app — never a chooser; a
+ * SKU with no stock row gets one on its first photo. A row tap opens the stock
+ * position sheet: identity and count in the header, evidence, then the dock
+ * (Camera · Choose · Move over Adjust). Adjust is ±1 first; the keypad lives under More.
  * Counting, moving and record management are stages of that sheet, never a
  * resting form. The sheet has no X: it dismisses by swipe or an outside tap.
  *
@@ -108,17 +115,28 @@ export function LocationStockPositions({
   const [error, setError] = useState<string | null>(null);
   const [takeReason, setTakeReason] = useState<TakeReasonChoice>(null);
   const [moveQty, setMoveQty] = useState(1);
-  const [splitting, setSplitting] = useState(false);
-  const [destination, setDestination] = useState('');
+  const [moveTab, setMoveTab] = useState<MoveTab>('tote');
+  const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
+  /** The tote this phone loaded last — shared with the location's tote sheet. */
+  const [totePrefs, setTotePrefs] = useLocalStorage<TotePrefs>(TOTE_PREFS_KEY, TOTE_PREFS_DEFAULT);
   const [titleDraft, setTitleDraft] = useState('');
   const [titleSave, setTitleSave] = useState<TitleSave>({ state: 'idle' });
   const [actionBusy, setActionBusy] = useState<'move' | 'delete' | 'count' | null>(null);
   /** The ±1 draft while adjusting without a location scan; null otherwise. */
   const [countDraft, setCountDraft] = useState<number | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
-  /** The house photo capture, open over the page (the sheet steps aside); `files` = picked from the library first. */
-  const [capture, setCapture] = useState<{ files: File[] } | null>(null);
+  /**
+   * The house photo capture, open over the page (the sheet steps aside) for
+   * one row: `sku` is whose photos these are (a row's inline camera, or the
+   * open sheet's); `files` = picked from the library first.
+   */
+  const [capture, setCapture] = useState<{ sku: string; files: File[] } | null>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
+  /** The phone's own camera (no live camera in this browser) and whose photos it is taking. */
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const cameraSku = useRef<string | null>(null);
+  /** A row photo open full screen. */
+  const [rowViewer, setRowViewer] = useState<SwipePhotoSlide[] | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const selected = record.contents.find((row) => row.sku === selectedSku) ?? null;
   const takePayload = useMemo(() => takeReasonPayload(takeReason), [takeReason]);
@@ -187,9 +205,9 @@ export function LocationStockPositions({
     setError(null);
     setStage('rest');
     setMoveQty(Math.max(1, row.qty));
-    setSplitting(false);
+    setMoveTab('tote');
+    setMoveTarget(null);
     setCountDraft(null);
-    setDestination('');
     setTitleDraft(row.productTitle?.trim() || '');
     setTitleSave({ state: 'idle' });
     setSelectedSku(row.sku);
@@ -335,6 +353,8 @@ export function LocationStockPositions({
       if (!raw || detail?.location === true || event.defaultPrevented || record.contents.length === 0) return;
       const local = record.contents.some((row) => row.sku.toUpperCase() === raw.toUpperCase());
       const route = routeScan(raw);
+      // A tote plate is never an item here: the tote sheet (or the tote's own record) takes it.
+      if (route?.type === 'handling-unit') return;
       const printedLocation = route?.type === 'bin-paired-order' || (route?.type === 'bin' && Boolean(route.redirect));
       if (!local && (printedLocation || !itemScanArmed)) return;
       event.preventDefault();
@@ -378,33 +398,48 @@ export function LocationStockPositions({
     return [...record.contents].sort((a, b) => rank(a.sku) - rank(b.sku));
   }, [pickOrder, record.contents]);
 
-  const qtyToMove = (row: LocationBindContent) => (splitting ? Math.min(row.qty, Math.max(1, moveQty)) : row.qty);
-
-  const scanDestination = (row: LocationBindContent) => {
-    const params = new URLSearchParams({
-      intent: 'location',
-      moveSku: row.sku,
-      moveFrom: record.code,
-      moveQty: String(qtyToMove(row)),
-      returnTo: withJobReturn(locationHubPath(record.code), returnTo),
-    });
-    navigateAfterFlush(`/m/scan?${params.toString()}`);
-  };
-
-  const moveToTyped = async (row: LocationBindContent) => {
-    const toBarcode = destination.trim();
-    if (!toBarcode || actionBusy) return;
-    const qty = qtyToMove(row);
+  /**
+   * Move: into a tote (the tote load, one line) or onto another location (a
+   * transfer). Either way the sheet closes on this location with the same
+   * "Moved N to X · Undo" receipt — Undo is a transfer back from the tote or shelf.
+   */
+  const commitMove = async (row: LocationBindContent) => {
+    if (!moveTarget || actionBusy) return;
+    const qty = Math.min(row.qty, Math.max(1, moveQty));
     setActionBusy('move');
     setError(null);
     try {
       await quick.flush();
-      const receipt = await postStockTransfer({ fromBarcode: record.code, toBarcode, sku: row.sku, qty });
+      let receipt: StockTransferReceipt;
+      if (moveTarget.kind === 'tote') {
+        const { tote } = moveTarget;
+        const commandId = safeRandomUUID();
+        const response = await fetch(`/api/handling-units/${tote.id}/load`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandId },
+          body: JSON.stringify({
+            locationCode: record.code,
+            lines: [{ sku: row.sku, qty }],
+            park: false,
+            idempotencyKey: commandId,
+          }),
+        });
+        const body = (await response.json().catch(() => null)) as { success?: boolean; error?: string } | null;
+        if (!response.ok || !body?.success) throw new Error(body?.error || `Could not move into ${tote.code}`);
+        setTotePrefs((prev) => ({ ...prev, toteId: tote.id }));
+        void queryClient.invalidateQueries({ queryKey: OPEN_TOTES_QUERY_KEY });
+        receipt = { fromBarcode: record.code, toBarcode: tote.code, sku: row.sku, qty };
+      } else {
+        receipt = await postStockTransfer({ fromBarcode: record.code, toBarcode: moveTarget.code, sku: row.sku, qty });
+      }
+      vibrateScan('success');
       applyQty(row.sku, (current) => current - receipt.qty);
       announceStockTransfer(receipt, { onSettled: refresh });
       setSelectedSku(null);
       await refresh();
     } catch (cause) {
+      vibrateScan('reject');
       setError(cause instanceof Error ? cause.message : 'Could not move stock');
     } finally {
       setActionBusy(null);
@@ -437,12 +472,66 @@ export function LocationStockPositions({
 
   const live = selected ? countDraft ?? Math.max(0, selected.qty + (quick.pending[selected.sku] ?? 0)) : 0;
   const onHold = selected ? isProvisionalSku(selected.sku) : false;
-  const canAddPhotos = selected?.stockId != null;
+  const captureRow = capture ? record.contents.find((row) => row.sku === capture.sku) ?? null : null;
 
-  const finishCapture = async (shots: CapturedShot[]) => {
+  const finishCapture = async (row: LocationBindContent, shots: CapturedShot[]) => {
     setCapture(null);
-    if (!selected?.stockId || shots.length === 0) return;
-    if (await uploadSkuStockShots(selected.stockId, shots)) await refresh();
+    if (shots.length === 0) return;
+    // A bin SKU with no stock row yet gets one: its first photo needs an anchor.
+    const stockId = row.stockId ?? (await ensureSkuStockId(row.sku));
+    if (stockId == null) {
+      for (const shot of shots) URL.revokeObjectURL(shot.previewUrl);
+      return;
+    }
+    if (await uploadSkuStockShots(stockId, shots)) await refresh();
+  };
+
+  /**
+   * Camera means the camera: the live multi-shot camera when the browser
+   * offers one, else the phone's own camera app straight from this tap (no
+   * Device camera / Choose photos screen in between), uploading on return.
+   */
+  const openCamera = (row: LocationBindContent) => {
+    if (canUseContinuousWebCamera()) {
+      setCapture({ sku: row.sku, files: [] });
+      return;
+    }
+    cameraSku.current = row.sku;
+    cameraInput.current?.click();
+  };
+
+  const uploadCameraFiles = async (files: readonly File[]) => {
+    const row = record.contents.find((candidate) => candidate.sku === cameraSku.current) ?? null;
+    cameraSku.current = null;
+    if (!row || files.length === 0) return;
+    const shots: CapturedShot[] = [];
+    try {
+      for (const file of files) {
+        const compressed = await compressPhotoForUpload(file, { quality: 0.85, source: 'mobile-native-camera' });
+        shots.push({
+          id: safeRandomUUID(),
+          blob: compressed.blob,
+          previewUrl: URL.createObjectURL(compressed.blob),
+          capturedAtMs: captureTimeFromFile(file) ?? shutterCaptureTime(),
+          source: 'native-camera',
+        });
+      }
+    } catch (cause) {
+      for (const shot of shots) URL.revokeObjectURL(shot.previewUrl);
+      toast.error(cause instanceof Error ? cause.message : 'Could not prepare the photo.', { position: 'top-center' });
+      return;
+    }
+    await finishCapture(row, shots);
+  };
+
+  /** The row's photo, full screen: its own photos to swipe through, else the catalog image. */
+  const viewRowPhotos = (row: LocationBindContent) => {
+    const slides: SwipePhotoSlide[] = row.photoIds.length > 0
+      ? row.photoIds.map((photoId) => ({ id: String(photoId), previewUrl: photoContentUrl(photoId) }))
+      : row.imageUrl
+        ? [{ id: 'cover', previewUrl: row.imageUrl }]
+        : [];
+    if (slides.length > 0) setRowViewer(slides);
   };
 
   const verbs = ((): readonly DetailDockVerb<StageVerb>[] => {
@@ -472,19 +561,21 @@ export function LocationStockPositions({
       return nextVerb ? [nextVerb, done] : [done];
     }
     if (stage === 'move') {
-      const qty = qtyToMove(selected);
-      const typed = destination.trim();
+      const qty = Math.min(selected.qty, Math.max(1, moveQty));
       return [
         back,
-        typed
-          ? { id: 'commit', label: `Move ${qty} to ${typed}`, icon: <ArrowRight />, primary: true, loading: actionBusy === 'move', testId: 'stock-move-commit' }
-          : { id: 'move', label: 'Scan destination', icon: <ScanBarcode />, primary: true, testId: 'stock-move-scan' },
+        moveTarget
+          ? { id: 'commit', label: `Move ${qty} to ${moveTargetFace(moveTarget)}`, icon: <ArrowRight />, primary: true, loading: actionBusy === 'move', testId: 'stock-move-commit' }
+          : { id: 'commit', label: moveTab === 'tote' ? 'Scan a tote' : 'Scan a location', icon: <ArrowRight />, primary: true, disabled: true, testId: 'stock-move-commit' },
       ];
     }
     if (stage === 'more' || stage === 'photos') return [{ ...back, variant: 'secondary' }];
+    // Rest: the photo verbs and Move share one aligned row; Adjust is the primary under it.
     const adjust: DetailDockVerb<StageVerb> = { id: 'adjust', label: 'Adjust', icon: <SlidersHorizontal />, primary: true, testId: 'stock-adjust' };
-    if (selected.qty <= 0) return [adjust];
-    return [{ id: 'move', label: 'Move', icon: <ArrowRight />, testId: 'stock-move' }, adjust];
+    const camera: DetailDockVerb<StageVerb> = { id: 'camera', label: 'Camera', icon: <Camera />, testId: 'stock-camera' };
+    const library: DetailDockVerb<StageVerb> = { id: 'library', label: 'Choose', icon: <Images />, testId: 'stock-choose-photos' };
+    if (selected.qty <= 0) return [camera, library, adjust];
+    return [camera, library, { id: 'move', label: 'Move', icon: <ArrowRight />, testId: 'stock-move' }, adjust];
   })();
 
   const onVerb = (verb: StageVerb) => {
@@ -503,39 +594,102 @@ export function LocationStockPositions({
       if (countDraft != null) return commitCount(selected, countDraft);
     } else if (verb === 'adjust') {
       startAdjust(selected);
+    } else if (verb === 'camera') {
+      openCamera(selected);
+    } else if (verb === 'library') {
+      // Clicked inside this tap: iOS opens the picker only from a user gesture.
+      libraryInput.current?.click();
     } else if (verb === 'move') {
-      if (stage === 'move') scanDestination(selected);
-      else setStage('move');
-    } else if (verb === 'commit') return moveToTyped(selected);
+      setStage('move');
+    } else if (verb === 'commit') return commitMove(selected);
   };
 
   return (
     <section ref={sectionRef} aria-label="Stock in this location" data-testid="location-stock-positions">
+      <MobileNativePhotoInput
+        ref={cameraInput}
+        tabIndex={-1}
+        aria-hidden
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = '';
+          void uploadCameraFiles(files);
+        }}
+        data-testid="stock-native-camera-input"
+      />
+      <MobilePhotoLibraryInput
+        ref={libraryInput}
+        tabIndex={-1}
+        aria-hidden
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = '';
+          if (files.length > 0 && selected) setCapture({ sku: selected.sku, files });
+        }}
+        data-testid="stock-photo-library-input"
+      />
       {pick ? <h2 className="px-mode-page pb-1 pt-3 text-role-eyebrow text-text-soft">Select item</h2> : null}
-      {rows.map((row) => (
-        // ds-raw-button: the whole row is the target (F3), not its chevron.
-        <button
-          key={row.sku}
-          type="button"
-          onClick={() => {
-            open(row);
-            // Picking an item after a scan is choosing what to adjust.
-            if (pick) startAdjust(row);
-          }}
-          data-testid="location-stock-row"
-          className="grid min-h-14 w-full grid-cols-[2.75rem_minmax(0,1fr)_auto_1rem] items-center gap-2 border-b border-mode-rule bg-mode-panel px-mode-page py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-accent"
-        >
-          <ItemRecordThumb imageUrl={row.imageUrl} plainEmpty className="h-11 min-h-11 w-11 rounded-lg" iconClassName="h-5 w-5" />
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold text-mode-ink">{row.productTitle?.trim() || row.sku}</span>
-            {isProvisionalSku(row.sku) ? <span className="text-role-micro font-semibold text-amber-700">On hold</span> : null}
-          </span>
-          <span className={cn('min-w-8 text-right text-base font-bold tabular-nums', row.qty > 1 ? 'text-blue-600' : 'text-mode-ink')}>
-            {row.qty}
-          </span>
-          <ChevronRight className="h-4 w-4 text-mode-muted" />
-        </button>
-      ))}
+      {rows.map((row) => {
+        const name = row.productTitle?.trim() || row.sku;
+        return (
+          <div
+            key={row.sku}
+            className="grid min-h-20 grid-cols-[5rem_minmax(0,1fr)_auto] items-stretch border-b border-mode-rule bg-mode-panel"
+            data-testid="location-stock-row-shell"
+          >
+            {/* The photo is the row's left edge: flush top, left and bottom, cropped to its middle. */}
+            {row.imageUrl ? (
+              // ds-raw-button: an image tile (tap = full screen), not a Button shape — as SkuLinkedPhotoStrip's tiles.
+              <button
+                type="button"
+                aria-label={`View photos of ${name}`}
+                onClick={() => viewRowPhotos(row)}
+                data-walk-through
+                data-testid="location-stock-row-photo"
+                className="h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-accent"
+              >
+                <ItemRecordThumb imageUrl={row.imageUrl} fit="cover" className="h-full min-h-20 w-20" />
+              </button>
+            ) : (
+              <ItemRecordThumb plainEmpty className="h-full min-h-20 w-20" iconClassName="h-6 w-6" />
+            )}
+            {/* ds-raw-button: the row's middle (title + count) is the one target for the sheet; the photo and camera beside it are their own controls. */}
+            <button
+              type="button"
+              aria-label={`${name}, ${row.qty} in stock`}
+              onClick={() => {
+                open(row);
+                // Picking an item after a scan is choosing what to adjust.
+                if (pick) startAdjust(row);
+              }}
+              data-testid="location-stock-row"
+              // A horizontal drag that starts on the row is the location walk, not a tap.
+              data-walk-through
+              className="flex min-w-0 items-center gap-3 py-2 pl-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-accent"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-2 break-words text-base font-semibold leading-snug text-mode-ink">{name}</span>
+                {isProvisionalSku(row.sku) ? <span className="text-role-micro font-semibold text-amber-700">On hold</span> : null}
+              </span>
+              <span className={cn('min-w-10 text-right text-2xl font-bold tabular-nums', stockQtyToneClass(row.qty, { inkClass: 'text-mode-ink' }))}>
+                {row.qty}
+              </span>
+            </button>
+            <Button
+              variant="primary"
+              size="md"
+              iconOnly
+              icon={<Camera />}
+              ariaLabel={`Take photos of ${name}`}
+              onClick={() => openCamera(row)}
+              className="mx-3 self-center"
+              data-testid="location-stock-row-camera"
+            >
+              Photo
+            </Button>
+          </div>
+        );
+      })}
 
       {/* The sheet steps aside while the photo capture owns the screen: never a sheet over a sheet. */}
       <Sheet open={selected != null && capture == null} onOpenChange={(next) => { if (!next) close(); }}>
@@ -557,8 +711,7 @@ export function LocationStockPositions({
           {selected ? (
             <>
               <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3">
-                <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto_auto] items-center gap-2">
-                  <ItemRecordThumb imageUrl={selected.imageUrl} plainEmpty className="h-12 min-h-12 w-12 rounded-lg" iconClassName="h-5 w-5" />
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
                   <div className="min-w-0">
                     <SheetTitle className="text-left text-base">
                       {onHold ? (
@@ -613,7 +766,6 @@ export function LocationStockPositions({
                 <div className="shrink-0 border-b border-mode-rule" data-testid="stock-sheet-facts">
                   <DetailFacts label="Stock position">
                     <DetailFact label="SKU" value={selected.sku} mono copy={selected.sku} />
-                    <DetailFact label="Location" value={record.face} hint={record.room} mono copy={record.code} />
                     <DetailFact label="Last counted" value={selected.lastCounted ? formatMonthDayTimePST(selected.lastCounted) : null} />
                     <DetailFact label="Last moved" value={selected.lastMoved ? formatMonthDayTimePST(selected.lastMoved) : null} />
                     {selected.minQty != null ? (
@@ -627,6 +779,8 @@ export function LocationStockPositions({
                 </div>
               ) : null}
 
+              {/* At rest the body is the photos, under the facts; with none (and no error) it is not drawn. */}
+              {stage !== 'rest' || error || selected.photoIds.length > 0 ? (
               <SheetBody>
                 {stage === 'rest' || stage === 'photos' ? (
                   <>
@@ -643,47 +797,6 @@ export function LocationStockPositions({
                     />
                     {stage === 'photos' && selected.photoIds.length === 0 ? (
                       <p className="text-role-caption text-text-muted">No photos yet.</p>
-                    ) : null}
-                    {stage === 'rest' ? (
-                      <div className="grid grid-cols-2 gap-2" data-testid="stock-photo-actions">
-                        <MobilePhotoLibraryInput
-                          ref={libraryInput}
-                          tabIndex={-1}
-                          aria-hidden
-                          onChange={(event) => {
-                            const files = Array.from(event.target.files ?? []);
-                            event.target.value = '';
-                            if (files.length > 0) setCapture({ files });
-                          }}
-                          data-testid="stock-photo-library-input"
-                        />
-                        <Button
-                          variant="secondary"
-                          size="lg"
-                          radius="surface"
-                          icon={<Camera />}
-                          disabled={!canAddPhotos}
-                          onClick={() => setCapture({ files: [] })}
-                          data-testid="stock-camera"
-                        >
-                          Camera
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="lg"
-                          radius="surface"
-                          icon={<Images />}
-                          disabled={!canAddPhotos}
-                          // Clicked inside this tap: iOS opens the picker only from a user gesture.
-                          onClick={() => libraryInput.current?.click()}
-                          data-testid="stock-choose-photos"
-                        >
-                          Choose photos
-                        </Button>
-                      </div>
-                    ) : null}
-                    {!canAddPhotos ? (
-                      <p className="text-role-caption text-text-muted">Pair this SKU to stock to add photos.</p>
                     ) : null}
                   </>
                 ) : null}
@@ -727,60 +840,22 @@ export function LocationStockPositions({
                 ) : null}
 
                 {stage === 'move' ? (
-                  <div className="grid gap-3">
-                    {splitting ? (
-                      <TouchQtyStepper
-                        value={qtyToMove(selected)}
-                        onChange={setMoveQty}
-                        min={1}
-                        max={selected.qty}
-                        unit={['unit', 'units']}
-                        label="Quantity to move"
-                        disabled={actionBusy != null}
-                        testId="stock-move-qty"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-text-default">Moving all {selected.qty}</p>
-                        {selected.qty > 1 ? (
-                          <Button variant="secondary" size="md" radius="surface" icon={<Package />} onClick={() => setSplitting(true)} data-testid="stock-move-split">
-                            Split
-                          </Button>
-                        ) : null}
-                      </div>
-                    )}
-                    <form
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void moveToTyped(selected);
-                      }}
-                    >
-                      <TextField
-                        label="Or type a location code"
-                        value={destination}
-                        onChange={(value) => setDestination(value.toUpperCase())}
-                        mono
-                        enterKeyHint="go"
-                        autoCapitalize="characters"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        disabled={actionBusy != null}
-                        data-testid="stock-move-destination"
-                      />
-                    </form>
-                  </div>
+                  <StockMoveStage
+                    row={selected}
+                    recordCode={record.code}
+                    qty={Math.min(selected.qty, Math.max(1, moveQty))}
+                    onQtyChange={setMoveQty}
+                    tab={moveTab}
+                    onTabChange={setMoveTab}
+                    target={moveTarget}
+                    onTarget={setMoveTarget}
+                    lastToteId={totePrefs.toteId}
+                    busy={actionBusy != null}
+                  />
                 ) : null}
 
                 {stage === 'more' ? (
                   <div className="grid gap-2" data-testid="stock-more-commands">
-                    {selected.qty > 1 ? (
-                      <Button variant="secondary" size="lg" radius="surface" icon={<Package />} className={MORE_ROW_CLASS} onClick={() => {
-                        setSplitting(true);
-                        setStage('move');
-                      }}>
-                        Split quantity
-                      </Button>
-                    ) : null}
                     {selected.photoIds.length > 0 ? (
                       <Button
                         variant="secondary"
@@ -828,6 +903,7 @@ export function LocationStockPositions({
 
                 {error ? <p role="alert" className="mt-3 text-xs font-semibold text-text-danger">{error}</p> : null}
               </SheetBody>
+              ) : null}
 
               <DetailDock label="Stock actions" placement="sheet" verbs={verbs} onVerb={onVerb} />
             </>
@@ -835,32 +911,39 @@ export function LocationStockPositions({
         </SheetContent>
       </Sheet>
 
-      {capture && selected?.stockId ? (
+      {capture && captureRow ? (
         <MobileNativePhotoCapture
           maxPhotos={10}
           initialFiles={capture.files}
           priorPhotos={
-            selected.photoIds.length > 0
-              ? selected.photoIds.map((photoId) => ({
+            captureRow.photoIds.length > 0
+              ? captureRow.photoIds.map((photoId) => ({
                   id: `prior-${photoId}`,
                   previewUrl: photoContentUrl(photoId, 'thumb'),
                   fullUrl: photoContentUrl(photoId),
                   photoId,
                 }))
-              : selected.imageUrl
-                ? [{ id: 'prior-cover', previewUrl: selected.imageUrl }]
+              : captureRow.imageUrl
+                ? [{ id: 'prior-cover', previewUrl: captureRow.imageUrl }]
                 : []
           }
           header={
             <div className="min-w-0">
               <p className="text-role-micro text-white/60">{record.face}</p>
-              <p className="break-words text-sm font-semibold text-white">{selected.productTitle?.trim() || selected.sku}</p>
+              <p className="break-words text-sm font-semibold text-white">{captureRow.productTitle?.trim() || captureRow.sku}</p>
             </div>
           }
-          onDone={(shots) => void finishCapture(shots)}
+          onDone={(shots) => void finishCapture(captureRow, shots)}
           onCancel={() => setCapture(null)}
         />
       ) : null}
+
+      <MobileSwipePhotoViewer
+        slides={rowViewer ?? []}
+        open={rowViewer != null}
+        initialIndex={0}
+        onClose={() => setRowViewer(null)}
+      />
     </section>
   );
 }

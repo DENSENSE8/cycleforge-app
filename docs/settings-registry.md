@@ -185,7 +185,7 @@ UI, storage, validation, audit, permission gating, and plan-gating are automatic
 | `receiving.nasBackup` | segmented (off / mirror / direct) | direct → `nasArchive` | `lib/photos/mirror-nas.ts` |
 | `receiving.autoTicket` | segmented (off / on_qa_fail / on_unfound) | `automations` | **new** trigger (deferred) |
 | `receiving.defaultPutawayBin` | text | — | **unwired** (its only reader, the deleted `mark-received` route, is gone) |
-| `receiving.returnsTestBin` | text | — | return-carton auto-stage + 2×1 special-bin label |
+| `receiving.returnsTestBin` | text | — | return-carton auto-stage |
 | `receiving.autoPrintLabel` | toggle | — | label helpers |
 | `receiving.confirmSerialRemoval` | toggle | — | `ActiveLineConditionSerial` |
 | `receiving.vision.consensusNeeded` / `scanIntervalMs` / `sendMaxDim` | number | `advancedVision` | `useLiveLabelScan` |

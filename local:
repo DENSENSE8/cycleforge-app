@@ -1,0 +1,1192 @@
+# Phase 0(d) — Real scan corpus
+
+Raw corpus: `docs/handoff/ios-parity/corpus/scan-corpus.json` (1538 rows; `ls -l` → 622761 bytes; `rows.length` = 1538). 4 rows dropped for PII (a FedEx 2D payload with a consignee's name/address, free-text notes).
+
+## Method
+- Source: worktree `.env` DB, session `default_transaction_read_only=on`, SELECT only. Columns found via `information_schema.columns`:
+  `mobile_scan_events.raw_value` (18467 rows / 370 distinct — the phone door's raw bytes), `scan_triage_records.raw_value` (510/417), `receiving_scans.tracking_number` (4102/4019), `station_scan_sessions.tracking_raw` (3822/3298), `shipping_tracking_numbers.tracking_number_raw` (12678/12326), `label_ingestions.tracking_number_raw` (99/98), `tracking_exceptions.tracking_number` (1125/1125).
+- Sample: every distinct value from `mobile_scan_events` and `scan_triage_records`; for the other tables, 1 value per (source, first-3-chars, length) bucket, so every envelope shape is represented. A value that shows up in several tables is credited to one source (`min(source)`).
+- Classified by the real web functions: `routeScan` (src/lib/barcode-routing.ts:176), `arrivalScanIntent` (src/lib/scan/mobile-arrival-door.ts:68), `normalizeTrackingNumber` (src/lib/tracking-format.ts:102), `normalizeTrackingLast8` (src/lib/tracking-format.ts:127), `detectCarrier` (src/lib/tracking-format.ts:170). `refused` = `arrivalScanIntent(...).kind === 'refused'`.
+- Command (throwaway script, deleted afterwards):
+  `node --import tsx --import ./scripts/register-server-only-shim.cjs /tmp/classify-corpus.mts`
+  Output excerpt (routeScan kinds over the 1542 sampled rows, before PII drop / regrouping):
+  ```
+  carrier-tracking:UPS 52 | ref 0     sku 508 | ref 508      bin 636 | ref 636
+  carrier-tracking:USPS 44 | ref 0    carrier-tracking:FedEx 172 | ref 0
+  receiving 43 | ref 0    serial-unit 30 | ref 30    fnsku 27 | ref 27
+  carrier-tracking:DHL 28 | ref 0    carrier-tracking:Unknown 2 | ref 0
+  ```
+- The carrier guess / `pattern` column is my own regex grouping (in the json as `pattern` + `class` carrier|house|noise). It is a label for review, not web logic. `routeScan` returns only these kinds for the corpus: carrier-tracking / sku / bin / receiving / serial-unit / fnsku. **Every value it does not see as carrier-tracking or receiving is refused** (mobile-arrival-door.ts:82-95).
+
+
+## Findings — patterns the Phase 1 fix must cover
+
+Beyond the known 420+ZIP / 96… / TBA / leading 0/700 cases, the corpus shows these refused shapes (all → `sku` or `bin` → refused):
+1. **FedEx 34-digit, any prefix** (15/15 refused): `96…` (9) and others such as `1001901772440009264700522300969633`, `1311308824370001956700875052173201` (6). The tracking number is the last 12 digits; last-8 already matches.
+2. **USPS 420+ZIP, every variant** (25/28 refused): ZIP5 (`420926479214490407314819163965`), ZIP9 (`420119379334610990370278033454`), ZIP9 with a `0299` filler (`4209264736030299434608106244194257131`), a GS separator kept as `\u001d` or shown as `]` (`42001464<GS>9434…`, `420926473603]9434…`), and ZIP+IMpb 20-digit / 26-digit inner numbers (`42033259300110990513556425161`). The normaliser strips 420+ZIP only for the GS/`]` forms, but last-8 is the trailing tracking digits in every case, so the server's last-8 match would succeed.
+3. **USPS IMpb of 21 and 26 digits** (9/13 refused): `930011099051354526615`, `940010810624568470478`, `92346902673388000095297453`. 20- and 22-digit forms are accepted.
+4. **Concatenated / truncated digit runs** (46/48 refused): double scans glued together (`94001081062442393259159400108106244239325915`, a chain of 305 digits), and 420/96 heads cut short by a missed first character (`2092647…`, `22001900…`, 32/33-digit FedEx). These need a "contains a known envelope" rule or the server resolver; refusing them locally hides real packages.
+5. **FedEx PDF417/2D payloads** (12/12 refused): `[)>01…` and `0102…FDEG…` strings carrying `96…` 34-digit tracking inside. Wedge scanners that read the 2D code send these bytes.
+6. **Regional / 3PL carriers** (22/22 refused → `bin`): UniUni `UUS…`/`USC…`, YunExpress `YT…`, GoFo `GFUS…`, `JJD…` (3), `SWX…`, `ALS…`, `EM…/ES…/EX…N`, `BBY01…`, UPU S10 intl (`LM221449617CA`, `LX088692799IL`).
+7. **UPS 1Z with the wrong length** (67/67 refused): almost all are hand-typed fakes (`1Z346237348`), but real truncated or concatenated reads exist too (`1ZJ22B10030635441` 17 chars, `1Z06K75J03265312361ZR096K99014528578` two 1Z glued, `11ZJ22B100333113256` with a doubled lead char).
+8. **Multiline pack-slip scans** (20/20 refused): `tracking⏎order⏎sku` in one read (`1ZJ22B100302248437⏎113-7796771-5871435⏎00179`). The first line is a valid tracking number.
+9. **False accept (house → tracking)**: 48 eBay order numbers `NN-NNNNN-NNNNN` (`04-14902-05990`) route as `carrier-tracking:FedEx` and would be sent as tracking. Short `420…` 12-digit values (`420926470000`) are accepted as FedEx 12.
+10. The real door feed (`mobile_scan_events`) mostly holds house/test values. Only 3 of its 32 carrier rows were refused (`420926479261299998825436746874`, `9621091390008524261900383932059740`, `9622001900001802153700877998505403`). The large refused volume comes from `receiving_scans` / `shipping_tracking_numbers` raws, i.e. what desk scanners actually captured.
+
+House labels are refused correctly: GS1 `(01)`/`/01/` URLs, 4–9 digit SKUs, serial `U-…`, FNSKU `X00…`, bins, product names. Receiving `R-…` → `carton` (accepted).
+
+## Change candidates
+- [both] Treat every FedEx 34-digit value (any prefix) as carrier-tracking (tracking = last 12) — evidence `9622001900001802153700877998505403` → sku; src/lib/scan/mobile-arrival-door.ts:93 (phase 1)
+- [both] Unwrap USPS AI 420 + ZIP5/ZIP9 (with optional `0299` filler, `<GS>` or `]` separator) before routing — evidence 25/28 refused, src/lib/barcode-routing.ts:176 (phase 1)
+- [both] Accept USPS IMpb 21- and 26-digit (`9[1-5]…`) — evidence `930011099051354526615` → sku (phase 1)
+- [both] Accept Amazon `TBA\d{10,13}` — evidence `TBA5317991003` → bin (phase 1)
+- [both] Accept regional/3PL shapes (UniUni UUS/USC, YT, GFUS, JJD, UPU S10 `AA#########AA`) or send any non-house value to the server's last-8 resolver instead of refusing — evidence 22/22 refused (phase 1)
+- [both] Extract the embedded `96…` tracking from FedEx 2D payloads (`[)>01…`, `0102…FDEG`) — evidence 12/12 refused (phase 1)
+- [both] Take the first line of a multiline scan / the first known envelope in a concatenated digit run — evidence 20 multiline + 46 concatenated refused (phase 1)
+- [both] Default rule: refuse locally only for *confirmed* house shapes (GS1 01/414, U-, X00 FNSKU, R- carton, 4–9 digit SKU, product-name bins); everything else goes to the server resolver — evidence mobile-arrival-door.ts:74-95 refuses anything not carrier/receiving (phase 1)
+- [web] Stop routing eBay order numbers `NN-NNNNN-NNNNN` as FedEx tracking — evidence 48 rows → `carrier-tracking:FedEx` (phase 1)
+- [app] Port the same rule to `BarcodeRoute.swift` and drive its tests from `corpus/scan-corpus.json` (`class=carrier` must not be refused; `class=house` keeps its current refusal) — evidence corpus json (phase 1)
+- [both] Add a corpus regression guard: refused-carrier count must stay 0 (today 207/455) — evidence this report (phase 5)
+
+## Summary counts
+
+Total rows: 1538 (carrier 455, house 522, noise 561). Refused at door overall: 1197. **Carrier-shaped refused: 207/455 (45.5%)**.
+
+### By class
+
+| bucket | n | refused | % refused |
+|---|---|---|---|
+| noise | 561 | 558 | 99% |
+| house | 522 | 432 | 83% |
+| carrier | 455 | 207 | 45% |
+
+### Carrier rows by envelope pattern
+
+| bucket | n | refused | % refused |
+|---|---|---|---|
+| FedEx 12 | 111 | 0 | 0% |
+| UPS 1Z malformed/typed | 67 | 67 | 100% |
+| UPS 1Z (18) | 52 | 0 | 0% |
+| concatenated/truncated digits | 48 | 46 | 96% |
+| USPS IMpb 22 | 35 | 0 | 0% |
+| DHL 10 / J&T JJD | 31 | 3 | 10% |
+| regional/3PL (UniUni/Yun/GoFo/etc) | 22 | 22 | 100% |
+| USPS 420+ZIP (other) | 16 | 13 | 81% |
+| USPS IMpb 20/21/26/30 | 13 | 9 | 69% |
+| fedex-2d-payload | 12 | 12 | 100% |
+| FedEx 34 (96 prefix) | 9 | 9 | 100% |
+| USPS 420+ZIP5+IMpb | 7 | 7 | 100% |
+| FedEx 15 | 7 | 0 | 0% |
+| 20-digit | 6 | 0 | 0% |
+| FedEx 34 (other prefix) | 6 | 6 | 100% |
+| Amazon TBA | 6 | 6 | 100% |
+| USPS 420+ZIP9+IMpb | 5 | 5 | 100% |
+| UPU S10 intl | 2 | 2 | 100% |
+
+### Carrier rows by source
+
+| bucket | n | refused | % refused |
+|---|---|---|---|
+| receiving_scans.tracking_number | 215 | 106 | 49% |
+| shipping_tracking_numbers.tracking_number_raw | 164 | 77 | 47% |
+| mobile_scan_events.raw_value | 32 | 3 | 9% |
+| station_scan_sessions.tracking_raw | 26 | 16 | 62% |
+| tracking_exceptions.tracking_number | 12 | 5 | 42% |
+| label_ingestions.tracking_number_raw | 6 | 0 | 0% |
+
+### House rows by pattern / routeKind
+
+| bucket | n | refused | % refused |
+|---|---|---|---|
+| house-sku/bin/serial → sku → refused | 218 | 218 | 100% |
+| house-sku/bin/serial → bin → refused | 107 | 107 | 100% |
+| house-gs1 → sku → refused | 50 | 50 | 100% |
+| eBay order no. (NN-NNNNN-NNNNN) → carrier-tracking:FedEx → tracking | 48 | 0 | 0% |
+| house-sku/bin/serial → receiving → carton | 40 | 0 | 0% |
+| house-sku/bin/serial → serial-unit → refused | 27 | 27 | 100% |
+| house-sku/bin/serial → fnsku → refused | 27 | 27 | 100% |
+| house-gs1 → bin → refused | 3 | 3 | 100% |
+| house-sku/bin/serial → carrier-tracking:FedEx → tracking | 1 | 0 | 0% |
+| house-sku/bin/serial → carrier-tracking:USPS → tracking | 1 | 0 | 0% |
+
+### Noise rows
+
+| bucket | n | refused | % refused |
+|---|---|---|---|
+| test-fixture | 485 | 485 | 100% |
+| multi-value-text | 47 | 44 | 94% |
+| multiline-packslip | 20 | 20 | 100% |
+| junk-sci-notation | 9 | 9 | 100% |
+
+## Every refused carrier-shaped value (complete)
+
+| value | carrier guess | source | routeScan kind | arrivalScanIntent | normalised | last-8 | refused? |
+|---|---|---|---|---|---|---|---|
+| `TBA32558704939` | Amazon TBA | receiving_scans.tracking_number | bin | refused | `TBA32558704939` | 58704939 | **YES** |
+| `TBA333313894804` | Amazon TBA | receiving_scans.tracking_number | bin | refused | `TBA333313894804` | 13894804 | **YES** |
+| `TBA334518688254` | Amazon TBA | shipping_tracking_numbers.tracking_number_raw | bin | refused | `TBA334518688254` | 18688254 | **YES** |
+| `TBA5317991003` | Amazon TBA | shipping_tracking_numbers.tracking_number_raw | bin | refused | `TBA5317991003` | 17991003 | **YES** |
+| `TBA334819342243` | Amazon TBA | station_scan_sessions.tracking_raw | bin | refused | `TBA334819342243` | 19342243 | **YES** |
+| `TBA331813952254` | Amazon TBA | tracking_exceptions.tracking_number | bin | refused | `TBA331813952254` | 13952254 | **YES** |
+| `000852261900399810616491` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `000852261900399810616491` | 10616491 | **YES** |
+| `185942675710009264700888681987235` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `185942675710009264700888681987235` | 81987235 | **YES** |
+| `2092479261299998825433899931` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `2092479261299998825433899931` | 33899931 | **YES** |
+| `209264736039434608106244012152402` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `209264736039434608106244012152402` | 12152402 | **YES** |
+| `2092647360394346081062450325843034209264736039434608106245027205282` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `2092647360394346081062450325843034209264` | 27205282 | **YES** |
+| `209264736039434608106245032584303420926473603943460810624502720528242092647360395055115933…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `2092647360394346081062450325843034209264` | 98751538 | **YES** |
+| `209264736039434608106245032584303420926473603943460810624502720528242092647360395055115933…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `2092647360394346081062450325843034209264` | 35528885 | **YES** |
+| `20926479434636106196304474927` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `20926479434636106196304474927` | 04474927 | **YES** |
+| `22001900008524261900398909327379` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `22001900008524261900398909327379` | 09327379 | **YES** |
+| `3100399913214158` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `3100399913214158` | 13214158 | **YES** |
+| `322943771008196432871932294377306920317456` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `3229437710081964328719322943773069203174` | 20317456 | **YES** |
+| `402479434608106245867015669` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `402479434608106245867015669` | 67015669 | **YES** |
+| `40926473603943460810624416807224` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `40926473603943460810624416807224` | 16807224 | **YES** |
+| `473603943460106244931490449` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `473603943460106244931490449` | 31490449 | **YES** |
+| `622001900003062139400889931601963` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `622001900003062139400889931601963` | 31601963 | **YES** |
+| `6220804300018021537008705342675009622080430002078179200520331511482` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705342675009622080` | 31511482 | **YES** |
+| `622080430001802153700870534267500962208043000207817920052033151148296220019000098376973003…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705342675009622080` | 35738078 | **YES** |
+| `622080430001802153700870534267500962208043000207817920052033151148296220019000098376973003…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705342675009622080` | 98290881 | **YES** |
+| `622080430001802153700870534267500962208043000207817920052033151148296220019000098376973003…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705342675009622080` | 45777864 | **YES** |
+| `622080430001802153700870534267500962208043000207817920052033151148296220019000098376973003…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705342675009622080` | 51179901 | **YES** |
+| `622080430001802153700870534267500962208043000207817920052033151148296220019000098376973003…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705342675009622080` | 31511482 | **YES** |
+| `622080430001802153700870534267500962208043000207817920052033151148296220019000098376973003…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705342675009622080` | 12624159 | **YES** |
+| `622080430001802153700870534267500962208043000207817920052033151148296220019000098376973003…` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705342675009622080` | 25545205 | **YES** |
+| `622080430001802153700870538036279420926479261299998825439405518` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `6220804300018021537008705380362794209264` | 39405518 | **YES** |
+| `632001960200488084300399437746220` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `632001960200488084300399437746220` | 37746220 | **YES** |
+| `7092357902570925709` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `7092357902570925709` | 70925709 | **YES** |
+| `8213479499048384209264736039434608106245420532497` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `8213479499048384209264736039434608106245` | 20532497 | **YES** |
+| `8213546342868387` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `8213546342868387` | 42868387 | **YES** |
+| `92200190000181302200889399856829` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `92200190000181302200889399856829` | 99856829 | **YES** |
+| `9264700873591471570` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `9264700873591471570` | 91471570 | **YES** |
+| `9434608106245106245183907693` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `9434608106245106245183907693` | 83907693 | **YES** |
+| `962201370000988138030077973600616` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `962201370000988138030077973600616` | 73600616 | **YES** |
+| `96220190000183132200889488894321` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `96220190000183132200889488894321` | 88894321 | **YES** |
+| `96300196091040869060889426196739` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `96300196091040869060889426196739` | 26196739 | **YES** |
+| `96320019606805312004003803021559119622001900002104799000380379062040` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `9632001960680531200400380302155911962200` | 79062040 | **YES** |
+| `963200196081368068200889783012418` | concatenated/truncated digits | receiving_scans.tracking_number | sku | refused | `963200196081368068200889783012418` | 83012418 | **YES** |
+| `1225494102990187` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1225494102990187` | 02990187 | **YES** |
+| `334610990370294478710` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `334610990370294478710` | 94478710 | **YES** |
+| `7087051570170150715` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `7087051570170150715` | 70150715 | **YES** |
+| `900110990513319879484` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `900110990513319879484` | 19879484 | **YES** |
+| `94001081062442393259159400108106244239325915` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9400108106244239325915` | 39325915 | **YES** |
+| `94346081062445152375909434608106244515237590` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9434608106244515237590` | 15237590 | **YES** |
+| `9621091390001834` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9621091390001834` | 90001834 | **YES** |
+| `962109139000609437790038021489728` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `962109139000609437790038021489728` | 21489728 | **YES** |
+| `96210913900085242619003811158052739621091390008524261900381115805273` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9621091390008524261900381115805273` | 15805273 | **YES** |
+| `20926839334610990150173710076` | concatenated/truncated digits | station_scan_sessions.tracking_raw | sku | refused | `20926839334610990150173710076` | 73710076 | **YES** |
+| `JJD014600012662687192` | DHL 10 / J&T JJD | receiving_scans.tracking_number | bin | refused | `JJD014600012662687192` | 62687192 | **YES** |
+| `JJD014600012700891944` | DHL 10 / J&T JJD | shipping_tracking_numbers.tracking_number_raw | bin | refused | `JJD014600012700891944` | 00891944 | **YES** |
+| `JJD014600012672884533` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | bin | refused | `JJD014600012672884533` | 72884533 | **YES** |
+| `9621091390008524261900383932059740` | FedEx 34 (96 prefix) | mobile_scan_events.raw_value | sku | refused | `9621091390008524261900383932059740` | 32059740 | **YES** |
+| `9622001900001802153700877998505403` | FedEx 34 (96 prefix) | mobile_scan_events.raw_value | sku | refused | `9622001900001802153700877998505403` | 98505403 | **YES** |
+| `9622013700009852768300797969414912` | FedEx 34 (96 prefix) | receiving_scans.tracking_number | sku | refused | `9622013700009852768300797969414912` | 69414912 | **YES** |
+| `9632001960203305182000381759816184` | FedEx 34 (96 prefix) | receiving_scans.tracking_number | sku | refused | `9632001960203305182000381759816184` | 59816184 | **YES** |
+| `9641001960534711766300874749067508` | FedEx 34 (96 prefix) | receiving_scans.tracking_number | sku | refused | `9641001960534711766300874749067508` | 49067508 | **YES** |
+| `9621091390006094377900399419001878` | FedEx 34 (96 prefix) | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9621091390006094377900399419001878` | 19001878 | **YES** |
+| `9632001960813668068200872473682324` | FedEx 34 (96 prefix) | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9632001960813668068200872473682324` | 73682324 | **YES** |
+| `9621091390006094377900383130594637` | FedEx 34 (96 prefix) | station_scan_sessions.tracking_raw | sku | refused | `9621091390006094377900383130594637` | 30594637 | **YES** |
+| `9622001900004476226800872738060650` | FedEx 34 (96 prefix) | tracking_exceptions.tracking_number | sku | refused | `9622001900004476226800872738060650` | 38060650 | **YES** |
+| `1001901772440009264700522300969633` | FedEx 34 (other prefix) | receiving_scans.tracking_number | sku | refused | `1001901772440009264700522300969633` | 00969633 | **YES** |
+| `1072277311220009264700381880166063` | FedEx 34 (other prefix) | receiving_scans.tracking_number | sku | refused | `1072277311220009264700381880166063` | 80166063 | **YES** |
+| `1225049814090009264700873651711560` | FedEx 34 (other prefix) | receiving_scans.tracking_number | sku | refused | `1225049814090009264700873651711560` | 51711560 | **YES** |
+| `1859426751710009264700888681987224` | FedEx 34 (other prefix) | receiving_scans.tracking_number | sku | refused | `1859426751710009264700888681987224` | 81987224 | **YES** |
+| `1027597410170006004600872497245440` | FedEx 34 (other prefix) | station_scan_sessions.tracking_raw | sku | refused | `1027597410170006004600872497245440` | 97245440 | **YES** |
+| `1311308824370001956700875052173201` | FedEx 34 (other prefix) | station_scan_sessions.tracking_raw | sku | refused | `1311308824370001956700875052173201` | 52173201 | **YES** |
+| `010292647360373840019873660110790FDEG183130218155LBN16161GOTHARDSTHUNTINGTONBEACHCALONGTRA…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647360373840019873660110790FDEG183` | 60110790 | **YES** |
+| `010292647360373840019874388531540FDEG8524261199300LBN16161GOTHARDSTHUNTINGTONBEACHCALONGTR…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647360373840019874388531540FDEG852` | 88531540 | **YES** |
+| `010292647840019383424971640FDEG198084924011400BN16161GOTHARDSTSTEAHUNTINGTONBEACHCALONGTRA…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647840019383424971640FDEG198084924` | 23679024 | **YES** |
+| `010292647840019873883694201FDEG1669812183113025LBN16161GOTHARDSTSTEAHUNTINGTONBEACHCACHILE…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647840019873883694201FDEG166981218` | 22671822 | **YES** |
+| `010292647840019873920576470FDEG327300490184113354LBN16161GOTHARDSTSTEAHUNTINGTONBEACHCALON…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647840019873920576470FDEG327300490` | 64703401 | **YES** |
+| `010292647840019875108027066FDEG263075221111509LBN16161GOTHARDSTSTEAHUNTINGTONBEACHCALONGTR…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647840019875108027066FDEG263075221` | 70663401 | **YES** |
+| `010292647840019876438824890FDEG6617517382401170LBN16161GOTHARDSTSTEAHUNTINGTONBEACHCACHILE…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647840019876438824890FDEG661751738` | 32023401 | **YES** |
+| `010292647840019877355693939FDEG73058349426011705BN16161GOTHARDSTSTEAHUNTINGTONBEACHCACHILE…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647840019877355693939FDEG730583494` | 93023401 | **YES** |
+| `010292647840019877732128459FDEG8524261267111200LBN16161GOTHARDSTSTEAHUNTINGTACHCALONGTRAN0…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647840019877732128459FDEG852426126` | 53972464 | **YES** |
+| `010292647840137528858590278FDEG985276825011050LN16161GOTHARDSTHUNTINGTONBEACHCAUSAVSOLUTIO…` | fedex-2d-payload | receiving_scans.tracking_number | sku | refused | `010292647840137528858590278FDEG985276825` | 02573401 | **YES** |
+| `[)>010290292647029840029019029381764210785029FDEG02985242610291530290291/102912.00LB029N02…` | fedex-2d-payload | shipping_tracking_numbers.tracking_number_raw | sku | refused | `0102902926470298400290190293817642107850` | 01234029 | **YES** |
+| `[)>010292647840019873089853512fdeg18021531661/12.00lbn16161 gOTHARD sT sTE ahUNTINGTON bEA…` | fedex-2d-payload | shipping_tracking_numbers.tracking_number_raw | sku | refused | `010292647840019873089853512FDEG180215316` | 35123401 | **YES** |
+| `ALS01435887784` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `ALS01435887784` | 35887784 | **YES** |
+| `AP00818347027872` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `AP00818347027872` | 47027872 | **YES** |
+| `BBY01-807197148090` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `BBY01807197148090` | 97148090 | **YES** |
+| `BBY01807207567530` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `BBY01807207567530` | 07567530 | **YES** |
+| `D10017167784892` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `D10017167784892` | 67784892 | **YES** |
+| `EM1013096206592FE06020059B0N` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `EM1013096206592FE06020059B0N` | 60200590 | **YES** |
+| `ES1003257834802UN0101240400N` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `ES1003257834802UN0101240400N` | 01240400 | **YES** |
+| `FBA178G5LJCPU000186` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `FBA178G5LJCPU000186` | 85000186 | **YES** |
+| `GFUS01069501215169` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `GFUS01069501215169` | 01215169 | **YES** |
+| `SWX651500000135095953` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `SWX651500000135095953` | 35095953 | **YES** |
+| `USC000017869399` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `USC000017869399` | 17869399 | **YES** |
+| `UUS69E1260971998596` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `UUS69E1260971998596` | 71998596 | **YES** |
+| `UUSC000017974905` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `UUSC000017974905` | 17974905 | **YES** |
+| `WN66279747` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `WN66279747` | 66279747 | **YES** |
+| `YWLAX010169903877` | regional/3PL (UniUni/Yun/GoFo/etc) | receiving_scans.tracking_number | bin | refused | `YWLAX010169903877` | 69903877 | **YES** |
+| `ALS01879416495` | regional/3PL (UniUni/Yun/GoFo/etc) | shipping_tracking_numbers.tracking_number_raw | bin | refused | `ALS01879416495` | 79416495 | **YES** |
+| `EM1013096877920FE06020097E0N` | regional/3PL (UniUni/Yun/GoFo/etc) | shipping_tracking_numbers.tracking_number_raw | bin | refused | `EM1013096877920FE06020097E0N` | 60200970 | **YES** |
+| `ES1003220259821UN0101240400N` | regional/3PL (UniUni/Yun/GoFo/etc) | shipping_tracking_numbers.tracking_number_raw | bin | refused | `ES1003220259821UN0101240400N` | 01240400 | **YES** |
+| `EX1013096139559DL06020002A0N` | regional/3PL (UniUni/Yun/GoFo/etc) | shipping_tracking_numbers.tracking_number_raw | bin | refused | `EX1013096139559DL06020002A0N` | 60200020 | **YES** |
+| `GFUS01065883968066` | regional/3PL (UniUni/Yun/GoFo/etc) | shipping_tracking_numbers.tracking_number_raw | bin | refused | `GFUS01065883968066` | 83968066 | **YES** |
+| `UUS67W1500754440851` | regional/3PL (UniUni/Yun/GoFo/etc) | shipping_tracking_numbers.tracking_number_raw | bin | refused | `UUS67W1500754440851` | 54440851 | **YES** |
+| `YT2638921437379714` | regional/3PL (UniUni/Yun/GoFo/etc) | shipping_tracking_numbers.tracking_number_raw | bin | refused | `YT2638921437379714` | 37379714 | **YES** |
+| `1Z06K75J03265312361ZR096K99014528578` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z06K75J03265312361ZR096K99014528578` | 14528578 | **YES** |
+| `1Z070745654653643465` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z070745654653643465` | 53643465 | **YES** |
+| `1Z123E89041605868` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z123E89041605868` | 41605868 | **YES** |
+| `1Z1Y01W039282033` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z1Y01W039282033` | 39282033 | **YES** |
+| `1Z23452314636` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z23452314636` | 52314636 | **YES** |
+| `1Z2346345738495695843` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z2346345738495695843` | 95695843 | **YES** |
+| `1Z2573434939` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z2573434939` | 73434939 | **YES** |
+| `1Z34572340786` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z34572340786` | 72340786 | **YES** |
+| `1Z346237348` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z346237348` | 46237348 | **YES** |
+| `1Z3523623626` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z3523623626` | 23623626 | **YES** |
+| `1Z4357348348348` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z4357348348348` | 48348348 | **YES** |
+| `1Z456345348` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z456345348` | 56345348 | **YES** |
+| `1Z73062730206` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z73062730206` | 62730206 | **YES** |
+| `1Z7307605765076` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z7307605765076` | 05765076 | **YES** |
+| `1Z785843335773` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z785843335773` | 43335773 | **YES** |
+| `1Z795723962379846` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z795723962379846` | 62379846 | **YES** |
+| `1Z97659574638386` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1Z97659574638386` | 74638386 | **YES** |
+| `1ZA8335G03142314731ZC1C7900306624434` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1ZA8335G03142314731ZC1C7900306624434` | 06624434 | **YES** |
+| `1ZA8339B01982823` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1ZA8339B01982823` | 01982823 | **YES** |
+| `1ZA8G924031308958` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1ZA8G924031308958` | 31308958 | **YES** |
+| `1ZC17980312638895` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1ZC17980312638895` | 12638895 | **YES** |
+| `1ZE3K050332886011` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1ZE3K050332886011` | 32886011 | **YES** |
+| `1ZE4330035006675` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1ZE4330035006675` | 35006675 | **YES** |
+| `1ZJ22B10906092101` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1ZJ22B10906092101` | 06092101 | **YES** |
+| `1ZR096K9909758368` | UPS 1Z malformed/typed | receiving_scans.tracking_number | sku | refused | `1ZR096K9909758368` | 09758368 | **YES** |
+| `1Z0376230673260` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z0376230673260` | 30673260 | **YES** |
+| `1Z103723406723046` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z103723406723046` | 06723046 | **YES** |
+| `1Z234523466` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z234523466` | 34523466 | **YES** |
+| `1Z2345247647982` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z2345247647982` | 47647982 | **YES** |
+| `1Z234623488439` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z234623488439` | 23488439 | **YES** |
+| `1Z2363473458` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z2363473458` | 63473458 | **YES** |
+| `1Z237457230940793264` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z237457230940793264` | 40793264 | **YES** |
+| `1Z243263462457348` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z243263462457348` | 62457348 | **YES** |
+| `1Z25262611516` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z25262611516` | 62611516 | **YES** |
+| `1Z26457345783823` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z26457345783823` | 45783823 | **YES** |
+| `1Z302376027304766` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z302376027304766` | 27304766 | **YES** |
+| `1Z30468230468230648` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z30468230468230648` | 68230648 | **YES** |
+| `1Z32362453849` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z32362453849` | 62453849 | **YES** |
+| `1Z326347458` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z326347458` | 26347458 | **YES** |
+| `1Z345236237348` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z345236237348` | 36237348 | **YES** |
+| `1Z34523738` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z34523738` | 34523738 | **YES** |
+| `1Z3463445892` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z3463445892` | 63445892 | **YES** |
+| `1Z3702637602736` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z3702637602736` | 37602736 | **YES** |
+| `1Z423673478` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z423673478` | 23673478 | **YES** |
+| `1Z4253452346236` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z4253452346236` | 52346236 | **YES** |
+| `1Z4563366` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z4563366` | 14563366 | **YES** |
+| `1Z45634738` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z45634738` | 45634738 | **YES** |
+| `1Z47478433783378` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z47478433783378` | 33783378 | **YES** |
+| `1Z563478459` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z563478459` | 63478459 | **YES** |
+| `1Z57245738348` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z57245738348` | 45738348 | **YES** |
+| `1Z696758467579860` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z696758467579860` | 67579860 | **YES** |
+| `1Z72306720376` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z72306720376` | 06720376 | **YES** |
+| `1Z723406283067203` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z723406283067203` | 83067203 | **YES** |
+| `1Z730376306` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z730376306` | 30376306 | **YES** |
+| `1Z7320683208307` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z7320683208307` | 83208307 | **YES** |
+| `1Z74052734509723405723045` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z74052734509723405723045` | 05723045 | **YES** |
+| `1Z930362347237` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z930362347237` | 62347237 | **YES** |
+| `1ZJ22B10030635441` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1ZJ22B10030635441` | 30635441 | **YES** |
+| `1ZJ22B104228952938251` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1ZJ22B104228952938251` | 52938251 | **YES** |
+| `1z3463636` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z3463636` | 13463636 | **YES** |
+| `1z78014578095780` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z78014578095780` | 78095780 | **YES** |
+| `1z85868546443863` | UPS 1Z malformed/typed | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z85868546443863` | 46443863 | **YES** |
+| `1Z345734834838` | UPS 1Z malformed/typed | station_scan_sessions.tracking_raw | sku | refused | `1Z345734834838` | 34834838 | **YES** |
+| `1Z72304672306723076` | UPS 1Z malformed/typed | station_scan_sessions.tracking_raw | sku | refused | `1Z72304672306723076` | 06723076 | **YES** |
+| `1Z740072346026` | UPS 1Z malformed/typed | station_scan_sessions.tracking_raw | sku | refused | `1Z740072346026` | 72346026 | **YES** |
+| `1ZJ22100307185791` | UPS 1Z malformed/typed | station_scan_sessions.tracking_raw | sku | refused | `1ZJ22100307185791` | 07185791 | **YES** |
+| `1Z` | UPS 1Z malformed/typed | tracking_exceptions.tracking_number | sku | refused | `1Z` | 1Z | **YES** |
+| `LM221449617CA` | UPU S10 intl | receiving_scans.tracking_number | bin | refused | `LM221449617CA` | 21449617 | **YES** |
+| `LX088692799IL` | UPU S10 intl | receiving_scans.tracking_number | bin | refused | `LX088692799IL` | 88692799 | **YES** |
+| `42092647` | USPS 420+ZIP (other) | receiving_scans.tracking_number | sku | refused | `42092647` | 42092647 | **YES** |
+| `420926470299434636106196338333054` | USPS 420+ZIP (other) | receiving_scans.tracking_number | sku | refused | `420926470299434636106196338333054` | 38333054 | **YES** |
+| `4209264736030299434608106244194257131` | USPS 420+ZIP (other) | receiving_scans.tracking_number | sku | refused | `4209264736030299434608106244194257131` | 94257131 | **YES** |
+| `420926473603]9434608106244898410160` | USPS 420+ZIP (other) | receiving_scans.tracking_number | sku | refused | `9434608106244898410160` | 98410160 | **YES** |
+| `42001464<GS>9434650106151038378107` | USPS 420+ZIP (other) | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9434650106151038378107` | 38378107 | **YES** |
+| `42033259300110990513556425161` | USPS 420+ZIP (other) | shipping_tracking_numbers.tracking_number_raw | sku | refused | `42033259300110990513556425161` | 56425161 | **YES** |
+| `42060137` | USPS 420+ZIP (other) | shipping_tracking_numbers.tracking_number_raw | sku | refused | `42060137` | 42060137 | **YES** |
+| `42075081209400108106244030383398` | USPS 420+ZIP (other) | shipping_tracking_numbers.tracking_number_raw | sku | refused | `42075081209400108106244030383398` | 30383398 | **YES** |
+| `420926470299261299998825469149758` | USPS 420+ZIP (other) | shipping_tracking_numbers.tracking_number_raw | sku | refused | `420926470299261299998825469149758` | 69149758 | **YES** |
+| `4209264736030299505510052546153793128` | USPS 420+ZIP (other) | shipping_tracking_numbers.tracking_number_raw | sku | refused | `4209264736030299505510052546153793128` | 53793128 | **YES** |
+| `4200736930011099051331987473` | USPS 420+ZIP (other) | station_scan_sessions.tracking_raw | sku | refused | `4200736930011099051331987473` | 31987473 | **YES** |
+| `420601320809400108106245016623217` | USPS 420+ZIP (other) | station_scan_sessions.tracking_raw | serial-unit | refused | `420601320809400108106245016623217` | 16623217 | **YES** |
+| `42096799400150106151162241887` | USPS 420+ZIP (other) | station_scan_sessions.tracking_raw | sku | refused | `42096799400150106151162241887` | 62241887 | **YES** |
+| `420926479261299998825436746874` | USPS 420+ZIP5+IMpb | mobile_scan_events.raw_value | sku | refused | `9261299998825436746874` | 36746874 | **YES** |
+| `420926479214490407314819163965` | USPS 420+ZIP5+IMpb | receiving_scans.tracking_number | sku | refused | `9214490407314819163965` | 19163965 | **YES** |
+| `42092647943465206217184272023` | USPS 420+ZIP5+IMpb | receiving_scans.tracking_number | sku | refused | `943465206217184272023` | 84272023 | **YES** |
+| `420908059400150206217528518884` | USPS 420+ZIP5+IMpb | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9400150206217528518884` | 28518884 | **YES** |
+| `4209521094012345678901234567` | USPS 420+ZIP5+IMpb | shipping_tracking_numbers.tracking_number_raw | sku | refused | `94012345678901234567` | 01234567 | **YES** |
+| `420119379334610990370278033454` | USPS 420+ZIP5+IMpb | station_scan_sessions.tracking_raw | sku | refused | `9334610990370278033454` | 78033454 | **YES** |
+| `420926479302010623390248068934` | USPS 420+ZIP5+IMpb | tracking_exceptions.tracking_number | sku | refused | `9302010623390248068934` | 48068934 | **YES** |
+| `4209264736039434608106245263389937` | USPS 420+ZIP9+IMpb | receiving_scans.tracking_number | sku | refused | `9434608106245263389937` | 63389937 | **YES** |
+| `42092647360394360816245945184812` | USPS 420+ZIP9+IMpb | receiving_scans.tracking_number | sku | refused | `94360816245945184812` | 45184812 | **YES** |
+| `4204542438039400108106244770571499` | USPS 420+ZIP9+IMpb | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9400108106244770571499` | 70571499 | **YES** |
+| `4200688059309400108106245985024343` | USPS 420+ZIP9+IMpb | station_scan_sessions.tracking_raw | sku | refused | `9400108106245985024343` | 85024343 | **YES** |
+| `4201896620419400108106245260536202` | USPS 420+ZIP9+IMpb | tracking_exceptions.tracking_number | sku | refused | `9400108106245260536202` | 60536202 | **YES** |
+| `92346902673388000095297453` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | sku | refused | `92346902673388000095297453` | 95297453 | **YES** |
+| `930011099051354526615` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | sku | refused | `930011099051354526615` | 54526615 | **YES** |
+| `931081098991123028999` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | sku | refused | `931081098991123028999` | 23028999 | **YES** |
+| `933610990370287309014` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | sku | refused | `933610990370287309014` | 87309014 | **YES** |
+| `934610990370287313837` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | sku | refused | `934610990370287313837` | 87313837 | **YES** |
+| `940010810624568470478` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | sku | refused | `940010810624568470478` | 68470478 | **YES** |
+| `943465020621722469686` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | sku | refused | `943465020621722469686` | 22469686 | **YES** |
+| `944650106151057177941` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | sku | refused | `944650106151057177941` | 57177941 | **YES** |
+| `943608106245144250868` | USPS IMpb 20/21/26/30 | station_scan_sessions.tracking_raw | sku | refused | `943608106245144250868` | 44250868 | **YES** |
+
+## Accepted carrier values (complete)
+
+| value | carrier guess | source | routeScan kind | arrivalScanIntent | normalised | last-8 | refused? |
+|---|---|---|---|---|---|---|---|
+| `00000178172525030166` | 20-digit | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `00000178172525030166` | 25030166 | no |
+| `00108106244960785477` | 20-digit | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `00108106244960785477` | 60785477 | no |
+| `34608106244942155573` | 20-digit | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `34608106244942155573` | 42155573 | no |
+| `70834790234790254709` | 20-digit | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `70834790234790254709` | 90254709 | no |
+| `00004000000089719563` | 20-digit | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `00004000000089719563` | 89719563 | no |
+| `61299998825427281186` | 20-digit | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `61299998825427281186` | 27281186 | no |
+| `9940150106151365085271` | concatenated/truncated digits | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9940150106151365085271` | 65085271 | no |
+| `9999999999999999999999` | concatenated/truncated digits | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9999999999999999999999` | 99999999 | no |
+| `1000260197` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `1000260197` | 00260197 | no |
+| `1021376564` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `1021376564` | 21376564 | no |
+| `2066441241` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `2066441241` | 66441241 | no |
+| `3813441985` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `3813441985` | 13441985 | no |
+| `7004009001` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `7004009001` | 04009001 | no |
+| `7973581678` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `7973581678` | 73581678 | no |
+| `7998089041` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `7998089041` | 98089041 | no |
+| `8055286482` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `8055286482` | 55286482 | no |
+| `8074850446` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `8074850446` | 74850446 | no |
+| `8094704321` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `8094704321` | 94704321 | no |
+| `8113608340` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `8113608340` | 13608340 | no |
+| `8122210712` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `8122210712` | 22210712 | no |
+| `8140418264` | DHL 10 / J&T JJD | receiving_scans.tracking_number | carrier-tracking:DHL | tracking:DHL | `8140418264` | 40418264 | no |
+| `1341072154` | DHL 10 / J&T JJD | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:DHL | tracking:DHL | `1341072154` | 41072154 | no |
+| `2512361236` | DHL 10 / J&T JJD | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:DHL | tracking:DHL | `2512361236` | 12361236 | no |
+| `7999177089` | DHL 10 / J&T JJD | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:DHL | tracking:DHL | `7999177089` | 99177089 | no |
+| `8002721475` | DHL 10 / J&T JJD | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:DHL | tracking:DHL | `8002721475` | 02721475 | no |
+| `8092350586` | DHL 10 / J&T JJD | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:DHL | tracking:DHL | `8092350586` | 92350586 | no |
+| `8409653464` | DHL 10 / J&T JJD | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:DHL | tracking:DHL | `8409653464` | 09653464 | no |
+| `0170318182` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | carrier-tracking:DHL | tracking:DHL | `0170318182` | 70318182 | no |
+| `2568061319` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | carrier-tracking:DHL | tracking:DHL | `2568061319` | 68061319 | no |
+| `3446660020` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | carrier-tracking:DHL | tracking:DHL | `3446660020` | 46660020 | no |
+| `4667633788` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | carrier-tracking:DHL | tracking:DHL | `4667633788` | 67633788 | no |
+| `6382840010` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | carrier-tracking:DHL | tracking:DHL | `6382840010` | 82840010 | no |
+| `7576050010` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | carrier-tracking:DHL | tracking:DHL | `7576050010` | 76050010 | no |
+| `8032609393` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | carrier-tracking:DHL | tracking:DHL | `8032609393` | 32609393 | no |
+| `8045867783` | DHL 10 / J&T JJD | station_scan_sessions.tracking_raw | carrier-tracking:DHL | tracking:DHL | `8045867783` | 45867783 | no |
+| `7997892989` | DHL 10 / J&T JJD | tracking_exceptions.tracking_number | carrier-tracking:DHL | tracking:DHL | `7997892989` | 97892989 | no |
+| `001463319159` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `001463319159` | 63319159 | no |
+| `001910072859` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `001910072859` | 10072859 | no |
+| `001910073214` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `001910073214` | 10073214 | no |
+| `012300782456` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `012300782456` | 00782456 | no |
+| `012303982723` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `012303982723` | 03982723 | no |
+| `012505525650` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `012505525650` | 05525650 | no |
+| `012541223312` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `012541223312` | 41223312 | no |
+| `012588132219` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `012588132219` | 88132219 | no |
+| `013964585438` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `013964585438` | 64585438 | no |
+| `014633159110` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633159110` | 33159110 | no |
+| `014633167795` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633167795` | 33167795 | no |
+| `014633168495` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633168495` | 33168495 | no |
+| `014633168501` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633168501` | 33168501 | no |
+| `014633168518` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633168518` | 33168518 | no |
+| `014633168761` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633168761` | 33168761 | no |
+| `014633190915` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633190915` | 33190915 | no |
+| `014633190922` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633190922` | 33190922 | no |
+| `014633191561` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633191561` | 33191561 | no |
+| `014633191578` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633191578` | 33191578 | no |
+| `014633191592` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633191592` | 33191592 | no |
+| `014633191639` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633191639` | 33191639 | no |
+| `014633191653` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633191653` | 33191653 | no |
+| `014633193725` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `014633193725` | 33193725 | no |
+| `015213221319` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `015213221319` | 13221319 | no |
+| `017817171762` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `017817171762` | 17171762 | no |
+| `878107486070` | FedEx 12 | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `878107486070` | 07486070 | no |
+| `011481702948` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `011481702948` | 81702948 | no |
+| `021516537690` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `021516537690` | 16537690 | no |
+| `031476679150` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `031476679150` | 76679150 | no |
+| `041493856761` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `041493856761` | 93856761 | no |
+| `061498030824` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `061498030824` | 98030824 | no |
+| `071502096759` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `071502096759` | 02096759 | no |
+| `091471293041` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `091471293041` | 71293041 | no |
+| `101515301528` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `101515301528` | 15301528 | no |
+| `111476747698` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `111476747698` | 76747698 | no |
+| `121496764306` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `121496764306` | 96764306 | no |
+| `131464831790` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `131464831790` | 64831790 | no |
+| `151469223516` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `151469223516` | 69223516 | no |
+| `161489161958` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `161489161958` | 89161958 | no |
+| `171478026062` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `171478026062` | 78026062 | no |
+| `181500513532` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `181500513532` | 00513532 | no |
+| `201474538111` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `201474538111` | 74538111 | no |
+| `211455408973` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `211455408973` | 55408973 | no |
+| `221503145292` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `221503145292` | 03145292 | no |
+| `227390105895` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `227390105895` | 90105895 | no |
+| `231490489272` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `231490489272` | 90489272 | no |
+| `241484516796` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `241484516796` | 84516796 | no |
+| `261463435598` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `261463435598` | 63435598 | no |
+| `271485165016` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `271485165016` | 85165016 | no |
+| `380485143938` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `380485143938` | 85143938 | no |
+| `381502422173` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `381502422173` | 02422173 | no |
+| `382992221166` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `382992221166` | 92221166 | no |
+| `383248992261` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `383248992261` | 48992261 | no |
+| `517272546801` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `517272546801` | 72546801 | no |
+| `523856731898` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `523856731898` | 56731898 | no |
+| `528691980570` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `528691980570` | 91980570 | no |
+| `529738558976` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `529738558976` | 38558976 | no |
+| `534684527207` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `534684527207` | 84527207 | no |
+| `537042620040` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `537042620040` | 42620040 | no |
+| `538577414536` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `538577414536` | 77414536 | no |
+| `541843853357` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `541843853357` | 43853357 | no |
+| `700066491344` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `700066491344` | 66491344 | no |
+| `704756275939` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `704756275939` | 56275939 | no |
+| `870485896350` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `870485896350` | 85896350 | no |
+| `871533116962` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `871533116962` | 33116962 | no |
+| `872431224964` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `872431224964` | 31224964 | no |
+| `873454060335` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `873454060335` | 54060335 | no |
+| `874928625284` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `874928625284` | 28625284 | no |
+| `875811286055` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `875811286055` | 11286055 | no |
+| `876836862113` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `876836862113` | 36862113 | no |
+| `877753094915` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `877753094915` | 53094915 | no |
+| `889338134043` | FedEx 12 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `889338134043` | 38134043 | no |
+| `017817598033` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `017817598033` | 17598033 | no |
+| `161461077031` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `161461077031` | 61077031 | no |
+| `197989463269` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `197989463269` | 89463269 | no |
+| `217190241002` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `217190241002` | 90241002 | no |
+| `241421902899` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `241421902899` | 21902899 | no |
+| `267564293342` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `267564293342` | 64293342 | no |
+| `275027502752` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `275027502752` | 27502752 | no |
+| `375603967036` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `375603967036` | 03967036 | no |
+| `380312624159` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `380312624159` | 12624159 | no |
+| `381692689456` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `381692689456` | 92689456 | no |
+| `382970454066` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `382970454066` | 70454066 | no |
+| `383277445486` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `383277445486` | 77445486 | no |
+| `396568599507` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `396568599507` | 68599507 | no |
+| `398650113012` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `398650113012` | 50113012 | no |
+| `399390849264` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `399390849264` | 90849264 | no |
+| `407001569669` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `407001569669` | 01569669 | no |
+| `490020400881` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `490020400881` | 20400881 | no |
+| `500006609245` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `500006609245` | 06609245 | no |
+| `512273470109` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `512273470109` | 73470109 | no |
+| `513430815311` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `513430815311` | 30815311 | no |
+| `517399626352` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `517399626352` | 99626352 | no |
+| `520331511482` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `520331511482` | 31511482 | no |
+| `524952708080` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `524952708080` | 52708080 | no |
+| `525981368993` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `525981368993` | 81368993 | no |
+| `529738504233` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `529738504233` | 38504233 | no |
+| `531622750604` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `531622750604` | 22750604 | no |
+| `534179824225` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `534179824225` | 79824225 | no |
+| `794644123456` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `794644123456` | 44123456 | no |
+| `870451179901` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `870451179901` | 51179901 | no |
+| `871492585282` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `871492585282` | 92585282 | no |
+| `872055977507` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `872055977507` | 55977507 | no |
+| `873720600737` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `873720600737` | 20600737 | no |
+| `874013697323` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `874013697323` | 13697323 | no |
+| `875436788889` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `875436788889` | 36788889 | no |
+| `876259340999` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `876259340999` | 59340999 | no |
+| `877922622025` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `877922622025` | 22622025 | no |
+| `878067366700` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `878067366700` | 67366700 | no |
+| `889488894321` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `889488894321` | 88894321 | no |
+| `991779990470` | FedEx 12 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `991779990470` | 79990470 | no |
+| `000382266276865` | FedEx 15 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `000382266276865` | 66276865 | no |
+| `051121901650626` | FedEx 15 | receiving_scans.tracking_number | carrier-tracking:Unknown | tracking:Unknown | `051121901650626` | 01650626 | no |
+| `300399795542404` | FedEx 15 | receiving_scans.tracking_number | carrier-tracking:Unknown | tracking:Unknown | `300399795542404` | 95542404 | no |
+| `700874566988130` | FedEx 15 | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `700874566988130` | 66988130 | no |
+| `000873468596108` | FedEx 15 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `000873468596108` | 68596108 | no |
+| `700873454060335` | FedEx 15 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `700873454060335` | 54060335 | no |
+| `720572057202076` | FedEx 15 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `720572057202076` | 57202076 | no |
+| `1Z1789958595615058` | UPS 1Z (18) | label_ingestions.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z1789958595615058` | 95615058 | no |
+| `1Z999AA10123456784` | UPS 1Z (18) | label_ingestions.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z999AA10123456784` | 23456784 | no |
+| `1ZJ22B100308753951` | UPS 1Z (18) | label_ingestions.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZJ22B100308753951` | 08753951 | no |
+| `1Z999AA10123456785` | UPS 1Z (18) | mobile_scan_events.raw_value | carrier-tracking:UPS | tracking:UPS | `1Z999AA10123456785` | 23456785 | no |
+| `1Z999AA10123456786` | UPS 1Z (18) | mobile_scan_events.raw_value | carrier-tracking:UPS | tracking:UPS | `1Z999AA10123456786` | 23456786 | no |
+| `1Z0R98790340724561` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z0R98790340724561` | 40724561 | no |
+| `1Z1A375J0311562432` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z1A375J0311562432` | 11562432 | no |
+| `1Z2X1G940327360187` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z2X1G940327360187` | 27360187 | no |
+| `1Z3XF6020314087444` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z3XF6020314087444` | 14087444 | no |
+| `1Z4E2W090305123673` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z4E2W090305123673` | 05123673 | no |
+| `1Z5W0W460335570390` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z5W0W460335570390` | 35570390 | no |
+| `1Z6AT9810394187424` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z6AT9810394187424` | 94187424 | no |
+| `1Z78Y5W70398912492` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z78Y5W70398912492` | 98912492 | no |
+| `1Z81F1Y00351635854` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z81F1Y00351635854` | 51635854 | no |
+| `1Z965EW40327647525` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z965EW40327647525` | 27647525 | no |
+| `1ZA8G9240313449084` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZA8G9240313449084` | 13449084 | no |
+| `1ZB7933K0311955973` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZB7933K0311955973` | 11955973 | no |
+| `1ZC80H580422152568` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZC80H580422152568` | 22152568 | no |
+| `1ZE4889EDK87718021` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZE4889EDK87718021` | 87718021 | no |
+| `1ZF7748R0369047889` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZF7748R0369047889` | 69047889 | no |
+| `1ZGA54210302147390` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZGA54210302147390` | 02147390 | no |
+| `1ZJ22B109023086623` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZJ22B109023086623` | 23086623 | no |
+| `1ZK11711YW62257489` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZK11711YW62257489` | 62257489 | no |
+| `1ZRF16800398314159` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZRF16800398314159` | 98314159 | no |
+| `1ZT1H99L0304899051` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZT1H99L0304899051` | 04899051 | no |
+| `1ZW258310391561663` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZW258310391561663` | 91561663 | no |
+| `1ZXH04570368170883` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZXH04570368170883` | 68170883 | no |
+| `1ZY228K59070616386` | UPS 1Z (18) | receiving_scans.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZY228K59070616386` | 70616386 | no |
+| `1Z035CX1YN45385420` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z035CX1YN45385420` | 45385420 | no |
+| `1Z1A375J4232406800` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z1A375J4232406800` | 32406800 | no |
+| `1Z23A1E90340392449` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z23A1E90340392449` | 40392449 | no |
+| `1Z3457230496720376` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z3457230496720376` | 96720376 | no |
+| `1Z4019RY9095699872` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z4019RY9095699872` | 95699872 | no |
+| `1Z78Y5W70393167744` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z78Y5W70393167744` | 93167744 | no |
+| `1Z8Y41459087870221` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z8Y41459087870221` | 87870221 | no |
+| `1Z9X5R659007065833` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1Z9X5R659007065833` | 07065833 | no |
+| `1ZA481850308104578` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZA481850308104578` | 08104578 | no |
+| `1ZC1D3190341848544` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZC1D3190341848544` | 41848544 | no |
+| `1ZE424A00326714056` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZE424A00326714056` | 26714056 | no |
+| `1ZGG77540303046444` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZGG77540303046444` | 03046444 | no |
+| `1ZJ22B104217874892` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZJ22B104217874892` | 17874892 | no |
+| `1ZR096K99062743923` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZR096K99062743923` | 62743923 | no |
+| `1ZSMK1790553264322` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZSMK1790553264322` | 53264322 | no |
+| `1ZTEST0000MPPTUASX` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZTEST0000MPPTUASX` | 1ZTEST0000MPPTUASX | no |
+| `1ZW7823A9022370323` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZW7823A9022370323` | 22370323 | no |
+| `1ZXG9979YW25585541` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZXG9979YW25585541` | 25585541 | no |
+| `1ZY228K59067063702` | UPS 1Z (18) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:UPS | tracking:UPS | `1ZY228K59067063702` | 67063702 | no |
+| `1Z0K153W0313640178` | UPS 1Z (18) | tracking_exceptions.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z0K153W0313640178` | 13640178 | no |
+| `1Z965EW40326631034` | UPS 1Z (18) | tracking_exceptions.tracking_number | carrier-tracking:UPS | tracking:UPS | `1Z965EW40326631034` | 26631034 | no |
+| `1ZB775040305853029` | UPS 1Z (18) | tracking_exceptions.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZB775040305853029` | 05853029 | no |
+| `1ZJ22B100337805564` | UPS 1Z (18) | tracking_exceptions.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZJ22B100337805564` | 37805564 | no |
+| `1ZR096K99059063656` | UPS 1Z (18) | tracking_exceptions.tracking_number | carrier-tracking:UPS | tracking:UPS | `1ZR096K99059063656` | 59063656 | no |
+| `420926470000` | USPS 420+ZIP (other) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `420926470000` | 26470000 | no |
+| `420119674141` | USPS 420+ZIP (other) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `420119674141` | 19674141 | no |
+| `420924082805` | USPS 420+ZIP (other) | station_scan_sessions.tracking_raw | carrier-tracking:FedEx | tracking:FedEx | `420924082805` | 24082805 | no |
+| `93020818308342005039` | USPS IMpb 20/21/26/30 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `93020818308342005039` | 42005039 | no |
+| `94346081062451705830` | USPS IMpb 20/21/26/30 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `94346081062451705830` | 51705830 | no |
+| `93001109905153409121` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `93001109905153409121` | 53409121 | no |
+| `94001118992233445501` | USPS IMpb 20/21/26/30 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `94001118992233445501` | 33445501 | no |
+| `9400150106151402340943` | USPS IMpb 22 | label_ingestions.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9400150106151402340943` | 02340943 | no |
+| `9434650206217291098004` | USPS IMpb 22 | label_ingestions.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9434650206217291098004` | 91098004 | no |
+| `9449050206217046491111` | USPS IMpb 22 | label_ingestions.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9449050206217046491111` | 46491111 | no |
+| `9361289711068322544977` | USPS IMpb 22 | mobile_scan_events.raw_value | carrier-tracking:USPS | tracking:USPS | `9361289711068322544977` | 22544977 | no |
+| `9200190105244354616880` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9200190105244354616880` | 54616880 | no |
+| `9218490105244354634334` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9218490105244354634334` | 54634334 | no |
+| `9234690324992839453639` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9234690324992839453639` | 39453639 | no |
+| `9261299998825457375947` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9261299998825457375947` | 57375947 | no |
+| `9302011047800002788853` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9302011047800002788853` | 02788853 | no |
+| `9334610990370309634346` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9334610990370309634346` | 09634346 | no |
+| `9361289711066376682645` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9361289711066376682645` | 76682645 | no |
+| `9400108106244228451373` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9400108106244228451373` | 28451373 | no |
+| `9434650106151117061784` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9434650106151117061784` | 17061784 | no |
+| `9449050106151019530456` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9449050106151019530456` | 19530456 | no |
+| `9488809000276360103450` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9488809000276360103450` | 60103450 | no |
+| `9500113244516271040296` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9500113244516271040296` | 71040296 | no |
+| `9534613368786267350871` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9534613368786267350871` | 67350871 | no |
+| `9549015461676204390049` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9549015461676204390049` | 04390049 | no |
+| `9588871095280030123485` | USPS IMpb 22 | receiving_scans.tracking_number | carrier-tracking:USPS | tracking:USPS | `9588871095280030123485` | 30123485 | no |
+| `9200190284940757926101` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9200190284940757926101` | 57926101 | no |
+| `9212490416420900004366` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9212490416420900004366` | 00004366 | no |
+| `9234690324992817287881` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9234690324992817287881` | 17287881 | no |
+| `9261290983197848129541` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9261290983197848129541` | 48129541 | no |
+| `9300110990513579646383` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9300110990513579646383` | 79646383 | no |
+| `9310810989911217649084` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9310810989911217649084` | 17649084 | no |
+| `9334610990150195591783` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9334610990150195591783` | 95591783 | no |
+| `9361289711063771875955` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9361289711063771875955` | 71875955 | no |
+| `9400136106196316861720` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9400136106196316861720` | 16861720 | no |
+| `9418408106245203243600` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9418408106245203243600` | 03243600 | no |
+| `9434650106151079244669` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9434650106151079244669` | 79244669 | no |
+| `9449036106196281212765` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9449036106196281212765` | 81212765 | no |
+| `9500113007326171056126` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9500113007326171056126` | 71056126 | no |
+| `9534615203006159009471` | USPS IMpb 22 | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9534615203006159009471` | 59009471 | no |
+| `9434608106244379563491` | USPS IMpb 22 | station_scan_sessions.tracking_raw | carrier-tracking:USPS | tracking:USPS | `9434608106244379563491` | 79563491 | no |
+| `9300110990513446884382` | USPS IMpb 22 | tracking_exceptions.tracking_number | carrier-tracking:USPS | tracking:USPS | `9300110990513446884382` | 46884382 | no |
+
+## House rows (complete — door contrast)
+
+| value | carrier guess | source | routeScan kind | arrivalScanIntent | normalised | last-8 | refused? |
+|---|---|---|---|---|---|---|---|
+| `04-14902-05990` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `041490205990` | 90205990 | no |
+| `06-14730-92535` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `061473092535` | 73092535 | no |
+| `07-14606-66972` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `071460666972` | 60666972 | no |
+| `08-14669-82072` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `081466982072` | 66982072 | no |
+| `08-14681-85770` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `081468185770` | 68185770 | no |
+| `09-14693-39484` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `091469339484` | 69339484 | no |
+| `09-14887-27802` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `091488727802` | 88727802 | no |
+| `11-14702-73308` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `111470273308` | 70273308 | no |
+| `11-15073-02440` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `111507302440` | 07302440 | no |
+| `15-14728-87921` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `151472887921` | 72887921 | no |
+| `17-15201-54064` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `171520154064` | 20154064 | no |
+| `18-15096-09184` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `181509609184` | 09609184 | no |
+| `20-14704-14993` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `201470414993` | 70414993 | no |
+| `21-14648-20153` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `211464820153` | 64820153 | no |
+| `21-14777-85596` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `211477785596` | 77785596 | no |
+| `21-14967-81557` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `211496781557` | 96781557 | no |
+| `21-15028-43176` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `211502843176` | 02843176 | no |
+| `24-14771-36459` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `241477136459` | 77136459 | no |
+| `24-14836-95131` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `241483695131` | 83695131 | no |
+| `24-14912-51506` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `241491251506` | 91251506 | no |
+| `27-14665-32524` | eBay order no. (NN-NNNNN-NNNNN) | mobile_scan_events.raw_value | carrier-tracking:FedEx | tracking:FedEx | `271466532524` | 66532524 | no |
+| `01-14850-38260` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `011485038260` | 85038260 | no |
+| `02-14876-13796` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `021487613796` | 87613796 | no |
+| `03-14777-17761` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `031477717761` | 77717761 | no |
+| `05-14818-44324` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `051481844324` | 81844324 | no |
+| `06-14860-93474` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `061486093474` | 86093474 | no |
+| `07-14896-92337` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `071489692337` | 89692337 | no |
+| `08-14875-45300` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `081487545300` | 87545300 | no |
+| `09-14755-97745` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `091475597745` | 75597745 | no |
+| `10-14813-20590` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `101481320590` | 81320590 | no |
+| `11-14589-86748` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `111458986748` | 58986748 | no |
+| `12-14721-26664` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `121472126664` | 72126664 | no |
+| `13-14598-69995` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `131459869995` | 59869995 | no |
+| `14-14923-97837` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `141492397837` | 92397837 | no |
+| `15-14987-12879` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `151498712879` | 98712879 | no |
+| `16-14633-84979` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `161463384979` | 63384979 | no |
+| `17-14782-56662` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `171478256662` | 78256662 | no |
+| `19-14930-08546` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `191493008546` | 93008546 | no |
+| `20-14836-87263` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `201483687263` | 83687263 | no |
+| `21-14785-52870` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `211478552870` | 78552870 | no |
+| `22-14971-82917` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `221497182917` | 97182917 | no |
+| `23-14831-91958` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `231483191958` | 83191958 | no |
+| `25-14704-23351` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `251470423351` | 70423351 | no |
+| `26-14713-28309` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `261471328309` | 71328309 | no |
+| `27-14843-46373` | eBay order no. (NN-NNNNN-NNNNN) | receiving_scans.tracking_number | carrier-tracking:FedEx | tracking:FedEx | `271484346373` | 84346373 | no |
+| `05-14843-41472` | eBay order no. (NN-NNNNN-NNNNN) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `051484341472` | 84341472 | no |
+| `07-14839-65130` | eBay order no. (NN-NNNNN-NNNNN) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `071483965130` | 83965130 | no |
+| `22-14564-85805` | eBay order no. (NN-NNNNN-NNNNN) | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `221456485805` | 56485805 | no |
+| `(01)02000000000275` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000000275` | 00000275 | **YES** |
+| `(01)02000000000633` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000000633` | 00000633 | **YES** |
+| `(01)02000000001340` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000001340` | 00001340 | **YES** |
+| `(01)02000000001388` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000001388` | 00001388 | **YES** |
+| `(01)02000000001685` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000001685` | 00001685 | **YES** |
+| `(01)02000000001951` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000001951` | 00001951 | **YES** |
+| `(01)02000000002361` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000002361` | 00002361 | **YES** |
+| `(01)02000000002453` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000002453` | 00002453 | **YES** |
+| `(01)02000000002521` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000002521` | 00002521 | **YES** |
+| `(01)02000000003399` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000003399` | 00003399 | **YES** |
+| `(01)02000000003481` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000003481` | 00003481 | **YES** |
+| `(01)02000000003634` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000003634` | 00003634 | **YES** |
+| `(01)02000000003818` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000003818` | 00003818 | **YES** |
+| `(01)02000000004334` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000004334` | 00004334 | **YES** |
+| `(01)02000000004617` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000004617` | 00004617 | **YES** |
+| `(01)02000000005508` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000005508` | 00005508 | **YES** |
+| `(01)02000000006109` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000006109` | 00006109 | **YES** |
+| `(01)02000000008332` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000008332` | 00008332 | **YES** |
+| `(01)02000000008417` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000008417` | 00008417 | **YES** |
+| `(01)02000000008905` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000008905` | 00008905 | **YES** |
+| `(01)02000000008998` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000008998` | 00008998 | **YES** |
+| `(01)02000000009339` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000009339` | 00009339 | **YES** |
+| `(01)02000000010199` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000010199` | 00010199 | **YES** |
+| `(01)02000000010243` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000010243` | 00010243 | **YES** |
+| `(01)02000000010892` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `0102000000010892` | 00010892 | **YES** |
+| `(414)0614141000005(254)A0101101` | house-gs1 | mobile_scan_events.raw_value | bin | refused | `4140614141000005254A0101101` | 40101101 | **YES** |
+| `/414/0614141000005/254/A0101100` | house-gs1 | mobile_scan_events.raw_value | bin | refused | `4140614141000005254A0101100` | 40101100 | **YES** |
+| `02000000000275` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000000275` | 00000275 | **YES** |
+| `02000000000633` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000000633` | 00000633 | **YES** |
+| `02000000001340` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000001340` | 00001340 | **YES** |
+| `02000000001388` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000001388` | 00001388 | **YES** |
+| `02000000001685` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000001685` | 00001685 | **YES** |
+| `02000000001951` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000001951` | 00001951 | **YES** |
+| `02000000002361` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000002361` | 00002361 | **YES** |
+| `02000000002453` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000002453` | 00002453 | **YES** |
+| `02000000002521` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000002521` | 00002521 | **YES** |
+| `02000000003399` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000003399` | 00003399 | **YES** |
+| `02000000003481` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000003481` | 00003481 | **YES** |
+| `02000000003634` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000003634` | 00003634 | **YES** |
+| `02000000003818` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000003818` | 00003818 | **YES** |
+| `02000000004334` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000004334` | 00004334 | **YES** |
+| `02000000004617` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000004617` | 00004617 | **YES** |
+| `02000000005508` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000005508` | 00005508 | **YES** |
+| `02000000006109` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000006109` | 00006109 | **YES** |
+| `02000000008332` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000008332` | 00008332 | **YES** |
+| `02000000008417` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000008417` | 00008417 | **YES** |
+| `02000000008905` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000008905` | 00008905 | **YES** |
+| `02000000008998` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000008998` | 00008998 | **YES** |
+| `02000000009339` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000009339` | 00009339 | **YES** |
+| `02000000010199` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000010199` | 00010199 | **YES** |
+| `02000000010243` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000010243` | 00010243 | **YES** |
+| `02000000010892` | house-gs1 | mobile_scan_events.raw_value | sku | refused | `02000000010892` | 00010892 | **YES** |
+| `4140614141000005<GS>254A0101100` | house-gs1 | mobile_scan_events.raw_value | bin | refused | `4140614141000005254A0101100` | 40101100 | **YES** |
+| `00016-GR` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00016GR` | 00016-GR | **YES** |
+| `00042` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00042` | 00042 | **YES** |
+| `00045` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00045` | 00045 | **YES** |
+| `00047` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00047` | 00047 | **YES** |
+| `00060` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00060` | 00060 | **YES** |
+| `00065` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00065` | 00065 | **YES** |
+| `00071` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00071` | 00071 | **YES** |
+| `00090` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00090` | 00090 | **YES** |
+| `00096` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00096` | 00096 | **YES** |
+| `00115-BL` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00115BL` | 00115-BL | **YES** |
+| `00140` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00140` | 00140 | **YES** |
+| `00161` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00161` | 00161 | **YES** |
+| `00176` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00176` | 00176 | **YES** |
+| `00178` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00178` | 00178 | **YES** |
+| `00179` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00179` | 00179 | **YES** |
+| `00220-P-2-BK` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00220P2BK` | 00220-P-2-BK | **YES** |
+| `00280` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00280` | 00280 | **YES** |
+| `00282` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00282` | 00282 | **YES** |
+| `00325-PS` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00325PS` | 00325-PS | **YES** |
+| `00364-WY` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00364WY` | 00364-WY | **YES** |
+| `00606-P-1-WY` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00606P1WY` | 00606-P-1-WY | **YES** |
+| `00925` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00925` | 00925 | **YES** |
+| `00980` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `00980` | 00980 | **YES** |
+| `01181-1` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `011811` | 01181-1 | **YES** |
+| `019158952630107AC` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `019158952630107AC` | 52630107 | **YES** |
+| `022373C20145620AC` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `022373C20145620AC` | 20145620 | **YES** |
+| `024644981880410AC` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `024644981880410AC` | 81880410 | **YES** |
+| `025336C23250101AC` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `025336C23250101AC` | 23250101 | **YES** |
+| `033976c60555172ac` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `033976C60555172AC` | 60555172 | **YES** |
+| `034036C70685650AC` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `034036C70685650AC` | 70685650 | **YES** |
+| `034103910250412AC` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `034103910250412AC` | 10250412 | **YES** |
+| `037755953391517AC` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `037755953391517AC` | 53391517 | **YES** |
+| `043085980281610AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `043085980281610AE` | 80281610 | **YES** |
+| `044417c02385144ac` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `044417C02385144AC` | 02385144 | **YES** |
+| `05014290112111AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `05014290112111AE` | 90112111 | **YES** |
+| `051116F02840389AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `051116F02840389AE` | 02840389 | **YES** |
+| `051353921430379as` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `051353921430379AS` | 21430379 | **YES** |
+| `059565930312019AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `059565930312019AE` | 30312019 | **YES** |
+| `061090942740111AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `061090942740111AE` | 42740111 | **YES** |
+| `061102952170046AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `061102952170046AE` | 52170046 | **YES** |
+| `064710952560631a5` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `064710952560631A5` | 25606315 | **YES** |
+| `064710953312000A3` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `064710953312000A3` | 33120003 | **YES** |
+| `070213993320641AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `070213993320641AE` | 93320641 | **YES** |
+| `070214960600582AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `070214960600582AE` | 60600582 | **YES** |
+| `071494F90290152AE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `071494F90290152AE` | 90290152 | **YES** |
+| `080813z40505853ae` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `080813Z40505853AE` | 40505853 | **YES** |
+| `083424j32000020ae` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `083424J32000020AE` | 32000020 | **YES** |
+| `113-1528397-8163447` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `11315283978163447` | 78163447 | **YES** |
+| `13964` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `13964` | 13964 | **YES** |
+| `141` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `141` | 141 | **YES** |
+| `151 SE` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `151SE` | 151 SE | **YES** |
+| `321 GS` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `321GS` | 321 GS | **YES** |
+| `353811-0010 1506EB008406` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `35381100101506EB008406` | 06008406 | **YES** |
+| `421088` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `421088` | 421088 | **YES** |
+| `4993` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `4993` | 4993 | **YES** |
+| `62326295` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `62326295` | 62326295 | **YES** |
+| `62775661` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `62775661` | 62775661 | **YES** |
+| `62948263` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `62948263` | 62948263 | **YES** |
+| `64726761` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `64726761` | 64726761 | **YES** |
+| `64793692` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `64793692` | 64793692 | **YES** |
+| `64937590` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `64937590` | 64937590 | **YES** |
+| `65152655` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `65152655` | 65152655 | **YES** |
+| `822571` | house-sku/bin/serial | mobile_scan_events.raw_value | sku | refused | `822571` | 822571 | **YES** |
+| `A0101100` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `A0101100` | A0101100 | **YES** |
+| `A0101101` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `A0101101` | A0101101 | **YES** |
+| `A12` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `A12` | A12 | **YES** |
+| `AV3-2-1` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `AV321` | AV3-2-1 | **YES** |
+| `AWRC1G` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `AWRC1G` | AWRC1G | **YES** |
+| `AWRCC1` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `AWRCC1` | AWRCC1 | **YES** |
+| `AWRCC2` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `AWRCC2` | AWRCC2 | **YES** |
+| `Acoustimass 6` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `ACOUSTIMASS6` | Acoustimass 6 | **YES** |
+| `B2A` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `B2A` | B2A | **YES** |
+| `BOSE` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOSE` | BOSE | **YES** |
+| `Bose` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOSE` | Bose | **YES** |
+| `CineMate 120` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `CINEMATE120` | CineMate 120 | **YES** |
+| `PS48` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `PS48` | PS48 | **YES** |
+| `R-1024` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R1024` | R-1024 | no |
+| `R-1234` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R1234` | R-1234 | no |
+| `R-1970` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R1970` | R-1970 | no |
+| `R-1994` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R1994` | R-1994 | no |
+| `R-2045` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2045` | R-2045 | no |
+| `R-2081` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2081` | R-2081 | no |
+| `R-2113` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2113` | R-2113 | no |
+| `R-2176` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2176` | R-2176 | no |
+| `R-2184` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2184` | R-2184 | no |
+| `R-2213` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2213` | R-2213 | no |
+| `R-2226` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2226` | R-2226 | no |
+| `R-2262` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2262` | R-2262 | no |
+| `R-2419` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R2419` | R-2419 | no |
+| `R-3550` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R3550` | R-3550 | no |
+| `R-3810` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R3810` | R-3810 | no |
+| `R-4029` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R4029` | R-4029 | no |
+| `R-4792` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R4792` | R-4792 | no |
+| `R-4949` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R4949` | R-4949 | no |
+| `R-4961` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R4961` | R-4961 | no |
+| `R-4964` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R4964` | R-4964 | no |
+| `R-5026` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R5026` | R-5026 | no |
+| `R-50956` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R50956` | R-50956 | no |
+| `R-51981` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R51981` | R-51981 | no |
+| `R-5226` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R5226` | R-5226 | no |
+| `R-52312` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R52312` | R-52312 | no |
+| `R-5242` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R5242` | R-5242 | no |
+| `R-53276` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R53276` | R-53276 | no |
+| `R-53297` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R53297` | R-53297 | no |
+| `R-5397` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R5397` | R-5397 | no |
+| `R-5404` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R5404` | R-5404 | no |
+| `R-6627` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R6627` | R-6627 | no |
+| `R-9491` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R9491` | R-9491 | no |
+| `R-9975` | house-sku/bin/serial | mobile_scan_events.raw_value | receiving | carton | `R9975` | R-9975 | no |
+| `RK001` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `RK001` | RK001 | **YES** |
+| `Series III` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SERIESIII` | Series III | **YES** |
+| `SoundDock 10` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDDOCK10` | SoundDock 10 | **YES** |
+| `SoundLink Color` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDLINKCOLOR` | SoundLink Color | **YES** |
+| `Surround Speakers 700` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SURROUNDSPEAKERS700` | Surround Speakers 700 | **YES** |
+| `U-1024` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1024` | U-1024 | **YES** |
+| `U-1164` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1164` | U-1164 | **YES** |
+| `U-1195` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1195` | U-1195 | **YES** |
+| `U-1283` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1283` | U-1283 | **YES** |
+| `U-1329` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1329` | U-1329 | **YES** |
+| `U-1457` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1457` | U-1457 | **YES** |
+| `U-1467` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1467` | U-1467 | **YES** |
+| `U-1559` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1559` | U-1559 | **YES** |
+| `U-1700` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1700` | U-1700 | **YES** |
+| `U-1970` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1970` | U-1970 | **YES** |
+| `U-1994` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U1994` | U-1994 | **YES** |
+| `U-2045` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2045` | U-2045 | **YES** |
+| `U-2081` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2081` | U-2081 | **YES** |
+| `U-2113` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2113` | U-2113 | **YES** |
+| `U-2176` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2176` | U-2176 | **YES** |
+| `U-2184` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2184` | U-2184 | **YES** |
+| `U-2213` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2213` | U-2213 | **YES** |
+| `U-2226` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2226` | U-2226 | **YES** |
+| `U-2262` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2262` | U-2262 | **YES** |
+| `U-2419` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2419` | U-2419 | **YES** |
+| `U-2491` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2491` | U-2491 | **YES** |
+| `U-2593` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U2593` | U-2593 | **YES** |
+| `U-833` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U833` | U-833 | **YES** |
+| `U-890` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U890` | U-890 | **YES** |
+| `U-899` | house-sku/bin/serial | mobile_scan_events.raw_value | serial-unit | refused | `U899` | U-899 | **YES** |
+| `V9` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `V9` | V9 | **YES** |
+| `WB-120` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `WB120` | WB-120 | **YES** |
+| `X-Plorer` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `XPLORER` | X-Plorer | **YES** |
+| `X001PBX2XL` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X001PBX2XL` | X001PBX2XL | **YES** |
+| `X0028BQDHJ` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X0028BQDHJ` | X0028BQDHJ | **YES** |
+| `X002MLY7R3` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X002MLY7R3` | X002MLY7R3 | **YES** |
+| `X002N6TT4N` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X002N6TT4N` | X002N6TT4N | **YES** |
+| `X002NZ0IXZ` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X002NZ0IXZ` | X002NZ0IXZ | **YES** |
+| `X002YKEMDL` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X002YKEMDL` | X002YKEMDL | **YES** |
+| `X002ZA0T19` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X002ZA0T19` | X002ZA0T19 | **YES** |
+| `X0031R9ZPB` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X0031R9ZPB` | X0031R9ZPB | **YES** |
+| `X003E9YWVD` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X003E9YWVD` | X003E9YWVD | **YES** |
+| `X003TNTYUD` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X003TNTYUD` | X003TNTYUD | **YES** |
+| `X003TXX9X1` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X003TXX9X1` | X003TXX9X1 | **YES** |
+| `X003U1S0DL` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X003U1S0DL` | X003U1S0DL | **YES** |
+| `X004A46MEV` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004A46MEV` | X004A46MEV | **YES** |
+| `X004E2Y2F5` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004E2Y2F5` | X004E2Y2F5 | **YES** |
+| `X004L97MA3` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004L97MA3` | X004L97MA3 | **YES** |
+| `X004LZW4MX` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004LZW4MX` | X004LZW4MX | **YES** |
+| `X004MSG6FF` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004MSG6FF` | X004MSG6FF | **YES** |
+| `X004MUB6ZN` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004MUB6ZN` | X004MUB6ZN | **YES** |
+| `X004N2YG9N` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004N2YG9N` | X004N2YG9N | **YES** |
+| `X004N72NTX` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004N72NTX` | X004N72NTX | **YES** |
+| `X004W9BC4T` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004W9BC4T` | X004W9BC4T | **YES** |
+| `X004ZRDHMN` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X004ZRDHMN` | X004ZRDHMN | **YES** |
+| `X0057LB6BZ` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X0057LB6BZ` | X0057LB6BZ | **YES** |
+| `X005BHURXX` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X005BHURXX` | X005BHURXX | **YES** |
+| `X00TEST000` | house-sku/bin/serial | mobile_scan_events.raw_value | fnsku | refused | `X00TEST000` | X00TEST000 | **YES** |
+| `a0101101` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `A0101101` | a0101101 | **YES** |
+| `accoustimass` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `ACCOUSTIMASS` | accoustimass | **YES** |
+| `acoustimas` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `ACOUSTIMAS` | acoustimas | **YES** |
+| `acoustimass` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `ACOUSTIMASS` | acoustimass | **YES** |
+| `bass module 700` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BASSMODULE700` | bass module 700 | **YES** |
+| `beatles` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BEATLES` | beatles | **YES** |
+| `bookshelf speakers grey` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOOKSHELFSPEAKERSGREY` | bookshelf speakers grey | **YES** |
+| `bose` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOSE` | bose | **YES** |
+| `bose 700` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOSE700` | bose 700 | **YES** |
+| `bose 700 used` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOSE700USED` | bose 700 used | **YES** |
+| `bose sondlink` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOSESONDLINK` | bose sondlink | **YES** |
+| `bose speaker blue` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOSESPEAKERBLUE` | bose speaker blue | **YES** |
+| `bose wave music sytem` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BOSEWAVEMUSICSYTEM` | bose wave music sytem | **YES** |
+| `bsoe` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `BSOE` | bsoe | **YES** |
+| `cinemat` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `CINEMAT` | cinemat | **YES** |
+| `cinemate` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `CINEMATE` | cinemate | **YES** |
+| `cinemate home theatre` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `CINEMATEHOMETHEATRE` | cinemate home theatre | **YES** |
+| `definitive` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `DEFINITIVE` | definitive | **YES** |
+| `guitar` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `GUITAR` | guitar | **YES** |
+| `guitar hero` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `GUITARHERO` | guitar hero | **YES** |
+| `guitar hero drums` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `GUITARHERODRUMS` | guitar hero drums | **YES** |
+| `guitr hero` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `GUITRHERO` | guitr hero | **YES** |
+| `hqrp` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `HQRP` | hqrp | **YES** |
+| `jbl` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `JBL` | jbl | **YES** |
+| `jbl flip` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `JBLFLIP` | jbl flip | **YES** |
+| `motorola` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `MOTOROLA` | motorola | **YES** |
+| `pedestal platinum` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `PEDESTALPLATINUM` | pedestal platinum | **YES** |
+| `plantronics` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `PLANTRONICS` | plantronics | **YES** |
+| `rk1-1` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `RK11` | rk1-1 | **YES** |
+| `rock band` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `ROCKBAND` | rock band | **YES** |
+| `rockband` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `ROCKBAND` | rockband | **YES** |
+| `sony` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SONY` | sony | **YES** |
+| `sound touch` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDTOUCH` | sound touch | **YES** |
+| `sounddock` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDDOCK` | sounddock | **YES** |
+| `sounddok` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDDOK` | sounddok | **YES** |
+| `soundlink` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDLINK` | soundlink | **YES** |
+| `soundlink mini` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDLINKMINI` | soundlink mini | **YES** |
+| `soundlnik` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDLNIK` | soundlnik | **YES** |
+| `soundtouch` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `SOUNDTOUCH` | soundtouch | **YES** |
+| `wave radio` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `WAVERADIO` | wave radio | **YES** |
+| `wave radoi` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `WAVERADOI` | wave radoi | **YES** |
+| `xbox` | house-sku/bin/serial | mobile_scan_events.raw_value | bin | refused | `XBOX` | xbox | **YES** |
+| `000277001` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `000277001` | 00277001 | **YES** |
+| `0053` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `0053` | 0053 | **YES** |
+| `007` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `007` | 007 | **YES** |
+| `0075` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `0075` | 0075 | **YES** |
+| `010200000000395521070207992620729AE` | house-sku/bin/serial | receiving_scans.tracking_number | serial-unit | refused | `010200000000395521070207992620729AE` | 92620729 | **YES** |
+| `0102000000018942210576A` | house-sku/bin/serial | receiving_scans.tracking_number | serial-unit | refused | `0102000000018942210576A` | 42210576 | **YES** |
+| `0145` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `0145` | 0145 | **YES** |
+| `0180` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `0180` | 0180 | **YES** |
+| `019158932950473AC` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `019158932950473AC` | 32950473 | **YES** |
+| `024644961230166AC` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `024644961230166AC` | 61230166 | **YES** |
+| `0320` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `0320` | 0320 | **YES** |
+| `033975C43360444AC` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `033975C43360444AC` | 43360444 | **YES** |
+| `038736z62581805ac` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `038736Z62581805AC` | 62581805 | **YES** |
+| `039523F10590020AE` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `039523F10590020AE` | 10590020 | **YES** |
+| `041793993070155ac` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `041793993070155AC` | 93070155 | **YES** |
+| `044417C82965434AC` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `044417C82965434AC` | 82965434 | **YES** |
+| `0474` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `0474` | 0474 | **YES** |
+| `055419932811567AE` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `055419932811567AE` | 32811567 | **YES** |
+| `056608F12080013AE` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `056608F12080013AE` | 12080013 | **YES** |
+| `0670` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `0670` | 0670 | **YES** |
+| `070214963070261AE` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `070214963070261AE` | 63070261 | **YES** |
+| `0725181870133` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `0725181870133` | 81870133 | **YES** |
+| `1025489131001` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1025489131001` | 89131001 | **YES** |
+| `1083` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1083` | 1083 | **YES** |
+| `111-0949986-0104234` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `11109499860104234` | 60104234 | **YES** |
+| `11124560724717854` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `11124560724717854` | 24717854 | **YES** |
+| `112-7607612-2281846` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `11276076122281846` | 22281846 | **YES** |
+| `11250861310872236` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `11250861310872236` | 10872236 | **YES** |
+| `11347254119783457` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `11347254119783457` | 19783457 | **YES** |
+| `11497960854117836` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `11497960854117836` | 54117836 | **YES** |
+| `1178` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1178` | 1178 | **YES** |
+| `11ZJ22B100333113256` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `11ZJ22B100333113256` | 33113256 | **YES** |
+| `1496` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1496` | 1496 | **YES** |
+| `1544` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1544` | 1544 | **YES** |
+| `1788` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1788` | 1788 | **YES** |
+| `1897` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1897` | 1897 | **YES** |
+| `1999` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1999` | 1999 | **YES** |
+| `1R096K99010885092` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `1R096K99010885092` | 10885092 | **YES** |
+| `2012` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `2012` | 2012 | **YES** |
+| `212121` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `212121` | 212121 | **YES** |
+| `21330258` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `21330258` | 21330258 | **YES** |
+| `21899814` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `21899814` | 21899814 | **YES** |
+| `24493395412` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `24493395412` | 93395412 | **YES** |
+| `260075437` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `260075437` | 60075437 | **YES** |
+| `2685` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `2685` | 2685 | **YES** |
+| `2704` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `2704` | 2704 | **YES** |
+| `2850` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `2850` | 2850 | **YES** |
+| `2LUS92647+61000001` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `2LUS9264761000001` | 61000001 | **YES** |
+| `30BOSEWAVEIIIIVCDPLAYERASSEMBLIES` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `30BOSEWAVEIIIIVCDPLAYERASSEMBLIES` | 30BOSEWAVEIIIIVCDPLAYERASSEMBLIES | **YES** |
+| `3136` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `3136` | 3136 | **YES** |
+| `32` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `32` | 32 | **YES** |
+| `3248` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `3248` | 3248 | **YES** |
+| `337B0324092095` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `337B0324092095` | 24092095 | **YES** |
+| `3739` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `3739` | 3739 | **YES** |
+| `3768` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `3768` | 3768 | **YES** |
+| `42` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `42` | 42 | **YES** |
+| `4324` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `4324` | 4324 | **YES** |
+| `46236` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `46236` | 46236 | **YES** |
+| `4910` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `4910` | 4910 | **YES** |
+| `5270` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `5270` | 5270 | **YES** |
+| `5287` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `5287` | 5287 | **YES** |
+| `54881352` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `54881352` | 54881352 | **YES** |
+| `5597` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `5597` | 5597 | **YES** |
+| `579` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `579` | 579 | **YES** |
+| `5846` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `5846` | 5846 | **YES** |
+| `5909` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `5909` | 5909 | **YES** |
+| `61792494` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `61792494` | 61792494 | **YES** |
+| `62175801` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `62175801` | 62175801 | **YES** |
+| `62326226` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `62326226` | 62326226 | **YES** |
+| `62453197` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `62453197` | 62453197 | **YES** |
+| `6276` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6276` | 6276 | **YES** |
+| `63257466` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `63257466` | 63257466 | **YES** |
+| `63325832` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `63325832` | 63325832 | **YES** |
+| `63536065` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `63536065` | 63536065 | **YES** |
+| `63681149` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `63681149` | 63681149 | **YES** |
+| `63738368` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `63738368` | 63738368 | **YES** |
+| `63839862` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `63839862` | 63839862 | **YES** |
+| `63932057` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `63932057` | 63932057 | **YES** |
+| `64254627` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `64254627` | 64254627 | **YES** |
+| `64498155` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `64498155` | 64498155 | **YES** |
+| `6451` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6451` | 6451 | **YES** |
+| `64956173` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `64956173` | 64956173 | **YES** |
+| `6524` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6524` | 6524 | **YES** |
+| `6610` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6610` | 6610 | **YES** |
+| `6693` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6693` | 6693 | **YES** |
+| `6744` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6744` | 6744 | **YES** |
+| `6814` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6814` | 6814 | **YES** |
+| `6913` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6913` | 6913 | **YES** |
+| `6992` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `6992` | 6992 | **YES** |
+| `7124` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7124` | 7124 | **YES** |
+| `7198` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7198` | 7198 | **YES** |
+| `7209702243242` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7209702243242` | 02243242 | **YES** |
+| `7233` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7233` | 7233 | **YES** |
+| `7250` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7250` | 7250 | **YES** |
+| `7250757027025` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7250757027025` | 57027025 | **YES** |
+| `737EC27D2883250D0` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `737EC27D2883250D0` | 28832500 | **YES** |
+| `7404` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7404` | 7404 | **YES** |
+| `7494` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7494` | 7494 | **YES** |
+| `7820` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7820` | 7820 | **YES** |
+| `7924` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7924` | 7924 | **YES** |
+| `7933` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `7933` | 7933 | **YES** |
+| `8143` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8143` | 8143 | **YES** |
+| `827357863` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `827357863` | 27357863 | **YES** |
+| `8367` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8367` | 8367 | **YES** |
+| `8557` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8557` | 8557 | **YES** |
+| `8687` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8687` | 8687 | **YES** |
+| `876465654538AND87665632739` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `876465654538AND87665632739` | 65632739 | **YES** |
+| `8831` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8831` | 8831 | **YES** |
+| `8871` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8871` | 8871 | **YES** |
+| `8884` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8884` | 8884 | **YES** |
+| `8942` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8942` | 8942 | **YES** |
+| `8M579577CN275753Y` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `8M579577CN275753Y` | 77275753 | **YES** |
+| `9009` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9009` | 9009 | **YES** |
+| `9414` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9414` | 9414 | **YES** |
+| `9450` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9450` | 9450 | **YES** |
+| `9503` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9503` | 9503 | **YES** |
+| `9513` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9513` | 9513 | **YES** |
+| `9566` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9566` | 9566 | **YES** |
+| `9604` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9604` | 9604 | **YES** |
+| `963200196068053120040038030215591196220019000021047990003803790620401ZR096K99027766715` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9632001960680531200400380302155911962200` | 27766715 | **YES** |
+| `9703` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9703` | 9703 | **YES** |
+| `980` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `980` | 980 | **YES** |
+| `9811951` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9811951` | 9811951 | **YES** |
+| `9847` | house-sku/bin/serial | receiving_scans.tracking_number | sku | refused | `9847` | 9847 | **YES** |
+| `AG` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `AG` | AG | **YES** |
+| `D23xFVY0RRMA` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `D23XFVY0RRMA` | D23xFVY0RRMA | **YES** |
+| `DTc0tfYrRRMA` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `DTC0TFYRRRMA` | DTc0tfYrRRMA | **YES** |
+| `DXXC0BLVRRMA` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `DXXC0BLVRRMA` | DXXC0BLVRRMA | **YES** |
+| `DpYtF1YNRRMA` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `DPYTF1YNRRMA` | DpYtF1YNRRMA | **YES** |
+| `Dvbzv8YzRRMA` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `DVBZV8YZRRMA` | Dvbzv8YzRRMA | **YES** |
+| `GO` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `GO` | GO | **YES** |
+| `LCPUVU321` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `LCPUVU321` | LCPUVU321 | **YES** |
+| `M420926479212490416420900004366` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `M420926479212490416420900004366` | 00004366 | **YES** |
+| `R-50127` | house-sku/bin/serial | receiving_scans.tracking_number | receiving | carton | `R50127` | R-50127 | no |
+| `R-6666` | house-sku/bin/serial | receiving_scans.tracking_number | receiving | carton | `R6666` | R-6666 | no |
+| `R-7278` | house-sku/bin/serial | receiving_scans.tracking_number | receiving | carton | `R7278` | R-7278 | no |
+| `R-9496` | house-sku/bin/serial | receiving_scans.tracking_number | receiving | carton | `R9496` | R-9496 | no |
+| `SD0RJTTCWR001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SD0RJTTCWR001V` | SD0RJTTCWR001V | **YES** |
+| `SDD6YZDTTR001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SDD6YZDTTR001V` | SDD6YZDTTR001V | **YES** |
+| `SDMRGW1V4R001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SDMRGW1V4R001V` | SDMRGW1V4R001V | **YES** |
+| `SDSNL9JW2R001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SDSNL9JW2R001V` | SDSNL9JW2R001V | **YES** |
+| `SOUNDLINKMINIII` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SOUNDLINKMINIII` | SOUNDLINKMINIII | **YES** |
+| `SP4RBJSR00001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SP4RBJSR00001V` | SP4RBJSR00001V | **YES** |
+| `SP7V1FHZV8001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SP7V1FHZV8001V` | SP7V1FHZV8001V | **YES** |
+| `SPNK5ZQJR5J` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SPNK5ZQJR5J` | SPNK5ZQJR5J | **YES** |
+| `SPQL69P8GW001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SPQL69P8GW001V` | SPQL69P8GW001V | **YES** |
+| `SPV2MZGXWG001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SPV2MZGXWG001V` | SPV2MZGXWG001V | **YES** |
+| `SPXQGDJSS8001V` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SPXQGDJSS8001V` | SPXQGDJSS8001V | **YES** |
+| `SPXSNA039708475305` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `SPXSNA039708475305` | 08475305 | **YES** |
+| `YES` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `YES` | YES | **YES** |
+| `ZA8335G0316469375` | house-sku/bin/serial | receiving_scans.tracking_number | bin | refused | `ZA8335G0316469375` | 16469375 | **YES** |
+| `r-12902` | house-sku/bin/serial | receiving_scans.tracking_number | receiving | carton | `R12902` | r-12902 | no |
+| `r-45624` | house-sku/bin/serial | receiving_scans.tracking_number | receiving | carton | `R45624` | r-45624 | no |
+| `321SERIESII` | house-sku/bin/serial | scan_triage_records.raw_value | sku | refused | `321SERIESII` | 321SERIESII | **YES** |
+| `069234P81564761AE` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `069234P81564761AE` | 81564761 | **YES** |
+| `078182t41342181a2` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `078182T41342181A2` | 13421812 | **YES** |
+| `1071-B:A05` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1071BA05` | 1071-B:A05 | **YES** |
+| `1103-N:A08` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1103NA08` | 1103-N:A08 | **YES** |
+| `111-4295219-6532202` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `11142952196532202` | 96532202 | **YES** |
+| `11148353115454640` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `11148353115454640` | 15454640 | **YES** |
+| `11212108907058601` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `11212108907058601` | 07058601 | **YES** |
+| `113-3289934-8205045` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `11332899348205045` | 48205045 | **YES** |
+| `11472329637419433` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `11472329637419433` | 37419433 | **YES** |
+| `1279-B:A34` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1279BA34` | 1279-B:A34 | **YES** |
+| `1894-B:A22` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1894BA22` | 1894-B:A22 | **YES** |
+| `21Z40X3340300653447` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `21Z40X3340300653447` | 00653447 | **YES** |
+| `2lus926473603+48000001` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `2LUS92647360348000001` | 48000001 | **YES** |
+| `500` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `500` | 500 | **YES** |
+| `65152631` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `65152631` | 65152631 | **YES** |
+| `8768 8563 5720` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:FedEx | tracking:FedEx | `876885635720` | 85635720 | no |
+| `921849028494 0701565684` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | carrier-tracking:USPS | tracking:USPS | `9218490284940701565684` | 01565684 | no |
+| `92350586` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | sku | refused | `92350586` | 92350586 | **YES** |
+| `DK8ZYWLMRRMA` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `DK8ZYWLMRRMA` | DK8ZYWLMRRMA | **YES** |
+| `LX08869279IL` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `LX08869279IL` | 08869279 | **YES** |
+| `PICKUPORDER` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `PICKUPORDER` | PICKUPORDER | **YES** |
+| `SD9wnKyG9R_001_v` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `SD9WNKYG9R001V` | SD9wnKyG9R_001_v | **YES** |
+| `SDPdWGbC5R_001_v` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `SDPDWGBC5R001V` | SDPdWGbC5R_001_v | **YES** |
+| `SDS8Pt6fvR_001_v` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `SDS8PT6FVR001V` | SDS8Pt6fvR_001_v | **YES** |
+| `SDSD6GMFYR001V` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `SDSD6GMFYR001V` | SDSD6GMFYR001V | **YES** |
+| `SDdZkm1CRR_001_v` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `SDDZKM1CRR001V` | SDdZkm1CRR_001_v | **YES** |
+| `SPBD67DGXP001V` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `SPBD67DGXP001V` | SPBD67DGXP001V | **YES** |
+| `T3T74N4T28` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `T3T74N4T28` | T3T74N4T28 | **YES** |
+| `X004ZURCO9` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | fnsku | refused | `X004ZURCO9` | X004ZURCO9 | **YES** |
+| `spV4F0PmXX_001_V` | house-sku/bin/serial | shipping_tracking_numbers.tracking_number_raw | bin | refused | `SPV4F0PMXX001V` | spV4F0PmXX_001_V | **YES** |
+| `024644911080086AC` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `024644911080086AC` | 11080086 | **YES** |
+| `057270C23460048AE` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `057270C23460048AE` | 23460048 | **YES** |
+| `070210993460329AE` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `070210993460329AE` | 93460329 | **YES** |
+| `084602J51140095AE` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `084602J51140095AE` | 51140095 | **YES** |
+| `1012A` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `1012A` | 1012A | **YES** |
+| `151` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `151` | 151 | **YES** |
+| `2590` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `2590` | 2590 | **YES** |
+| `5314` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `5314` | 5314 | **YES** |
+| `580206BCAC` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `580206BCAC` | 580206BCAC | **YES** |
+| `70009BC` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `70009BC` | 70009BC | **YES** |
+| `8379` | house-sku/bin/serial | station_scan_sessions.tracking_raw | sku | refused | `8379` | 8379 | **YES** |
+| `B001BNFOYW` | house-sku/bin/serial | station_scan_sessions.tracking_raw | bin | refused | `B001BNFOYW` | B001BNFOYW | **YES** |
+| `BNM` | house-sku/bin/serial | station_scan_sessions.tracking_raw | bin | refused | `BNM` | BNM | **YES** |
+| `C4206013920809434608106244376360727` | house-sku/bin/serial | station_scan_sessions.tracking_raw | bin | refused | `C4206013920809434608106244376360727` | 76360727 | **YES** |
+| `SOUNDLINKMINI` | house-sku/bin/serial | station_scan_sessions.tracking_raw | bin | refused | `SOUNDLINKMINI` | SOUNDLINKMINI | **YES** |
+| `X004DBJMZH` | house-sku/bin/serial | station_scan_sessions.tracking_raw | fnsku | refused | `X004DBJMZH` | X004DBJMZH | **YES** |
+| `X0090UUMR` | house-sku/bin/serial | station_scan_sessions.tracking_raw | bin | refused | `X0090UUMR` | X0090UUMR | **YES** |
+| `0259233` | house-sku/bin/serial | tracking_exceptions.tracking_number | sku | refused | `0259233` | 0259233 | **YES** |
+| `2LUS926473603+48000001` | house-sku/bin/serial | tracking_exceptions.tracking_number | sku | refused | `2LUS92647360348000001` | 48000001 | **YES** |
+| `4041` | house-sku/bin/serial | tracking_exceptions.tracking_number | sku | refused | `4041` | 4041 | **YES** |
+| `6284` | house-sku/bin/serial | tracking_exceptions.tracking_number | sku | refused | `6284` | 6284 | **YES** |
+| `9395` | house-sku/bin/serial | tracking_exceptions.tracking_number | sku | refused | `9395` | 9395 | **YES** |
+| `MB` | house-sku/bin/serial | tracking_exceptions.tracking_number | bin | refused | `MB` | MB | **YES** |
+| `R-4163` | house-sku/bin/serial | tracking_exceptions.tracking_number | receiving | carton | `R4163` | R-4163 | no |
+| `R6936` | house-sku/bin/serial | tracking_exceptions.tracking_number | bin | refused | `R6936` | R6936 | **YES** |
+| `RC` | house-sku/bin/serial | tracking_exceptions.tracking_number | bin | refused | `RC` | RC | **YES** |
+| `RC18T27` | house-sku/bin/serial | tracking_exceptions.tracking_number | bin | refused | `RC18T27` | RC18T27 | **YES** |
+| `v` | house-sku/bin/serial | tracking_exceptions.tracking_number | bin | refused | `V` | v | **YES** |
+
+## Noise rows refused (complete; test fixtures listed in corpus json only, 485 rows)
+
+| value | carrier guess | source | routeScan kind | arrivalScanIntent | normalised | last-8 | refused? |
+|---|---|---|---|---|---|---|---|
+| `1Z035CX1YW02917197⏎113-1528397-8163447⏎00016-GR` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `1Z035CX1YW029171971131528397816344700016` | 44700016 | **YES** |
+| `1ZJ22B100302248437⏎113-7796771-5871435⏎00179` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `1ZJ22B1003022484371137796771587143500179` | 43500179 | **YES** |
+| `1ZJ22B100332986379⏎111-6425553-1385804⏎00220-P-2-BK` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `1ZJ22B1003329863791116425553138580400220` | 04002202 | **YES** |
+| `1ZJ22B104222265576⏎113-4638555-9983448⏎00096` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `1ZJ22B1042222655761134638555998344800096` | 44800096 | **YES** |
+| `1ZJ22B104223246022⏎113-5992337-9193006⏎00090` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `1ZJ22B1042232460221135992337919300600090` | 00600090 | **YES** |
+| `381986437846⏎114-7973638-0676240⏎CF-PACK-PRINT-E2E` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `38198643784611479736380676240CFPACKPRINT` | 06762402 | **YES** |
+| `382449352440⏎111-0704153-8443448⏎01181-1` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `38244935244011107041538443448011811` | 48011811 | **YES** |
+| `382895359158⏎113-5297422-4082609⏎00045` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `3828953591581135297422408260900045` | 60900045 | **YES** |
+| `383277445486⏎112-6215202-3266635⏎00325-PS` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `3832774454861126215202326663500325PS` | 63500325 | **YES** |
+| `9300110990513422004124⏎111-5433948-4837052⏎00060` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9300110990513422004124111543394848370520` | 05200060 | **YES** |
+| `9300110990513511427599⏎112-1855306-5969038⏎00925` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9300110990513511427599112185530659690380` | 03800925 | **YES** |
+| `9300110990513556425161⏎113-3286985-3292220⏎00042` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9300110990513556425161113328698532922200` | 22000042 | **YES** |
+| `9302110990150180656509⏎111-6049232-0683453⏎00282` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9302110990150180656509111604923206834530` | 45300282 | **YES** |
+| `9334610990150164540910⏎113-8112002-2640258⏎00140` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9334610990150164540910113811200226402580` | 25800140 | **YES** |
+| `9334610990370285103904⏎112-4419700-2061006⏎00364-WY` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9334610990370285103904112441970020610060` | 00600364 | **YES** |
+| `9400108106244113263098⏎112-9931702-0789002⏎00115-BL` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9400108106244113263098112993170207890020` | 00200115 | **YES** |
+| `9400108106244475001697⏎112-6078118-4117021⏎00031` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9400108106244475001697112607811841170210` | 02100031 | **YES** |
+| `9400150106151123179938⏎112-0973917-9105001⏎00065` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9400150106151123179938112097391791050010` | 00100065 | **YES** |
+| `9434650106151066170858⏎113-5210964-2549007⏎00178` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9434650106151066170858113521096425490070` | 00700178 | **YES** |
+| `9434650206217243922777⏎114-9686344-3151424⏎00176` | multiline-packslip | mobile_scan_events.raw_value | sku | refused | `9434650206217243922777114968634431514240` | 42400176 | **YES** |
+| `https://id.gs1.org/01/02000000000275` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000000275` | 00000275 | **YES** |
+| `https://id.gs1.org/01/02000000000633` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000000633` | 00000633 | **YES** |
+| `https://id.gs1.org/01/02000000001340` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000001340` | 00001340 | **YES** |
+| `https://id.gs1.org/01/02000000001388` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000001388` | 00001388 | **YES** |
+| `https://id.gs1.org/01/02000000001685` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000001685` | 00001685 | **YES** |
+| `https://id.gs1.org/01/02000000001951` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000001951` | 00001951 | **YES** |
+| `https://id.gs1.org/01/02000000002361` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000002361` | 00002361 | **YES** |
+| `https://id.gs1.org/01/02000000002453` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000002453` | 00002453 | **YES** |
+| `https://id.gs1.org/01/02000000002521` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000002521` | 00002521 | **YES** |
+| `https://id.gs1.org/01/02000000003399` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000003399` | 00003399 | **YES** |
+| `https://id.gs1.org/01/02000000003481` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000003481` | 00003481 | **YES** |
+| `https://id.gs1.org/01/02000000003634` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000003634` | 00003634 | **YES** |
+| `https://id.gs1.org/01/02000000003818` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000003818` | 00003818 | **YES** |
+| `https://id.gs1.org/01/02000000004334` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000004334` | 00004334 | **YES** |
+| `https://id.gs1.org/01/02000000004617` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000004617` | 00004617 | **YES** |
+| `https://id.gs1.org/01/02000000005508` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000005508` | 00005508 | **YES** |
+| `https://id.gs1.org/01/02000000006109` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000006109` | 00006109 | **YES** |
+| `https://id.gs1.org/01/02000000008332` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000008332` | 00008332 | **YES** |
+| `https://id.gs1.org/01/02000000008417` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000008417` | 00008417 | **YES** |
+| `https://id.gs1.org/01/02000000008905` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000008905` | 00008905 | **YES** |
+| `https://id.gs1.org/01/02000000008998` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000008998` | 00008998 | **YES** |
+| `https://id.gs1.org/01/02000000009339` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000009339` | 00009339 | **YES** |
+| `https://id.gs1.org/01/02000000010199` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000010199` | 00010199 | **YES** |
+| `https://id.gs1.org/01/02000000010243` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000010243` | 00010243 | **YES** |
+| `https://id.gs1.org/01/02000000010892` | multi-value-text | mobile_scan_events.raw_value | sku | refused | `HTTPSIDGS1ORG0102000000010892` | 00010892 | **YES** |
+| `https://usav-orders-backend.vercel.app/m/signin` | multi-value-text | mobile_scan_events.raw_value | bin | refused | `HTTPSUSAVORDERSBACKENDVERCELAPPMSIGNIN` | https://usav-orders-backend.vercel.app/m/signin | **YES** |
+| `https://usav.app.cycleforge.ai/m/r/1234` | multi-value-text | mobile_scan_events.raw_value | receiving | carton | `HTTPSUSAVAPPCYCLEFORGEAIMR1234` | https://usav.app.cycleforge.ai/m/r/1234 | no |
+| `https://usavshop.com/01/02000000003788/21/00102-BK-2623-000212` | multi-value-text | mobile_scan_events.raw_value | serial-unit | refused | `HTTPSUSAVSHOPCOM01020000000037882100102B` | 23000212 | **YES** |
+| `https://usavshop.com/01/02000000006376/21/00194-P-1-BK-2623-000002` | multi-value-text | mobile_scan_events.raw_value | serial-unit | refused | `HTTPSUSAVSHOPCOM01020000000063762100194P` | 23000002 | **YES** |
+| `#9573` | multi-value-text | receiving_scans.tracking_number | sku | refused | `9573` | #9573 | **YES** |
+| `1ZJ22B100320809798 + 1ZJ22B100328653807` | multi-value-text | receiving_scans.tracking_number | sku | refused | `1ZJ22B1003208097981ZJ22B100328653807` | 28653807 | **YES** |
+| `HTTPSUSAVAPPCYCLEFORGEAIMR51096` | multi-value-text | receiving_scans.tracking_number | receiving | carton | `HTTPSUSAVAPPCYCLEFORGEAIMR51096` | HTTPSUSAVAPPCYCLEFORGEAIMR51096 | no |
+| `https://www.ebay.com/itm/336547369490` | multi-value-text | receiving_scans.tracking_number | bin | refused | `HTTPSWWWEBAYCOMITM336547369490` | 47369490 | **YES** |
+| `#TBA329431546276` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | sku | refused | `TBA329431546276` | 31546276 | **YES** |
+| `1Z68R0R00395212287 + 1Z68R0R00395212287` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1Z68R0R00395212287` | 95212287 | **YES** |
+| `1ZJ22В100304470059 + 1ZJ22B100314713063` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | sku | refused | `1ZJ221003044700591ZJ22B100314713063` | 14713063 | **YES** |
+| `268569217 + 268180270 + 268488440` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | sku | refused | `268569217268180270268488440` | 68488440 | **YES** |
+| `381543907660 + 381543919549` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | sku | refused | `381543907660381543919549` | 43919549 | **YES** |
+| `399805552010 + 399805552822 + 399805551344` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | sku | refused | `399805552010399805552822399805551344` | 05551344 | **YES** |
+| `518451246200 + 522300969633` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | sku | refused | `518451246200522300969633` | 00969633 | **YES** |
+| `876465654538 and 87665632739` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | sku | refused | `876465654538AND87665632739` | 65632739 | **YES** |
+| `9.2346902673388e+25` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `92346902673388E25` | 67338825 | **YES** |
+| `9.23469032499284e+21` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `923469032499284E21` | 49928421 | **YES** |
+| `9.235990401713201e+21` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9235990401713201E21` | 71320121 | **YES** |
+| `9.334611043900001e+21` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9334611043900001E21` | 90000121 | **YES** |
+| `9.43460810624457e+21` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `943460810624457E21` | 62445721 | **YES** |
+| `9.4346081062445e+21` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `94346081062445E21` | 06244521 | **YES** |
+| `9.434608106245503e+21` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9434608106245503E21` | 24550321 | **YES** |
+| `9.534615430936238e+21` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `9534615430936238E21` | 93623821 | **YES** |
+| `9.53611479296623e+21` | junk-sci-notation | shipping_tracking_numbers.tracking_number_raw | sku | refused | `953611479296623E21` | 29662321 | **YES** |
+| `Clean Medium` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | bin | refused | `CLEANMEDIUM` | Clean Medium | **YES** |
+| `HTTPSUSAVAPPCYCLEFORGEAIMR50948` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | receiving | carton | `HTTPSUSAVAPPCYCLEFORGEAIMR50948` | HTTPSUSAVAPPCYCLEFORGEAIMR50948 | no |
+| `HTTPSWWWEBAYCOMITM306393912649` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | bin | refused | `HTTPSWWWEBAYCOMITM306393912649` | 93912649 | **YES** |
+| `Refunded` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | bin | refused | `REFUNDED` | Refunded | **YES** |
+| `Shipping` | multi-value-text | shipping_tracking_numbers.tracking_number_raw | bin | refused | `SHIPPING` | Shipping | **YES** |
+| `JAMIE` | multi-value-text | tracking_exceptions.tracking_number | bin | refused | `JAMIE` | JAMIE | **YES** |

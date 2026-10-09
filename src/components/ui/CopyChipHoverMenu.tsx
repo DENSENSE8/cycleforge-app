@@ -19,6 +19,7 @@ import {
   type DeferredHoverBridge,
 } from '@/components/ui/deferred-hover-mount';
 import { zIndex } from '@/design-system/tokens/z-index';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { ChipHoverMenuPanel } from '@/components/ui/ChipHoverMenuSurface';
 import {
   clampPortalSideMenuPosition,
@@ -96,6 +97,9 @@ export function CopyChipHoverMenu({
   align = 'start',
   avoidCollisions = true,
   onOpenChange,
+  gap,
+  onActivate,
+  activateLabel,
 }: {
   children: ReactNode;
   items: CopyChipHoverMenuItem[];
@@ -123,6 +127,16 @@ export function CopyChipHoverMenu({
   /** Fires when the dropdown opens (true) / closes (false) — lets a host row keep
    *  its hover-expanded chrome (chevron + shifted chips) while the menu is up. */
   onOpenChange?: (open: boolean) => void;
+  /** Space between the face and the menu, px — `0` sits the menu flush against the face. Default: the house side / below gap. */
+  gap?: number;
+  /**
+   * The face itself is a control: a click (or ↵ / Space when focused) runs this
+   * — e.g. copy the order id — and the menu of the other actions opens beside
+   * it. Absent, the face is plain and only hover opens the menu.
+   */
+  onActivate?: () => void;
+  /** Accessible name of the face while `onActivate` is set ("Copy CF-1"). */
+  activateLabel?: string;
 }) {
   const enabled = items.length > 0;
   const { mounted, triggerRef, bridge, activate, release } = useDeferredHoverMount<
@@ -130,12 +144,28 @@ export function CopyChipHoverMenu({
     ChipMenuHandle
   >();
 
+  const run = () => {
+    onActivate?.();
+    if (enabled) activate('focus', (h) => h.open());
+  };
   return (
     <div
       ref={triggerRef}
-      className={cn('group relative inline-flex shrink-0 items-center', className)}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
+      className={cn('group relative inline-flex shrink-0 items-center', onActivate && cn('cursor-copy', focusRing('control')), className)}
+      role={onActivate ? 'button' : undefined}
+      tabIndex={onActivate ? 0 : undefined}
+      aria-label={onActivate ? activateLabel : undefined}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onActivate) run();
+      }}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (onActivate && (e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+          e.preventDefault();
+          run();
+        }
+      }}
       onMouseEnter={() => {
         if (!enabled) return;
         activate('hover', (h) => h.open());
@@ -156,6 +186,7 @@ export function CopyChipHoverMenu({
           align={align}
           avoidCollisions={avoidCollisions}
           onOpenChange={onOpenChange}
+          gap={gap}
         />
       ) : null}
     </div>
@@ -181,6 +212,7 @@ function ChipMenuPortal({
   align,
   avoidCollisions,
   onOpenChange,
+  gap,
 }: {
   bridge: DeferredHoverBridge<ChipMenuHandle>;
   triggerRef: MutableRefObject<HTMLDivElement | null>;
@@ -193,6 +225,7 @@ function ChipMenuPortal({
   align: PortalSideMenuAlign;
   avoidCollisions: boolean;
   onOpenChange?: (open: boolean) => void;
+  gap?: number;
 }) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const placementRef = useRef(placement);
@@ -201,6 +234,8 @@ function ChipMenuPortal({
   alignRef.current = align;
   const avoidCollisionsRef = useRef(avoidCollisions);
   avoidCollisionsRef.current = avoidCollisions;
+  const gapRef = useRef(gap);
+  gapRef.current = gap;
 
   // Trigger rect captured on open; the menu is positioned off-screen+hidden
   // first so we can measure it, then clamped into view in the layout effect.
@@ -260,9 +295,8 @@ function ChipMenuPortal({
       anchor,
       bubble: b,
       gap:
-        placementRef.current === 'bottom' || placementRef.current === 'top'
-          ? PORTAL_BELOW_MENU_GAP
-          : PORTAL_SIDE_MENU_GAP,
+        gapRef.current ??
+        (placementRef.current === 'bottom' || placementRef.current === 'top' ? PORTAL_BELOW_MENU_GAP : PORTAL_SIDE_MENU_GAP),
       placement: placementRef.current,
       align: alignRef.current,
       avoidCollisions: avoidCollisionsRef.current,

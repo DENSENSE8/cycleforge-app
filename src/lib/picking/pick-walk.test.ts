@@ -2,28 +2,27 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { ShippedOrder } from '@/types/orders';
-import { myPickList, nextInWalk, pickWalkProgress } from './pick-walk';
+import { nextInWalk, pickOwnerTier, pickWalkProgress } from './pick-walk';
 
 const ME = 2;
 const OTHER = 3;
 const order = (id: number, ...pickers: (number | null)[]) =>
   pickers.map((picker_id) => ({ id, picker_id }) as unknown as ShippedOrder);
 
-describe('myPickList', () => {
-  it('lists my orders first, then unowned, and never another picker’s — desk order kept within a tier', () => {
-    const orders = [order(1, null), order(2, OTHER), order(3, ME), order(4, null), order(5, ME)];
-    assert.deepEqual(
-      myPickList(orders, ME).map((lines) => lines[0]!.id),
-      [3, 5, 1, 4],
-    );
+describe('pickOwnerTier (Your picks = mine + open)', () => {
+  it('mine, open (no one’s) and another picker’s', () => {
+    assert.equal(pickOwnerTier(order(1, ME), ME), 'mine');
+    assert.equal(pickOwnerTier(order(1, null), ME), 'unowned');
+    assert.equal(pickOwnerTier(order(1, OTHER), ME), 'other');
   });
 
   it('an order with one of its lines assigned to me is mine, even when another line is someone else’s', () => {
-    assert.deepEqual(myPickList([order(1, OTHER, ME)], ME).map((lines) => lines[0]!.id), [1]);
+    assert.equal(pickOwnerTier(order(1, OTHER, ME), ME), 'mine');
   });
 
-  it('signed out: only unowned orders', () => {
-    assert.deepEqual(myPickList([order(1, ME), order(2, null)], null).map((lines) => lines[0]!.id), [2]);
+  it('signed out: an assigned order is never mine', () => {
+    assert.equal(pickOwnerTier(order(1, ME), null), 'other');
+    assert.equal(pickOwnerTier(order(2, null), null), 'unowned');
   });
 });
 

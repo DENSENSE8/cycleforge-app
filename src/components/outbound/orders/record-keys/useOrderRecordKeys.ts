@@ -2,7 +2,7 @@
 
 /**
  * The open order record's own letters ({@link ORDER_RECORD_KEYS}: W replace
- * tracking, N focus the note, M print the packing slip) — beside the action
+ * tracking, N focus the note, M print the packing slip, P view the photos) — beside the action
  * strip's verb letters, under the strip's guards (no modifiers, not while
  * typing, not under an open overlay). Listed in the `?` overview as "This
  * record" while live; a key with no handler is neither bound nor listed.

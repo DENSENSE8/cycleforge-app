@@ -15,6 +15,13 @@
  *
  * Two scopes, one field: typing narrows the list on screen; `escalate` hands
  * the same text to the palette ("Search everywhere", ⌘↵ / Ctrl+↵).
+ *
+ * A SCAN is never a find. A wedge-speed burst that lands here, ended by
+ * Enter/Tab or by going idle, is taken back out of the field. The text goes
+ * back to what it was, and the scan goes to the scan identification kernel
+ * (`submitScan`, which opens its record's URL). The list is never narrowed
+ * by a scan: the field holds its commit for a wedge's idle window, so a
+ * burst never reaches `onChange`.
  */
 
 import {
@@ -24,7 +31,6 @@ import {
   useState,
   type FocusEvent,
   type KeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -33,12 +39,21 @@ import { motionPresence, motionTransition } from '@/design-system/foundations/mo
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
+import { KeyboardChord } from '@/design-system/primitives/KeyboardKey';
 import { CollapseItem } from '@/design-system/components/Collapse';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SEARCH_WELL_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { ClipboardPaste, Search, X } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import {
+  FIND_FIELD_BURST_IDLE,
+  appendFindFieldKey,
+  findFieldBurstValue,
+  type FindFieldBurst,
+} from '@/lib/keyboard/find-field-scan';
+import { WEDGE_IDLE_FLUSH_MS } from '@/lib/keyboard/wedge-scan-machine';
+import { submitScan } from '@/lib/scan/scan-kernel';
 
 /** Hover intent: a pointer just passing through never starts a roll (or the well's key card). */
 export const HINT_INTENT_MS = 180;
@@ -75,43 +90,6 @@ export function useHintActivity(also?: RefObject<HTMLElement | null>) {
 export function focusStaysIn(event: FocusEvent, also?: RefObject<HTMLElement | null>): boolean {
   const next = event.relatedTarget as Node | null;
   return event.currentTarget.contains(next) || Boolean(next && also?.current?.contains(next));
-}
-
-/**
- * The mouse resting on an element for {@link HINT_INTENT_MS}: intent. A
- * pointer passing through never counts; touch and pen never hover.
- */
-export function useHoverIntent(delay = HINT_INTENT_MS) {
-  const [intent, setIntent] = useState(false);
-  const timer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-  return {
-    intent,
-    bind: {
-      onPointerEnter: (event: ReactPointerEvent) => {
-        if (event.pointerType !== 'mouse') return;
-        window.clearTimeout(timer.current);
-        timer.current = window.setTimeout(() => setIntent(true), delay);
-      },
-      onPointerLeave: () => {
-        window.clearTimeout(timer.current);
-        setIntent(false);
-      },
-    },
-  };
-}
-
-/**
- * A well that leaves its 32px slot: absolute at the slot's left, and while
- * `expanded` (hover intent, focus, an open list) it grows right to
- * max(slot, 28rem) over whatever sits beside it — ease-in-out, a touch slower
- * in than out. `[data-find-expanded]` on the well is what the header recedes on.
- */
-export function findWellGrowClass(expanded: boolean): string {
-  return cn(
-    'absolute inset-y-0 left-0 transition-[width,border-radius,box-shadow,filter] ease-[cubic-bezier(0.65,0,0.35,1)]',
-    expanded ? 'z-50 w-[max(100%,28rem)] drop-shadow-lg duration-300' : 'duration-200',
-  );
 }
 
 /**
@@ -197,15 +175,17 @@ const FIELD_SIZE = {
 
 /**
  * Search icon · `lead` (a held token) · field (rolling hint while empty) ·
- * paste key · clear (far right, expanded or not). The field keeps a local
- * draft and commits after `debounceMs`; a committed value coming back never
- * overwrites keys typed since.
+ * paste key · clear (far right). The field keeps a local draft and commits
+ * after `debounceMs`; a committed value coming back never overwrites keys
+ * typed since.
  *
- * `overflowRight`: the operator's words outrank the layout — while the field
- * has focus the well grows RIGHT past its slot (over whatever sits beside
- * it: the header's task and pin keys), so the typed text, what it found and
- * the rows under it are all readable. The slot keeps its 32px, so nothing
- * around it moves; blur returns the well to the slot.
+ * The well keeps its slot's width — it never grows over what sits beside it
+ * (operator 2026-10-08: the sidebar's search stays inside the sidebar; the
+ * sidebar's own resize sash is how it gets wider).
+ *
+ * A paste — ⌘V / Ctrl+V or the paste key — REPLACES the field's text
+ * (operator 2026-10-08: paste over what is there), unless `interceptPaste`
+ * takes it (a pasted list).
  *
  * The panel under the well ({@link FindPanel}) holds, top to bottom: `drop`
  * while `dropOpen` (what the caller holds — a pasted list), then, while it
@@ -234,7 +214,6 @@ export function FindField({
   dropOpen = false,
   keyShortcuts,
   onClear,
-  overflowRight = false,
   panelRef: panelRefProp,
 }: {
   value: string;
@@ -262,8 +241,6 @@ export function FindField({
   dropOpen?: boolean;
   /** More `aria-keyshortcuts` that land in this field (a chord the caller owns). */
   keyShortcuts?: string;
-  /** Grow right past the slot while focused (see above). */
-  overflowRight?: boolean;
   /** The caller has something to clear beyond the text (see above). */
   onClear?: () => void;
   /** The portaled panel — pass one to tell focus moving into it from focus leaving the field. */
@@ -271,11 +248,21 @@ export function FindField({
 }) {
   const [draft, setDraft] = useState(value);
   const committed = useRef(value);
+  // The wedge-speed run being typed and the text it started from (see the file note: a scan is never a find).
+  const burst = useRef<FindFieldBurst>(FIND_FIELD_BURST_IDLE);
+  const beforeBurst = useRef(value);
   const ownPanelRef = useRef<HTMLDivElement>(null);
   const panelRef = panelRefProp ?? ownPanelRef;
   const wellRef = useRef<HTMLDivElement>(null);
   const look = useHintActivity(panelRef);
-  const hover = useHoverIntent();
+  /** The run was a scan: put the text back and hand the scan to the kernel. */
+  const handOffScan = useCallback((): boolean => {
+    const scan = findFieldBurstValue(burst.current);
+    burst.current = FIND_FIELD_BURST_IDLE;
+    if (!scan || !submitScan(scan)) return false;
+    setDraft(beforeBurst.current);
+    return true;
+  }, []);
   useEffect(() => {
     if (value === committed.current) return;
     committed.current = value;
@@ -283,12 +270,14 @@ export function FindField({
   }, [value]);
   useEffect(() => {
     if (draft === committed.current) return;
+    // Never sooner than a wedge's idle window: a scan's characters must not narrow the list on the way in.
     const timer = window.setTimeout(() => {
+      if (handOffScan()) return; // a wedge that ends without Enter idles out here
       committed.current = draft;
       onChange(draft);
-    }, debounceMs);
+    }, Math.max(debounceMs, WEDGE_IDLE_FLUSH_MS));
     return () => window.clearTimeout(timer);
-  }, [draft, debounceMs, onChange]);
+  }, [draft, debounceMs, onChange, handOffScan]);
 
   const pasteClipboard = useCallback(async () => {
     let text = '';
@@ -313,25 +302,19 @@ export function FindField({
   const query = look.focused ? draft.trim() : '';
   const held = Boolean(dropOpen && drop);
   const answered = Boolean(query && (below || escalate));
+  // ↓ past the caller's rows lights "Search everywhere"; ↵ then runs it. Keyed to the text: a new text starts unlit.
+  const [escalateLitFor, setEscalateLitFor] = useState<string | null>(null);
+  const escalateLit = Boolean(answered && escalate && escalateLitFor === query);
   const shortcuts = [escalate ? 'F Meta+Enter Control+Enter' : 'F', keyShortcuts].filter(Boolean).join(' ');
-  // Grown = looked at with intent (hover ~180ms), focused, or holding its open list.
-  const expanded = overflowRight && (look.focused || hover.intent || held);
-  const well = (
+  return (
     <div
       ref={wellRef}
       data-find-field
-      data-find-expanded={expanded ? '' : undefined}
-      onPointerEnter={(event) => {
-        look.bind.onPointerEnter();
-        hover.bind.onPointerEnter(event);
-      }}
-      onPointerLeave={() => {
-        look.bind.onPointerLeave();
-        hover.bind.onPointerLeave();
-      }}
+      onPointerEnter={look.bind.onPointerEnter}
+      onPointerLeave={look.bind.onPointerLeave}
       onFocusCapture={look.bind.onFocusCapture}
       onBlurCapture={look.bind.onBlurCapture}
-      className={cn(findWellClass(size), 'relative', overflowRight && findWellGrowClass(expanded))}
+      className={cn(findWellClass(size), 'relative')}
     >
       <Search aria-hidden className="size-3.5 shrink-0 text-text-muted" />
       <FindLead>{lead}</FindLead>
@@ -350,11 +333,38 @@ export function FindField({
           data-testid={testId}
           onChange={(event) => setDraft(event.target.value)}
           onPaste={(event) => {
-            if (interceptPaste?.(event.clipboardData.getData('text'))) event.preventDefault();
+            const text = event.clipboardData.getData('text');
+            event.preventDefault();
+            if (!text.trim() || interceptPaste?.(text)) return;
+            setDraft(text.trim());
           }}
           onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === 'Tab') {
+              if (!event.metaKey && !event.ctrlKey && !event.altKey && handOffScan()) {
+                event.preventDefault();
+                return;
+              }
+            } else if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1) {
+              burst.current = FIND_FIELD_BURST_IDLE;
+            } else {
+              const next = appendFindFieldKey(burst.current, event.key, event.timeStamp || performance.now());
+              if (next.buffer.length === 1) beforeBurst.current = draft;
+              burst.current = next;
+            }
+            const plainKey = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
+            if (escalateLit && escalate && plainKey && (event.key === 'ArrowUp' || event.key === 'Enter')) {
+              event.preventDefault();
+              if (event.key === 'Enter') escalate(query);
+              else setEscalateLitFor(null);
+              return;
+            }
             onKeyDown?.(event, draft, () => setDraft(''));
             if (event.defaultPrevented) return;
+            if (escalate && answered && plainKey && event.key === 'ArrowDown') {
+              event.preventDefault();
+              setEscalateLitFor(query);
+              return;
+            }
             if (escalate && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
               event.preventDefault();
               escalate(draft.trim());
@@ -378,8 +388,7 @@ export function FindField({
           type="button"
           data-find-clear
           aria-label="Clear"
-          // Same rule as the paste key: taking focus would grow a collapsed
-          // `overflowRight` well mid-click and slide the key out from under the pointer.
+          // Keep focus where it is: the click clears and lands in the field itself.
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => {
             setDraft('');
@@ -400,32 +409,29 @@ export function FindField({
         {held ? drop : null}
         {answered ? below : null}
         {answered && escalate ? (
-          <HoverTooltip asChild focusable={false} label="Search everywhere" shortcut="mod + ↵">
+          // The keys are painted, not hidden in a tooltip (operator 2026-10-08): ⌘↵ from the
+          // field, or ↓ to light this row and ↵ to run it.
           <button
             type="button"
             data-find-escalate
+            data-lit={escalateLit ? '' : undefined}
             aria-label={`Search everywhere for “${query}”`}
+            aria-keyshortcuts="Meta+Enter Control+Enter"
             onClick={() => escalate(query)}
             className={cn(
               'ds-raw-button flex h-7 min-w-0 shrink-0 items-center gap-1.5 px-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken active:translate-y-px',
+              escalateLit && 'bg-surface-sunken',
               SIDEBAR_CONTROL_CORNER,
             )}
           >
-            <span className="shrink-0">Search everywhere for</span>
+            {/* Short words, so the text stays readable in the sidebar-wide panel; the aria-label says it all. */}
+            <span className="shrink-0 text-text-muted">Everywhere</span>
             <span className="min-w-0 flex-1 truncate font-semibold">“{query}”</span>
+            <KeyboardChord chord={escalateLit ? '↵' : 'mod + ↵'} size="xs" tone="default" />
           </button>
-          </HoverTooltip>
         ) : null}
       </FindPanel>
     </div>
-  );
-  // The slot holds the layout's 32px; the well may leave it to the right.
-  return overflowRight ? (
-    <div data-find-slot className="relative h-8 w-full min-w-0 shrink-0">
-      {well}
-    </div>
-  ) : (
-    well
   );
 }
 
@@ -439,9 +445,10 @@ export function FindLead({ children }: { children: ReactNode }) {
  * It is PORTALED through the house {@link AnchoredLayer} at the
  * `panelPopover` band — never painted inside the well, where the sidebar
  * column's stacking context clipped it under the page (2026-10-04). Anchored
- * to the well's bottom-left, as wide as the (grown) well and never narrower
- * than 28rem; it flips / clamps to the viewport and caps its height to the
- * room it has, scrolling inside. Its height opens and closes through the
+ * to the well's bottom-left and exactly as wide as the well, so it stays
+ * inside the sidebar (a wider sidebar — its resize sash — is a wider panel);
+ * it flips / clamps to the viewport and caps its height to the room it has,
+ * scrolling inside. Its height opens and closes through the
  * house `CollapseItem` on ease-in-out tweens (`motionTransition.findListPanelOpen`
  * / `findListPanelClose` — the close faster); reduced motion keeps it a plain swap. Pointer presses keep focus
  * where it is — the panel is part of the field, not a new tab stop — and a
@@ -480,7 +487,6 @@ export function FindPanel({
       gap={4}
       matchWidth
       closeOnEscape={false}
-      className="min-w-[28rem]"
     >
       <AnimatePresence onExitComplete={() => setMounted(false)}>
         {open ? (
@@ -627,8 +633,7 @@ export function PasteKey({ label, shown, onPaste }: { label: string; shown: bool
       aria-label={label}
       title={label}
       onClick={onPaste}
-      // Keep focus where it is: focusing the key would grow a `overflowRight`
-      // well mid-click and slide the key out from under the pointer.
+      // Keep focus where it is: the paste lands in the field, which takes focus itself.
       onPointerDown={(event) => event.preventDefault()}
       // Hidden at rest it takes no room: the narrow
       // sidebar well keeps its words, and the clear key stays far right.

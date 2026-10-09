@@ -38,7 +38,7 @@ test('structured rows get the location face; a label carries no caption', () => 
     IDENTITY,
   );
   assert.equal(plan.structured, 2);
-  assert.equal(plan.special, 0);
+  assert.equal(plan.flat, 0);
   assert.equal(plan.skipped, 0);
   const [bin, rackLevel] = plan.faces;
   assert.equal(bin!.kind, 'location');
@@ -50,7 +50,7 @@ test('structured rows get the location face; a label carries no caption', () => 
   assert.equal(buildFaceInfoHtml(rackLevel!).infoHtml, '<div class="lcode">A-01-01-1</div>');
 });
 
-test('free-form rows get the special-bin face (BIN kicker, never urgency); no barcode is skipped', () => {
+test('free-form rows get the flat location face (LOCATION kicker, never urgency); no barcode is skipped', () => {
   const plan = planLocationRowFaces(
     [
       row({ id: 3, name: 'QA Triage Shelf A-01', barcode: 'QA-SHELF-A01', roomName: 'Receiving' }),
@@ -61,16 +61,16 @@ test('free-form rows get the special-bin face (BIN kicker, never urgency); no ba
     IDENTITY,
   );
   assert.equal(plan.structured, 0);
-  assert.equal(plan.special, 2);
+  assert.equal(plan.flat, 2);
   assert.equal(plan.skipped, 2);
   const [plain, door] = plan.faces;
   assert.equal(plain!.kind, 'receiving');
   assert.equal(plain!.matrix.value, 'QA-SHELF-A01');
-  assert.equal(plain!.topLeft, 'BIN');
+  assert.equal(plain!.topLeft, 'LOCATION');
   assert.equal(plain!.center, 'QA Triage Shelf A-01');
   assert.equal(plain!.bottomLeft, 'Receiving');
   assert.equal(door!.matrix.value, 'DOOR-1');
-  assert.equal(door!.topLeft, 'BIN');
+  assert.equal(door!.topLeft, 'LOCATION');
   assert.doesNotMatch(faceText(door!), /ARRIVAL|Arrival/);
 });
 
@@ -88,22 +88,22 @@ test('faces keep input order across families', () => {
 
 test('locationLabelPrintSummary says what printed, on which channel, and what was skipped', () => {
   assert.equal(
-    locationLabelPrintSummary({ rack: 0, structured: 2, special: 1, skipped: 0, transport: 'usb', rackCodes: [] }),
-    'Sent 2 location labels and 1 special bin label to the label printer',
+    locationLabelPrintSummary({ rack: 0, structured: 2, flat: 1, skipped: 0, transport: 'usb', rackCodes: [] }),
+    'Sent 3 location labels to the label printer',
   );
   assert.equal(
-    locationLabelPrintSummary({ rack: 0, structured: 1, special: 0, skipped: 1, transport: 'iframe', rackCodes: [] }),
+    locationLabelPrintSummary({ rack: 0, structured: 1, flat: 0, skipped: 1, transport: 'iframe', rackCodes: [] }),
     'Opened 1 location label in the print dialog · 1 location skipped (no code to print)',
   );
   assert.equal(
-    locationLabelPrintSummary({ rack: 0, structured: 0, special: 0, skipped: 3, transport: 'skipped', rackCodes: [] }),
+    locationLabelPrintSummary({ rack: 0, structured: 0, flat: 0, skipped: 3, transport: 'skipped', rackCodes: [] }),
     'Nothing was printed · 3 locations skipped (no code to print)',
   );
   assert.equal(
     locationLabelPrintSummary({
       rack: 3,
       structured: 1,
-      special: 0,
+      flat: 0,
       skipped: 0,
       transport: 'usb',
       rackCodes: ['RK12', 'RK12-3', 'RK12-4'],
@@ -124,7 +124,7 @@ test('rack row → placard face: large RACK headline, matrix, no room text', () 
   );
   assert.equal(plan.rack, 1);
   assert.equal(plan.structured, 0);
-  assert.equal(plan.special, 0);
+  assert.equal(plan.flat, 0);
   assert.deepEqual(plan.rackCodes, ['RK12']);
   const [placard] = plan.faces;
   assert.equal(placard!.kind, 'rack');
@@ -196,7 +196,7 @@ test('rack barcodes in any printed spelling resolve to the canonical face', () =
   assert.deepEqual(plan.faces.map((f) => f.center), ['SHELF 3', 'SHELF 4']);
 });
 
-test('mixed rack + room-coded + special rows plan in input order; room-coded faces unchanged', () => {
+test('mixed rack + room-coded + flat rows plan in input order; room-coded faces unchanged', () => {
   const roomRow = row({ id: 2, barcode: 'C0306401', roomName: ROOM });
   const plan = planLocationRowFaces(
     [
@@ -209,8 +209,8 @@ test('mixed rack + room-coded + special rows plan in input order; room-coded fac
     { gln: GLN, orgSlug: null },
   );
   assert.deepEqual(
-    { rack: plan.rack, structured: plan.structured, special: plan.special, skipped: plan.skipped },
-    { rack: 2, structured: 1, special: 1, skipped: 1 },
+    { rack: plan.rack, structured: plan.structured, flat: plan.flat, skipped: plan.skipped },
+    { rack: 2, structured: 1, flat: 1, skipped: 1 },
   );
   assert.deepEqual(plan.faces.map((f) => f.kind), ['rack', 'location', 'receiving', 'rack']);
   assert.deepEqual(plan.rackCodes, ['RK12', 'RK12-3']);

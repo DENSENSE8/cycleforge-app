@@ -1,6 +1,6 @@
 'use client';
 
-/** Selected-carton Unbox workspace with inline tasks and an optional fallback Displays column. */
+/** Selected-carton Unbox workspace: header tasks plus the right-edge Displays column. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
@@ -10,12 +10,9 @@ import {
   staggerRevealContainer,
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
-import { Button } from '@/design-system/primitives';
-import { WorkspaceCard, type SectionTab } from '@/design-system/components';
-import { History, PackageOpen } from '@/components/Icons';
+import { PackageOpen } from '@/components/Icons';
 import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
 import type { ReceiveResult } from './line-edit/hooks/useReceiveAction';
-import { TrackingNumbersEditor } from './line-edit/TrackingNumbersEditor';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -24,6 +21,7 @@ import {
   dispatchSelectLine,
 } from '@/components/station/receiving-lines-table-helpers';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
+import { useFulfilledReturnOrder } from './line-edit/hooks/useFulfilledReturnOrder';
 import { invalidateSupportContextCaches } from '@/hooks';
 import {
   invalidateReceivingFeeds,
@@ -51,6 +49,7 @@ import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import { buildUnboxOverview } from './line-edit/terminal/unbox-overview';
 import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
 import { useWorkspaceTicketDraft } from './line-edit/hooks/useWorkspaceTicketDraft';
+import { useUnboxDisplays } from './line-edit/hooks/useUnboxDisplays';
 import { useZendeskNextTicketNumber } from '@/hooks/useZendeskQueries';
 import { formatDraftTicketNumber } from '@/lib/support/next-ticket-number';
 import { useUnboxProcedureArrowKeys } from './line-edit/useUnboxProcedureArrowKeys';
@@ -69,25 +68,22 @@ import { useStationHasPhotos } from '@/components/station/useStationHasPhotos';
 import { SCAN_STATION_TONES } from '@/lib/sidebar-navigation';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { UnboxPairTask } from './line-edit/UnboxPairTask';
+import { UnboxReturnFoundToast } from './line-edit/UnboxReturnOrder';
 import { useStationTaskController } from '@/components/station/useStationTaskController';
-import { STATION_DISPLAY_INDEX } from '@/components/station/displays/display-index';
+import type { StationTask } from '@/components/station/station-header-tasks';
 
 // Task panes paint the station skeleton while their chunk loads, never blank.
 const paneLoading = () => <StationWorkspaceSkeleton header="none" bodyColumnClassName="" />;
-const ReceivingAuditPanel = dynamic(
-  () => import('./ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel),
-  { ssr: false, loading: paneLoading },
-);
 const StationPhotosTask = dynamic(
   () => import('@/components/station/StationPhotosTask').then((m) => m.StationPhotosTask),
   { ssr: false, loading: paneLoading },
 );
-const WorkspaceTimelineTab = dynamic(
-  () => import('@/components/station/workbench/WorkspaceTimelineTab').then((m) => m.WorkspaceTimelineTab),
-  { ssr: false, loading: paneLoading },
-);
 const StationTicketPane = dynamic(
   () => import('@/components/composer/StationTicketPane').then((m) => m.StationTicketPane),
+  { ssr: false, loading: paneLoading },
+);
+const UnboxFulfilledOrderTask = dynamic(
+  () => import('./line-edit/UnboxFulfilledOrderTask').then((m) => m.UnboxFulfilledOrderTask),
   { ssr: false, loading: paneLoading },
 );
 const AsListedBlock = dynamic(
@@ -134,10 +130,29 @@ export function LineEditPanel({
   const lineCollapse = useLineCollapse(row.id ?? null);
   const hasPhotos = useStationHasPhotos(row.receiving_id, row.photo_count);
   const unmatched = shouldUseUnmatchedItemsSurface(row);
+  // Claim / Link existing ticket selects the Ticket tab. The line controller
+  // runs before the task controller (its serial drives the Return order
+  // tab), so it reaches `selectTask` through the latest-ref below.
+  const selectTaskRef = useRef<(task: StationTask) => void>(() => undefined);
+  const onOpenClaim = useCallback((_mode: 'create' | 'link') => {
+    selectTaskRef.current('ticket');
+  }, []);
+  const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
+  // A scanned serial that traces to an order we packed / shipped: the unit is
+  // coming back, so its Return order tab shows (who packed it, how it left),
+  // the return-found toast fires, and Pair — with its link / unlink — stands down.
+  const rowSerials = Array.isArray(row.serials) ? row.serials : [];
+  const latestRowSerial = String(
+    rowSerials[rowSerials.length - 1]?.serial_number ?? '',
+  ).trim();
+  const linkedOrder = useReturnOrderLinkage(c.serialInput.trim() || latestRowSerial);
+  const returnOrder = useFulfilledReturnOrder(linkedOrder?.orderPk, row.received_at ?? row.created_at);
+  const returnOrderFound = returnOrder != null;
   const {
     activeTask,
     activeDisplay: activeDisplayTab,
     ticketActive: ticketMode,
+    fulfilledActive: fulfilledMode,
     photosActive: photosMode,
     pairActive: pairMode,
     displaysActive: displaysOpen,
@@ -154,21 +169,38 @@ export function LineEditPanel({
     context: {
       hasPhotos,
       hasTicket: Boolean(String(row.zendesk_ticket ?? '').trim()),
-      pair: { needed: unmatched },
+      // A found return already names its order: no Pair tab, no pairing link / unlink.
+      pair: returnOrderFound ? undefined : { needed: unmatched },
+      fulfilledOrder: { found: returnOrderFound },
     },
   });
-  const [trackingEditorOpen, setTrackingEditorOpen] = useState(false);
-  const trackingTriggerRef = useRef<HTMLElement | null>(null);
+  selectTaskRef.current = selectTask;
+  const viewReturnOrder = useCallback(() => selectTask('fulfilled'), [selectTask]);
+  // Pair was open when the return resolved: its tab is gone, so land on the order it found.
+  useEffect(() => {
+    if (returnOrderFound && pairMode) selectTask('fulfilled');
+  }, [returnOrderFound, pairMode, selectTask]);
+  const {
+    activeLeaf: activeDisplayLeaf,
+    gates: displayGates,
+    openLeaf: openDisplayLeaf,
+    toggleLeaf: toggleDisplayLeaf,
+    feedback: displaysFeedback,
+    stackProps: displaysStackProps,
+  } = useUnboxDisplays({
+    row,
+    staffId,
+    c,
+    activeDisplay: activeDisplayTab,
+    displaysOpen,
+    openDisplay,
+    closeDisplays,
+    selectTask,
+    returnOrderFound,
+  });
   const ticketLinkedRef = useRef(false);
   const previousScanDrivenRef = useRef(false);
 
-  const onOpenClaim = useCallback(
-    (_mode: 'create' | 'link') => {
-      selectTask('ticket');
-    },
-    [selectTask],
-  );
-  const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
   const { focusStep, activeKey, steps: procedureSteps } = useUnboxProcedureSteps(row);
   useUnboxProcedureArrowKeys(row);
   const procedurePercent = useMemo(() => {
@@ -177,12 +209,6 @@ export function LineEditPanel({
     const done = procedureSteps.reduce((n, step) => n + (step.state === 'done' ? 1 : 0), 0);
     return Math.round((done / total) * 100);
   }, [procedureSteps]);
-
-  const rowSerials = Array.isArray(row.serials) ? row.serials : [];
-  const latestRowSerial = String(
-    rowSerials[rowSerials.length - 1]?.serial_number ?? '',
-  ).trim();
-  const linkedOrder = useReturnOrderLinkage(c.serialInput.trim() || latestRowSerial);
   const hasTicketId = c.providerTicketId != null;
   const ticketViewActive = ticketMode && hasTicketId;
   const claimViewActive = ticketMode && !hasTicketId;
@@ -203,8 +229,6 @@ export function LineEditPanel({
   const cartonKey = row.receiving_id ?? row.id;
   useEffect(() => {
     const gate = cartonGateRef.current;
-    setTrackingEditorOpen(false);
-    trackingTriggerRef.current = null;
     ticketLinkedRef.current = gate.hasTicketId;
     previousScanDrivenRef.current = gate.scanDriven;
     gate.selectTask(gate.scanDriven && gate.hasTicketId ? 'ticket' : 'work');
@@ -229,41 +253,6 @@ export function LineEditPanel({
     c.setReturnClaimPrefill(null);
     selectTask(hasTicketId ? 'ticket' : 'work');
   }, [c, hasTicketId, selectTask]);
-
-  const openTrackingEditor = useCallback(() => {
-    const activeElement = document.activeElement;
-    trackingTriggerRef.current =
-      activeElement instanceof HTMLElement ? activeElement : null;
-    selectTask('work');
-    setTrackingEditorOpen(true);
-  }, [selectTask]);
-
-  const closeTrackingEditor = useCallback(() => {
-    setTrackingEditorOpen(false);
-    window.setTimeout(() => trackingTriggerRef.current?.focus(), 0);
-  }, []);
-
-  useEffect(() => {
-    if (!trackingEditorOpen) return;
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      event.stopPropagation();
-      closeTrackingEditor();
-    };
-    window.addEventListener('keydown', handleEscape, true);
-    return () => window.removeEventListener('keydown', handleEscape, true);
-  }, [closeTrackingEditor, trackingEditorOpen]);
-
-  const openInlineSerialEditor = useCallback(
-    (lineId: number) => {
-      selectTask('work');
-      bands.open('items');
-      lineCollapse.expand(lineId);
-      scheduleFocusUnboxCaptureSerial(60);
-    },
-    [bands, lineCollapse, selectTask],
-  );
 
   const onClaimTicketCreated = useCallback(
     (ticketNumber: string) => {
@@ -458,13 +447,15 @@ export function LineEditPanel({
         accordionBootstrap,
         activeStep: activeKey,
         onFocusCaptureStep,
+        // Edit-in-Displays: a FILLED serial opens Displays › Units for this
+        // line, seeded so the Units leaf lands on that serial in edit.
         onEditFilledSerial: (serial) => {
           c.setHeaderSerialEdit(serial);
-          openInlineSerialEditor(row.id);
+          openDisplayLeaf('units');
         },
         onViewAllUnits: (line) => {
           if (line.id !== row.id) dispatchSelectLine(line);
-          openInlineSerialEditor(line.id);
+          openDisplayLeaf('units');
         },
         collapse: {
           bands,
@@ -479,44 +470,12 @@ export function LineEditPanel({
       accordionBootstrap,
       activeKey,
       onFocusCaptureStep,
-      openInlineSerialEditor,
+      openDisplayLeaf,
       bands,
       bandCollapse.collapseAll,
       lineCollapse,
     ],
   );
-  const fallbackDisplayTabs = useMemo<SectionTab[]>(() => {
-    if (!displaysOpen || row.receiving_id == null) return [];
-    return [
-      {
-        id: 'timeline',
-        label: 'Timeline',
-        icon: History,
-        content: (
-          <div className="space-y-4">
-            <WorkspaceTimelineTab
-              poId={row.zoho_purchaseorder_id || null}
-              tracking={row.tracking_number ?? null}
-              receivingId={row.receiving_id}
-            />
-            <ReceivingAuditPanel
-              open
-              receivingId={row.receiving_id}
-              onClose={closeDisplays}
-              hideHeader
-            />
-          </div>
-        ),
-      },
-    ];
-  }, [
-    displaysOpen,
-    closeDisplays,
-    row.receiving_id,
-    row.tracking_number,
-    row.zoho_purchaseorder_id,
-  ]);
-
   // The Type pill drives the step; the org's linked rack for that Type rides it (no request on a pill change).
   const putawayTargets = usePutawayTargets().data ?? null;
   const putawayKind = putawayKindForType(c.receivingType);
@@ -543,7 +502,7 @@ export function LineEditPanel({
           linkedOrderNumber={linkedOrder?.orderId ?? null}
           onToggleTicketView={toggleTicketView}
           ticketViewActive={ticketViewActive}
-          onEditPo={() => selectTask('pair')}
+          onEditPo={returnOrderFound ? undefined : () => selectTask('pair')}
           poEditOpen={pairMode}
           onToggleClaimView={() => {
             if (claimViewActive) closeClaimView();
@@ -551,23 +510,22 @@ export function LineEditPanel({
           }}
           claimViewActive={claimViewActive}
           draftTicketNumber={draftTicketNumber}
-          onEditTracking={openTrackingEditor}
-          trackingEditOpen={trackingEditorOpen}
+          onEditTracking={displayGates.hasTrackingTab ? () => openDisplayLeaf('tracking') : undefined}
+          trackingEditOpen={activeDisplayLeaf === 'tracking'}
+          onEditListing={displayGates.hasListingsTab ? () => openDisplayLeaf('listings') : undefined}
           photoStage="unbox_carton"
           onSendToTicketExternal={() => selectTask('ticket')}
         />
       }
     />
   );
-  const fallbackDisplays = displaysOpen ? (
+  const displays = displaysOpen ? (
     <StationDisplaysPushStack
-      ariaLabel="Unbox fallback displays"
-      storageKey="unbox-fallback-displays-push-width"
-      testId="unbox-fallback-displays-push"
-      resizeTestId="unbox-fallback-displays-resize"
-      tabs={fallbackDisplayTabs}
-      activeTab={activeDisplayTab ?? STATION_DISPLAY_INDEX}
-      onTabChange={openDisplay}
+      ariaLabel="Unbox displays"
+      storageKey="unbox-displays-push-width"
+      testId="unbox-displays-push"
+      resizeTestId="unbox-displays-push-resize"
+      {...displaysStackProps}
       onClose={closeDisplays}
       historyScopeKey={row.receiving_id ?? row.id}
     />
@@ -575,20 +533,27 @@ export function LineEditPanel({
   return (
     <StationScanPaneHost
       displaysOpen={displaysOpen}
-      displays={fallbackDisplays}
+      displays={displays}
       hostDataAttrs={{ 'data-unbox-pane-host': true }}
       centerTestId="unbox-station-center"
       center={
         <StationPanelRoot>
           <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
             {stationContextBar}
+            <UnboxReturnFoundToast
+              cartonKey={row.receiving_id ?? row.id}
+              order={returnOrder}
+              row={row}
+              onView={viewReturnOrder}
+            />
             <StationWorkbench
               ambientWash={false}
               className="relative z-0 flex-1 bg-transparent"
               reserveScrollClearance="pager"
               reserveIdentityClearance={false}
-              bodyFill={ticketMode || photosMode}
+              bodyFill={ticketMode || photosMode || fulfilledMode}
               bodyGap="none"
+              feedback={showReceiveFeedback ? null : displaysFeedback}
               dock={
                 <div
                   className={`${slicedActionDockWrapperClass({ docked: false })} !px-0 sm:!px-0`}
@@ -653,11 +618,14 @@ export function LineEditPanel({
                           nudgeUnboxPrintReceive('cta');
                         }}
                         primaryActionDisabled={Boolean(terminalVm.disabled)}
-                        onOpenStatusHistory={() => openDisplay('timeline')}
+                        onOpenStatusHistory={() => openDisplayLeaf('timeline')}
+                        onOpenLocations={() => toggleDisplayLeaf('locations')}
                         onTicketDraftFilledChange={setTicketDraftFilled}
                         onTicketLinked={onClaimTicketCreated}
                         onLinkTicketOpen={() => revealTask('ticket')}
                         progressPercent={procedurePercent}
+                        progressTone={activeDisplayLeaf === 'checklist' ? 'selected' : 'idle'}
+                        onProgressClick={() => toggleDisplayLeaf('checklist')}
                         headerAction={
                           recentVerdict && !liveReceiveFeedback
                             ? {
@@ -679,7 +647,7 @@ export function LineEditPanel({
             >
               <div
                 className={
-                  ticketMode || photosMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-4'
+                  ticketMode || photosMode || fulfilledMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-4'
                 }
                 data-active-unbox-task={activeTask}
               >
@@ -705,48 +673,14 @@ export function LineEditPanel({
                     photoStage="unbox_carton"
                     onSendToTicket={() => selectTask('ticket')}
                   />
+                ) : fulfilledMode ? (
+                  <UnboxFulfilledOrderTask order={returnOrder} />
                 ) : (
                 <>
                   <AsListedBlock line={row} className={`${PHONE_CARD_COLUMN} mt-2`} />
                   <motion.div initial={false} animate="show" variants={revealContainer}>
                     <motion.div variants={revealItem}>{unboxOverview}</motion.div>
                   </motion.div>
-
-                  {trackingEditorOpen ? (
-                    <WorkspaceCard
-                      label="Tracking"
-                      actions={
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={closeTrackingEditor}
-                        >
-                          Done
-                        </Button>
-                      }
-                      overflow="visible"
-                    >
-                      <TrackingNumbersEditor
-                        autoFocus
-                        trackingEdit={c.trackingEdit}
-                        setTrackingEdit={c.setTrackingEdit}
-                        onCommitTracking={(value) => {
-                          const trimmed = value.trim();
-                          if (trimmed !== (row.tracking_number || '').trim()) {
-                            c.patch({ zoho_reference_number: trimmed || null });
-                          }
-                        }}
-                        extraTrackings={c.extraTrackings}
-                        setExtraTrackings={c.setExtraTrackings}
-                        onCommitExtraTracking={(value, index) =>
-                          void c.attachExtraBox(value, index)
-                        }
-                        primaryTrackingTrimmed={c.primaryTrackingTrimmed}
-                      />
-                    </WorkspaceCard>
-                  ) : null}
-
                 </>
               )}
               </div>

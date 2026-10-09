@@ -12,6 +12,7 @@ import {
   QUIET_CHIP_EMPTY,
   abbreviateIdentifier,
   disambiguateSerialDisplays,
+  expandSerialTail,
   formatOrderIdDisplay,
   getLast8,
   getLast8Serial,
@@ -128,4 +129,19 @@ test('disambiguateSerialDisplays: colliding last-8 grow until unique', () => {
 test('disambiguateSerialDisplays: empty / sentinel', () => {
   assert.deepEqual(disambiguateSerialDisplays([]), []);
   assert.deepEqual(disambiguateSerialDisplays(['']), [resolveSerialDisplay('')]);
+});
+
+test('expandSerialTail: a unique typed tail names the full allocated serial', () => {
+  const allocated = ['SN-1A2B3C4D5E6F', 'XYZ0000123456'];
+  assert.equal(expandSerialTail('3c4d5e6f', allocated), 'SN-1A2B3C4D5E6F');
+  assert.equal(expandSerialTail('00123456', allocated), 'XYZ0000123456');
+});
+
+test('expandSerialTail: ambiguous, unknown, exact or over-long input is left for the server', () => {
+  const allocated = ['AAA11112222', 'BBB11112222', 'CCC99998888'];
+  assert.equal(expandSerialTail('11112222', allocated), '11112222');
+  assert.equal(expandSerialTail('77776666', allocated), '77776666');
+  assert.equal(expandSerialTail('CCC99998888', allocated), 'CCC99998888');
+  assert.equal(expandSerialTail('9CCC99998888', allocated), '9CCC99998888');
+  assert.equal(expandSerialTail('8888', []), '8888');
 });

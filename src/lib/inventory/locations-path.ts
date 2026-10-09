@@ -18,9 +18,9 @@ export const LOCATIONS_TABS = [
   // Movable racks (`RK12`): list, record, New rack, Move. Labelled "Racks";
   // the wire id is not `racks` because that word is the legacy bay alias.
   'movable',
-  // Tote plates. A tote is a CONTAINER, not a place — it sits here because
-  // this page is where the warehouse prints its 2×1 stock, not because a box
-  // is a location. It owns no row in `locations` and never will.
+  // Legacy tote-plate tab: it now redirects to the Totes tile on the Labels
+  // grid (`?tab=labels&kind=tote`). A tote is a CONTAINER, not a place; it
+  // owns no row in `locations` and never will.
   'totes',
   'rooms',
   'bins',

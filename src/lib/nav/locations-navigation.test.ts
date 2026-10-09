@@ -29,12 +29,12 @@ test('legacy Bay labels URLs resolve into Labels', () => {
   );
 });
 
-test('legacy Totes URLs fall back to All', () => {
+test('legacy Totes URLs resolve into Labels', () => {
   assert.equal(
     resolveSidebarChild('inventory', {
       pathname: '/inventory/locations',
       params: new URLSearchParams('tab=totes'),
     }),
-    'locations',
+    'labels',
   );
 });

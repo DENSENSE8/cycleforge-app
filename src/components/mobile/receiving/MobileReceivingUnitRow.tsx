@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { Camera, ChevronDown, Image as ImageIcon } from '@/components/Icons';
+import { ChevronDown } from '@/components/Icons';
 import { getStatusDotBg, workflowStatusTableLabel } from '@/lib/receiving/receiving-constants';
 import { ConditionGradeChip, TicketChip, UnitPriceChip, getLast8 } from '@/components/ui/CopyChip';
 import { MobileReceivingIdentityChips } from '@/components/mobile/receiving/MobileReceivingIdentityChips';
-import { GalleryPhotoCount, MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
+import { MobileRowPhotoActions, MobileRowPhotoCta } from '@/components/mobile/receiving/MobileRowPhotoActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -91,7 +90,6 @@ export function MobileReceivingUnitRow({
     }) ?? workflowLabel;
 
   const photoCount = Math.max(0, row.photo_count ?? 0);
-  const hasPhotos = photoCount > 0;
 
   const price = (row.unit_price || '').toString().trim();
   const ticketDigits = (row.zendesk_ticket ?? '').trim().replace(/^#/, '');
@@ -210,49 +208,13 @@ export function MobileReceivingUnitRow({
 
       {/* Photo row — expanded (newest) only: gallery tile + full-width camera. */}
       {expanded ? (
-        <div className="mt-3 flex h-16 gap-2">
-          {onOpenGallery ? (
-            <button
-              type="button"
-              onClick={onOpenGallery}
-              aria-label={hasPhotos ? `View ${photoCount} photos` : 'No photos yet'}
-              className={
-                hasPhotos
-                  ? 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 active:bg-blue-100'
-                  : 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-blue-200 bg-blue-50/80 text-blue-600'
-              }
-            >
-              <span className="inline-flex items-center gap-1.5 leading-none">
-                <ImageIcon className="h-7 w-7" />
-                <GalleryPhotoCount count={photoCount} className="text-xl leading-none" />
-              </span>
-            </button>
-          ) : (
-            <Link
-              href={galleryHref}
-              prefetch={false}
-              aria-label={hasPhotos ? `View ${photoCount} photos` : 'No photos yet'}
-              className={
-                hasPhotos
-                  ? 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 active:bg-blue-100'
-                  : 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-blue-200 bg-blue-50/80 text-blue-600'
-              }
-            >
-              <span className="inline-flex items-center gap-1.5 leading-none">
-                <ImageIcon className="h-7 w-7" />
-                <GalleryPhotoCount count={photoCount} className="text-xl leading-none" />
-              </span>
-            </Link>
-          )}
-          <Link
-            href={captureHref}
-            prefetch={false}
-            aria-label={`Take photos${photoCount > 0 ? ` (${photoCount} so far)` : ''}`}
-            className="inline-flex h-16 min-w-0 flex-1 items-center justify-center rounded-xl bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.99] active:bg-blue-700"
-          >
-            <Camera className="h-7 w-7" />
-          </Link>
-        </div>
+        <MobileRowPhotoCta
+          className="mt-3"
+          photoCount={photoCount}
+          captureHref={captureHref}
+          galleryHref={galleryHref}
+          onOpenGallery={onOpenGallery}
+        />
       ) : null}
     </div>
   );

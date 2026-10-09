@@ -47,3 +47,13 @@ export function resolveFindFieldScan(
   const route = decodedHandle(raw);
   return route ? { kind: 'handle', route, raw } : { kind: 'find' };
 }
+
+/**
+ * Any committed burst at wedge speed, decoded or not — what a list's Find
+ * hands to the scan kernel instead of filtering on it (`FindField`). `null`
+ * when the run is shorter than a scan (human typing never accumulates).
+ */
+export function findFieldBurstValue(state: FindFieldBurst, minLength: number = WEDGE_MIN_LENGTH): string | null {
+  const raw = state.buffer.trim();
+  return raw.length >= minLength ? raw : null;
+}

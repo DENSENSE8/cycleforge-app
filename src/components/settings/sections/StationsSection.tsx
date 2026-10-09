@@ -10,7 +10,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { packPlacementQuery } from '@/lib/queries/pack-placement-queries';
 import { inventoryLocationsHref } from '@/lib/inventory/locations-path';
-import { printStationTagFromRow } from '@/lib/print/printSpecialBinLabel';
+import { printStationTagFromRow } from '@/lib/print/printFlatLocationLabel';
 import { toast } from '@/lib/toast';
 import type { PackPlaceableLocation } from '@/lib/packing/pack-placement';
 

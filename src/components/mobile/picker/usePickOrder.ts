@@ -9,12 +9,11 @@ import { useOrderPickTasks } from '@/hooks/fulfillment/useSubstitution';
 import {
   addDeskSerial,
   deskOrderFromQueueRow,
-  removeDeskSerials,
+  removeOrderSerials,
   resolveDeskScanType,
   scanDeskOrder,
   scanDeskSku,
   scanDeskTracking,
-  undoLastDeskStep,
 } from '@/lib/picking/desk-scan-client';
 import { unshippedOrderRowQuery } from '@/lib/queries/dashboard-queries';
 import type { PickTaskRow } from '@/lib/picking/sessions';
@@ -24,6 +23,8 @@ import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { playScanTone, vibrateScan, type ScanFeedbackKind } from '@/lib/scan-feedback/play';
 import { resolvePhoneScanIntent } from '@/lib/scan/phone-scan-intent';
+import type { ScanInputSource } from '@/lib/scan/mobile-arrival-door';
+import { expandSerialTail } from '@/lib/copy-chip-format';
 
 export interface PickOrderMessage {
   tone: 'error' | 'warning' | 'success' | 'info';
@@ -32,6 +33,8 @@ export interface PickOrderMessage {
 
 /** The order-level pick fact the card shows; null = not picked. */
 export interface PickOrderPicked {
+  /** Who picked — the staff bubble's colour and initial. */
+  byId: number | null;
   byName: string | null;
   at: string | null;
 }
@@ -41,8 +44,18 @@ export interface PickOrderSerialRow {
   serial: string;
   state: 'to-pick' | 'picked' | 'scanned';
   bin: string | null;
-  /** The serial sits on this card's live scan session — it can be corrected or removed in place. */
+  /** The serial is saved on the order — it can be corrected or removed in place. */
   editable: boolean;
+}
+
+/** The serial the camera just added — held on screen until Add more or Done. */
+export interface PickSerialAdded {
+  serial: string;
+  /** Serials on the order now, against its `quantity`. */
+  count: number;
+  quantity: number;
+  /** Every unit has its serial and nothing warned: Done moves the walk on. */
+  complete: boolean;
 }
 
 /** The scan's tone + buzz — the pick screen's, shared with pairing a bin. */
@@ -83,6 +96,11 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<PickOrderMessage | null>(null);
+  /**
+   * The serial just added — the camera holds on it (owner 2026-10-08: it stays on screen until the picker
+   * chooses Add more or Done), so several serials go in one after another without the walk moving on.
+   */
+  const [added, setAdded] = useState<PickSerialAdded | null>(null);
   /** Every allocation serial seen on this card — one that leaves the open list was picked. */
   const [expected, setExpected] = useState<Map<string, PickTaskRow>>(new Map());
 
@@ -117,14 +135,18 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
   useAblyChannel(
     ordersChannel,
     'order.picked',
-    (msg: { data?: { orderId?: unknown; picked?: boolean; pickedByName?: string | null; pickedAt?: string | null } }) => {
+    (msg: { data?: { orderId?: unknown; picked?: boolean; pickedBy?: number | null; pickedByName?: string | null; pickedAt?: string | null } }) => {
       const data = msg?.data;
       if (!orderId || Number(data?.orderId) !== orderId) return;
       // A forward pick omits `picked`; a reversal carries the stage-facts truth.
       setPicked((prev) =>
         data?.picked === false
           ? null
-          : { byName: data?.pickedByName ?? prev?.byName ?? null, at: data?.pickedAt ?? prev?.at ?? null },
+          : {
+              byId: data?.pickedBy ?? prev?.byId ?? null,
+              byName: data?.pickedByName ?? prev?.byName ?? null,
+              at: data?.pickedAt ?? prev?.at ?? null,
+            },
       );
       if (data?.picked === false && picked) {
         setMessage({ tone: 'info', text: `${card?.orderId ?? 'This order'} was unpicked — scan a serial or SKU to re-pick` });
@@ -139,7 +161,14 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
   const loadCard = useCallback(
     (next: ActiveStationOrder | null) => {
       if (!next || next.id !== card?.id) setExpected(new Map());
-      setCard(next);
+      // A desk reply knows only its own scan session's serials; the order keeps every serial saved on
+      // it (earlier visits, other devices) — so the same order's card is a union, never a replacement.
+      setCard((prev) => {
+        if (!next || !prev || next.id !== prev.id) return next;
+        const seen = new Set(next.serialNumbers.map((s) => s.toUpperCase()));
+        const kept = prev.serialNumbers.filter((s) => !seen.has(s.toUpperCase()));
+        return kept.length ? { ...next, serialNumbers: [...kept, ...next.serialNumbers] } : next;
+      });
       setPreview(false);
     },
     [card?.id],
@@ -159,7 +188,7 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
     setExpected(new Map());
     setCard(deskOrderFromQueueRow(row));
     setPreview(true);
-    setPicked(row.picked_at ? { byName: row.picked_by_name ?? null, at: row.picked_at } : null);
+    setPicked(row.picked_at ? { byId: Number(row.picked_by) || null, byName: row.picked_by_name ?? null, at: row.picked_at } : null);
     setMessage(null);
   }, [openOrderId, tapped.isSuccess, tapped.data]);
 
@@ -185,7 +214,7 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
           return;
         }
         loadCard(anchor.order);
-        setPicked({ byName: user?.name ?? null, at: new Date().toISOString() });
+        setPicked({ byId: user?.staffId ?? null, byName: user?.name ?? null, at: new Date().toISOString() });
         context = anchor.order;
       } else if (!context) {
         type = 'TRACKING';
@@ -200,7 +229,7 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
         }
         loadCard(result.order);
         if (result.data.orderFound) {
-          setPicked({ byName: user?.name ?? null, at: new Date().toISOString() });
+          setPicked({ byId: user?.staffId ?? null, byName: user?.name ?? null, at: new Date().toISOString() });
           feedback('success');
           setMessage(result.message ? { tone: 'success', text: result.message } : null);
         } else {
@@ -226,12 +255,18 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
         }
         if (result.order) loadCard(result.order);
         feedback(result.pickWarning ? 'warn' : 'success');
-        setMessage(
-          result.pickWarning
-            ? { tone: 'warning', text: `${result.message} · ${result.pickWarning}` }
-            : { tone: 'success', text: result.message },
-        );
-        if (result.order && !result.pickWarning && orderInHand(result.order)) onPickedRef.current?.();
+        // The added panel is the confirmation; the alert carries only a warning.
+        setMessage(result.pickWarning ? { tone: 'warning', text: `${result.message} · ${result.pickWarning}` } : null);
+        // The reply holds only this scan session's serials; the order counts every serial saved on it.
+        const onOrder = new Set([...(card?.serialNumbers ?? []), ...(result.order?.serialNumbers ?? [])].map((s) => s.toUpperCase()));
+        const quantity = Math.max(1, Number(result.order?.quantity ?? context?.quantity) || 1);
+        setAdded({
+          serial: result.serial,
+          count: onOrder.size,
+          quantity,
+          // Done moves the walk on only when every unit has its serial and nothing needs a look.
+          complete: Boolean(result.order && !result.pickWarning && onOrder.size >= quantity),
+        });
         return;
       }
 
@@ -262,9 +297,14 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
   );
 
   const handleScan = useCallback(
-    (raw: string) => {
-      const value = raw.trim();
-      if (!value || busy) return;
+    (raw: string, source?: ScanInputSource) => {
+      const trimmed = raw.trim();
+      if (!trimmed || busy) return;
+      // Typed by hand, the last 8 of an allocated serial names its unit (camera reads stay verbatim:
+      // a short SKU code must never be mistaken for a serial tail).
+      const value = source === 'typed'
+        ? expandSerialTail(trimmed, (openTasks ?? []).map((t) => t.serialNumber ?? ''))
+        : trimmed;
       setBusy(true);
       scanningRef.current = true;
       void run(value).finally(() => {
@@ -273,7 +313,7 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
         refreshTasks();
       });
     },
-    [busy, run, refreshTasks],
+    [busy, run, refreshTasks, openTasks],
   );
 
   // Hardware scanner: claim every wedge read on this screen so a label is a
@@ -289,82 +329,79 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
     return () => window.removeEventListener('wedge-scan', onWedge);
   }, [handleScan]);
 
-  const undo = useCallback(async () => {
-    if (!card || busy || preview || (!picked && card.orderFound !== false)) return;
-    setBusy(true);
-    try {
-      const result = await undoLastDeskStep({ order: card, idempotencyKey: safeRandomUUID() });
-      if (!result.ok) {
-        feedback('reject');
-        setMessage({ tone: 'error', text: result.error });
-        return;
-      }
-      loadCard(result.order);
-      if (!result.order) setPicked(null);
-      feedback('success');
-      setMessage({ tone: 'info', text: result.message });
-    } finally {
-      setBusy(false);
-      refreshTasks();
-    }
-  }, [card, preview, picked, busy, loadCard, refreshTasks]);
-
-  /** Drop serials off the live card (`removeDeskSerials`); their picked units go back to ALLOCATED. */
+  /** Drop serials off the ORDER, whichever visit added them; their picked units go back to ALLOCATED. */
   const removeSerials = useCallback(
     async (serials: readonly string[]): Promise<boolean> => {
-      if (!card || busy || preview) return false;
+      if (!card?.id || busy) return false;
       setBusy(true);
       try {
-        const result = await removeDeskSerials({ order: card, serials, idempotencyKey: safeRandomUUID() });
+        const result = await removeOrderSerials(card.id, serials);
         if (!result.ok) {
           feedback('reject');
           setMessage({ tone: 'error', text: result.error });
           return false;
         }
-        loadCard(result.order);
+        // The order-wide answer is the truth: set, never union.
+        setCard((prev) => (prev && prev.id === card.id ? { ...prev, serialNumbers: result.serialNumbers } : prev));
         feedback('success');
-        setMessage({ tone: 'info', text: result.message });
+        const units = result.unpickedUnits;
+        setMessage({ tone: 'info', text: `Removed ${serials.join(', ')}${units > 0 ? ` · ${units} unit${units === 1 ? '' : 's'} back to allocated` : ''}` });
         return true;
       } finally {
         setBusy(false);
         refreshTasks();
       }
     },
-    [card, busy, preview, loadCard, refreshTasks],
+    [card?.id, busy, refreshTasks],
   );
 
-  /** Correct a mistyped / misread serial: drop it, then add the right one on the same card (which picks its unit). */
+  /** Correct a mistyped / misread serial: drop it off the order, then add the right one (which picks its unit). */
   const replaceSerial = useCallback(
     async (from: string, to: string): Promise<boolean> => {
       const next = to.trim();
-      if (!card || busy || preview || !next) return false;
+      if (!card?.id || busy || !next) return false;
       if (next.toUpperCase() === from.toUpperCase()) return true;
       setBusy(true);
       try {
-        const removed = await removeDeskSerials({ order: card, serials: [from], idempotencyKey: safeRandomUUID() });
+        const removed = await removeOrderSerials(card.id, [from]);
         if (!removed.ok) {
           feedback('reject');
           setMessage({ tone: 'error', text: removed.error });
           return false;
         }
-        loadCard(removed.order);
-        const added = await addDeskSerial({
+        const kept = { ...card, serialNumbers: removed.serialNumbers };
+        setCard(kept);
+        // An order opened unscanned has no desk anchor yet: anchor it on the ORDER first, as a scan does.
+        let context = kept;
+        if (!kept.salId) {
+          const anchor = await scanDeskOrder(kept.id ?? openOrderId, { idempotencyKey: safeRandomUUID() });
+          if (!anchor.ok) {
+            feedback('reject');
+            setMessage({ tone: 'error', text: `Removed ${from}, but ${next} was not added: ${anchor.error}` });
+            return false;
+          }
+          context = { ...anchor.order, serialNumbers: removed.serialNumbers };
+          setCard(context);
+          setPreview(false);
+          setPicked({ byId: user?.staffId ?? null, byName: user?.name ?? null, at: new Date().toISOString() });
+        }
+        const result = await addDeskSerial({
           input: next,
-          contextOrder: removed.order,
-          scanSessionId: removed.order.scanSessionId ?? null,
+          contextOrder: context,
+          scanSessionId: context.scanSessionId ?? null,
           idempotencyKey: safeRandomUUID(),
         });
-        if (!added.ok) {
+        if (!result.ok) {
           feedback('reject');
-          setMessage({ tone: 'error', text: `Removed ${from}, but ${next} was not added: ${added.error}` });
+          setMessage({ tone: 'error', text: `Removed ${from}, but ${next} was not added: ${result.error}` });
           return false;
         }
-        if (added.order) loadCard(added.order);
-        feedback(added.pickWarning ? 'warn' : 'success');
+        if (result.order) loadCard(result.order);
+        feedback(result.pickWarning ? 'warn' : 'success');
         setMessage(
-          added.pickWarning
-            ? { tone: 'warning', text: `${from} → ${added.serial} · ${added.pickWarning}` }
-            : { tone: 'success', text: `${from} → ${added.serial}` },
+          result.pickWarning
+            ? { tone: 'warning', text: `${from} → ${result.serial} · ${result.pickWarning}` }
+            : { tone: 'success', text: `${from} → ${result.serial}` },
         );
         return true;
       } finally {
@@ -372,12 +409,13 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
         refreshTasks();
       }
     },
-    [card, busy, preview, loadCard, refreshTasks],
+    [card, busy, openOrderId, loadCard, refreshTasks, user?.staffId, user?.name],
   );
 
   const openSerials = new Set((openTasks ?? []).map((t) => t.serialNumber?.toUpperCase()).filter(Boolean));
   const scanned = new Set((card?.serialNumbers ?? []).map((s) => s.toUpperCase()));
-  const canEdit = card != null && !preview && !!card.salId;
+  // Every serial saved on the order can be corrected or removed — the order-scoped writer needs no anchor.
+  const canEdit = card?.id != null;
   const serialRows: PickOrderSerialRow[] = [
     ...[...expected.values()].map((t) => {
       const serial = t.serialNumber!.toUpperCase();
@@ -405,10 +443,18 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
     busy,
     message,
     dismissMessage: () => setMessage(null),
+    added,
+    /** Add more: back to the lens for the next serial. */
+    addMore: () => setAdded(null),
+    /** Done: the camera goes away; a complete order moves the walk on. */
+    finishAdded: () => {
+      const complete = added?.complete ?? false;
+      setAdded(null);
+      if (complete) onPickedRef.current?.();
+    },
     serialRows,
     tasksLoading: tasksQuery.isPending && orderId != null,
     handleScan,
-    undo,
     removeSerials,
     replaceSerial,
   };

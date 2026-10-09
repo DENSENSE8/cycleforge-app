@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
-import { derivedRoomLabelSql, derivedRoomSetJoinSql, rackWalkOrderSql } from '@/lib/locations/derived-room';
+import { derivedRoomLabelSql, derivedRoomSetJoinSql, legacyBinWalkOrderSql, rackWalkOrderSql } from '@/lib/locations/derived-room';
 import {
   getActiveLocations,
   getRooms,
@@ -48,7 +48,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          AND l.is_active = true
          AND NULLIF(BTRIM(l.barcode), '') IS NOT NULL
          AND ${derivedRoomLabelSql('l', 'room')} = $2
-       ORDER BY ${rackWalkOrderSql('l.barcode')}, l.sort_order, l.row_label, l.col_label, l.name
+      ORDER BY ${rackWalkOrderSql('l.barcode')}, l.sort_order, ${legacyBinWalkOrderSql('l.barcode')}, l.row_label, l.col_label, l.name
     `, [orgId, room]);
     return NextResponse.json({
       room,

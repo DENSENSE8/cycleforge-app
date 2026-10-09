@@ -6,6 +6,7 @@ import {
   LABELS_WALK_HOTKEY,
   ORDER_LIST_KEYS,
   ORDER_RECORD_KEYS,
+  ORDER_RECORD_PHOTOS_KEY,
   ORDER_VERB_HOTKEYS,
   orderCatalogHotkeys,
 } from './order-key-table';
@@ -53,6 +54,14 @@ test('T is the customer ticket; Replace tracking is W; the Labels walk leaves ba
   assert.equal(ORDER_RECORD_KEYS.find((entry) => entry.handler === 'onReplaceTracking')?.key, 'w');
   assert.equal(ORDER_VERB_HOTKEYS.documents, 'l');
   assert.notEqual(LABELS_WALK_HOTKEY, 'l');
+});
+
+test('P views the open order photos; Print (product labels) is keyless on the order strip', () => {
+  assert.equal(ORDER_RECORD_PHOTOS_KEY, 'p');
+  assert.equal(ORDER_RECORD_KEYS.find((entry) => entry.handler === 'onViewPhotos')?.key, 'p');
+  assert.equal('print' in ORDER_VERB_HOTKEYS, false);
+  const catalog = orderCatalogHotkeys([{ id: 'print', hotkey: SELECTION_STATUS_BAR_META.print?.hotkey }], []);
+  assert.equal(catalog.has('print'), false);
 });
 
 test('a catalog verb whose letter an order key holds goes keyless', () => {

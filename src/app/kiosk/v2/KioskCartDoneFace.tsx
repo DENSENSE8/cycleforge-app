@@ -3,6 +3,7 @@
 /** The cart's DONE face — the visit shipped, here are the receipts. */
 
 import { Button } from '@/design-system/primitives';
+import { Printer, Receipt } from '@/components/Icons';
 import { KioskPaneForm } from '@/components/kiosk/KioskPaneForm';
 import { KIOSK_CART_STEPS } from '@/lib/kiosk/cart-step-gates';
 import { KIOSK_META, KIOSK_SECTION_LABEL, KIOSK_TILE_TITLE } from '@/app/kiosk/kiosk-chrome';
@@ -141,6 +142,9 @@ export function KioskCartDoneFace({
   const devices = result.repairs;
   const ticket = ticketLine(result.ticketWork);
   const subtotalDiffers = result.subtotalCents !== result.totalCents;
+  // A replay lists no devices but its visit may still hold repairs — the
+  // route answers for what is on file.
+  const hasPaperwork = devices.length > 0 || result.idempotentReplay;
 
   return (
     <KioskPaneForm
@@ -237,9 +241,30 @@ export function KioskCartDoneFace({
           </div>
 
           <div className="flex w-full max-w-sm flex-col gap-2">
+            {/* The repair agreement (A4) and the receipt (80mm) are two papers
+                on two printers — both print from here (operator 2026-10-09:
+                "print repair paperwork ... not just receipt both of them"). */}
+            {hasPaperwork ? (
+              <Button
+                size="lg"
+                className={KIOSK_POS_CTA}
+                icon={<Printer className="h-4 w-4" />}
+                data-testid="kiosk-print-repair-paperwork"
+                onClick={() =>
+                  window.open(
+                    `/api/kiosk/visit/${result.counterTransactionId}/paperwork?print=1`,
+                    '_blank',
+                    'noopener,noreferrer',
+                  )
+                }
+              >
+                {devices.length > 1 ? 'Print repair paperwork (all devices)' : 'Print repair paperwork'}
+              </Button>
+            ) : null}
             <Button
               size="lg"
               className={KIOSK_POS_CTA}
+              icon={<Receipt className="h-4 w-4" />}
               data-testid="kiosk-print-customer-receipt"
               onClick={() => openReceipt(result.counterTransactionId)}
             >

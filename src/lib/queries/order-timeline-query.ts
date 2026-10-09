@@ -10,6 +10,7 @@ import type {
   UnitTimelinePhotoRow,
 } from '@/lib/timeline';
 import type { OrderPoLink } from '@/lib/orders/po-order-link';
+import type { OrderReturn } from '@/lib/orders/order-returns';
 
 /** Completed picking_sessions rows for FIND pick hops. */
 export interface OrderPickSessionRow {
@@ -58,6 +59,8 @@ export interface OrderTimelinePayload {
   packEvents: StationActivityRow[];
   /** Purchase orders bought for this order (`receiving_order_link`), each with its carton. */
   poLinks?: OrderPoLink[];
+  /** Returns filed against this order (`receiving_line_return`), newest first. */
+  returns: OrderReturn[];
 }
 
 /** The one key. `OrderDocumentsSection` invalidates this exact shape. */
@@ -86,6 +89,7 @@ async function fetchOrderTimeline(orderId: number): Promise<OrderTimelinePayload
     pickSessions: (json.pickSessions ?? []) as OrderPickSessionRow[],
     packEvents: (json.packEvents ?? []) as StationActivityRow[],
     poLinks: (json.poLinks ?? []) as OrderPoLink[],
+    returns: (json.returns ?? []) as OrderReturn[],
   };
 }
 

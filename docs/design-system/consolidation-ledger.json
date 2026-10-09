@@ -571,7 +571,7 @@
       "id": "locations-room-text-readers",
       "state": "in_progress",
       "category": "location-identity",
-      "problem": "Room-agnostic racks handoff (2026-10-03) §4/§7: the room is derived by walking parent_id to the nearest ROOM, never copied. Rack/shelf/position rows leave locations.room NULL and adopted bay rows have it cleared, so any reader of the legacy room text shows no room (or groups wrongly) for a movable rack's shelves. Migrated to derived-room.ts: /api/locations?room= picker, /api/locations/[barcode] previous/next walk + room, pair-candidates room, cycle-count room scope + line order, stock ledger room filter/grouping/facets, bins overview room filter/search/order, bin-utilization report room. Still reading the text column (display or room admin only, no rack shelf hidden): getActiveLocations order + roomStructure grid (aisle-bay only), getBinContentsAtBarcode/getBinLocationsBySku/getLowStockBins, room admin by text (setRoomZoneLetter/renameRoom/reorderRooms/softDeleteRoom), legacy writers createLocation/bulkCreateBinRange/registerPrintedLocations; receiving detail/stage/recent-staged/returns-test-bin/staging-map displays; stock-alerts; sku-stock bins; listSkuStockedAt; assistant wms-tools; orders-list storage/home room; provisional-sku; pack-placement; printSpecialBinLabel; location-crud/location-deletion room text scope; mv_bin_utilization.room snapshot. Legacy room-coded builders still compose codes from the room zone letter: expand-print-run.ts and the bin-label/rack printers.",
+      "problem": "Room-agnostic racks handoff (2026-10-03) §4/§7: the room is derived by walking parent_id to the nearest ROOM, never copied. Rack/shelf/position rows leave locations.room NULL and adopted bay rows have it cleared, so any reader of the legacy room text shows no room (or groups wrongly) for a movable rack's shelves. Migrated to derived-room.ts: /api/locations?room= picker, /api/locations/[barcode] previous/next walk + room, pair-candidates room, cycle-count room scope + line order, stock ledger room filter/grouping/facets, bins overview room filter/search/order, bin-utilization report room. Still reading the text column (display or room admin only, no rack shelf hidden): getActiveLocations order + roomStructure grid (aisle-bay only), getBinContentsAtBarcode/getBinLocationsBySku/getLowStockBins, room admin by text (setRoomZoneLetter/renameRoom/reorderRooms/softDeleteRoom), legacy writers createLocation/bulkCreateBinRange/registerPrintedLocations; receiving detail/stage/recent-staged/returns-test-bin/staging-map displays; stock-alerts; sku-stock bins; listSkuStockedAt; assistant wms-tools; orders-list storage/home room; provisional-sku; pack-placement; printFlatLocationLabel; location-crud/location-deletion room text scope; mv_bin_utilization.room snapshot. Legacy room-coded builders still compose codes from the room zone letter: expand-print-run.ts and the bin-label/rack printers.",
       "currentPaths": [
         "src/lib/neon/location-queries.ts",
         "src/app/api/locations/route.ts",
@@ -588,7 +588,7 @@
         "src/lib/neon/provisional-sku-queries.ts",
         "src/lib/packing/pack-placement.ts",
         "src/lib/inventory/returns-test-bin.ts",
-        "src/lib/print/printSpecialBinLabel.ts",
+        "src/lib/print/printFlatLocationLabel.ts",
         "src/lib/locations/location-crud.ts",
         "src/lib/inventory/location-deletion.ts",
         "src/lib/migrations/2026-06-26_report_views_org_scope.sql",

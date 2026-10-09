@@ -1,9 +1,10 @@
 /**
  * Marketplace return-reason codes → words an unboxer reads. Amazon's return
- * reports store a code (`CR-MISSING_PARTS`, `AMZ-PG-BAD-DESC`); hand-entered
- * returns store the form's own words (`INBOUND_RETURN_REASONS`), which pass
- * through untouched. The stored value is never rewritten — this is the one
- * reader every face uses to paint it.
+ * reports store a code (`CR-MISSING_PARTS`, `AMZ-PG-BAD-DESC`); eBay returns
+ * store the Post-Order `ReturnReasonEnum` value (`NO_LONGER_NEED_ITEM`);
+ * hand-entered returns store the form's own words (`INBOUND_RETURN_REASONS`),
+ * which pass through untouched. The stored value is never rewritten — this is
+ * the one reader every face uses to paint it.
  */
 
 /** Keyed by the code with its `CR-` / `AMZ-PG-` prefix stripped, `-` → `_`. */
@@ -32,6 +33,34 @@ const RETURN_REASON_CODE_LABELS: Readonly<Record<string, string>> = {
   NO_REASON_GIVEN: 'No reason given',
   UNDELIVERABLE_REFUSED: 'Refused at delivery',
   UNDELIVERABLE_UNKNOWN: 'Undeliverable',
+  // eBay Post-Order ReturnReasonEnum (`creationInfo.reason`); MISSING_PARTS, NOT_AS_DESCRIBED,
+  // ORDERED_WRONG_ITEM and FOUND_BETTER_PRICE share Amazon's words above.
+  ARRIVED_DAMAGED: 'Arrived damaged',
+  ARRIVED_LATE: 'Arrived too late',
+  DEFECTIVE_ITEM: "Defective / doesn't work",
+  DIFFERENT_FROM_LISTING: 'Different from the listing',
+  DOES_NOT_FIT: 'Doesn’t fit the buyer’s vehicle',
+  WRONG_SIZE: 'Wrong size',
+  NO_LONGER_NEED_ITEM: 'Changed mind / no longer needed',
+  ORDERED_ACCIDENTALLY: 'Ordered by mistake',
+  ORDERED_DIFFERENT_ITEM: 'Wrong item sent',
+  RETURNING_GIFT: 'Unwanted gift',
+  EXPIRED_ITEM: 'Past its expiration date',
+  FAKE_OR_COUNTERFEIT: 'Suspected counterfeit',
+  CUSTOMIZED: 'Customized — failed authentication',
+  MISCATEGORIZED: 'Miscategorized — failed authentication',
+  IN_STORE_RETURN: 'Returned in store',
+  WITHDRAW_FROM_PURCHASE_CONTRACT: 'Withdrew from the purchase (EU)',
+  NO_REASON: 'No reason given',
+  OTHER: 'Other',
+  // Deprecated by eBay; still on historical returns.
+  BUYER_CANCEL_ORDER: 'Buyer cancelled the order',
+  BUYER_NO_SHOW: 'Buyer did not show for pickup',
+  BUYER_NOT_SCHEDULED: 'Buyer did not schedule pickup',
+  BUYER_REFUSED_TO_PICKUP: 'Buyer refused pickup',
+  OUT_OF_STOCK: 'Out of stock',
+  VALET_DELIVERY_ISSUES: 'Valet delivery problem',
+  VALET_UNAVAILABLE: 'Valet unavailable',
 };
 
 const CODE_SHAPE = /^[A-Z0-9]+(?:[-_][A-Z0-9]+)*$/;

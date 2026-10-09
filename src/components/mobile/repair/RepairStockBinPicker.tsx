@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { binsMostStockFirst, stockBinLabel, type StockBinOption } from '@/lib/repair/repair-stock-take';
 import { cn } from '@/utils/_cn';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
 
 /** `GET /api/sku-stock/[sku]/bins` row — only what the picker reads. */
 interface SkuBinRow {
@@ -113,7 +114,7 @@ export function RepairStockBinPicker({
                     </span>
                   ) : null}
                 </span>
-                <span className="shrink-0 text-role-caption font-semibold tabular-nums">{bin.qty} on shelf</span>
+                <span className={cn('shrink-0 text-role-caption font-semibold tabular-nums', selected ? null : stockQtyToneClass(bin.qty, { inkClass: 'text-mode-ink' }))}>{bin.qty} on shelf</span>
               </button>
             );
           })

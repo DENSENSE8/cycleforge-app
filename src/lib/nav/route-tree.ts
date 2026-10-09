@@ -48,7 +48,8 @@ export type TermId =
   | 'purchase'
   | 'fulfilled-order'
   | 'platform'
-  | 'record';
+  | 'record'
+  | 'packing';
 
 export interface VocabularyTerm {
   id: TermId;
@@ -105,6 +106,15 @@ export const VOCABULARY: readonly VocabularyTerm[] = [
     banned: ['Out (as the scan direction)', 'scan out (as the direction name)'],
     owner: 'scan-stations',
     decided: { by: 'owner', date: '2026-10-04', note: 'The Scan switcher reads Inbound | Outbound on web and iOS.' },
+  },
+  {
+    id: 'packing',
+    label: 'Packing',
+    plural: 'Packing',
+    definition: 'The packing photo feed: the orders a packer scanned at the pack station, each with its photos. A desk tracking scan drops the order in live and opens its photo capture.',
+    banned: [],
+    owner: 'scan-stations',
+    decided: { by: 'owner', date: '2026-10-08', note: 'Packing is a phone Scan Stations destination built exactly like the Unbox photo feed: a list of orders with a photo button, reacting to the packer’s tracking scan.' },
   },
   {
     id: 'purchase',
@@ -494,6 +504,17 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     query: ['unit', 'catalogId', 'serialRequestId'],
     links: ['prepack-desktop'],
     note: 'One fast prepack form: scan the serial (or pick the product), set how many packages — one label each, own condition and serials — confirm contents (pairing missing parts or the manual inline) and print. No modes, no steps, no photo requirement; packing puts the packages away. `unit` is the scanned serial and `catalogId` the product, so a reload restores the form; `serialRequestId` is the phone serial handoff reply. Build every URL with prepackHref(); /m/qc remains Quality control.',
+  },
+  {
+    id: 'packing-mobile',
+    parent: 'scan-stations',
+    kind: 'task',
+    label: 'Packing',
+    path: '/m/packing',
+    target: '/m/packing',
+    page: 'src/app/m/(shell)/packing/page.tsx',
+    status: 'live',
+    note: 'Owner 2026-10-08: the packing twin of the Unbox photo feed (/m/receiving). `GET /api/packing/photo-feed` = the signed-in staff member’s latest 25 packs (packer_logs.packed_by), bottom-anchored, newest with the big camera. A desk tracking scan (`POST /api/packing-logs`) publishes `scan_ready` on the packer’s staff channel: the feed refetches and `PackerScanReadyCamera` opens `/m/p/<packerLogId>/photos?back=/m/packing`. Supersedes the 2026-09-14 “no /m/pack queue” ruling for this feed.',
   },
   {
     id: 'prepack-desktop',
@@ -1011,6 +1032,11 @@ export const FULFILLED_PATHS = {
 export const PREPACK_PATHS = {
   form: livePath('prepack-mobile'),
   desktop: livePath('prepack-desktop'),
+} as const;
+
+/** The Packing photo feed on the phone (the packing twin of the Unbox photo feed). */
+export const PACKING_PATHS = {
+  mobile: livePath('packing-mobile'),
 } as const;
 
 export type PrepackSurface = 'mobile' | 'desktop';

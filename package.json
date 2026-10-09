@@ -164,6 +164,7 @@
     "test:e2e:photos-gcs": "node scripts/e2e-photos-gcs.mjs",
     "test:e2e:workflow-tap": "tsx scripts/e2e-workflow-tap.ts",
     "test:e2e:order-record-qol": "node scripts/e2e-order-record-qol.mjs",
+    "test:e2e:location-tote": "node scripts/e2e-location-tote.mjs",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/run-pending-migrations.mjs",

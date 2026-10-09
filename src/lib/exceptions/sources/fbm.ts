@@ -1,4 +1,4 @@
-/** `fbm` — a queued order held by anything but SKU mapping (out of stock, buyer request, shipping issue). */
+/** `fbm` — a queued order held by anything but SKU mapping (out of stock, shipping issue). */
 
 import { getOrderException } from '@/lib/orders/order-exceptions';
 import type { FbmExceptionFacts } from '../facts';
@@ -9,7 +9,6 @@ import { countOrderQueue, getOrderQueueRow, listOrderQueue, orderEntity, orderEv
 /** The CTA per `ORDER_EXCEPTION_CATEGORY_SQL` value a non-held queued order can take. */
 const FBM_CATEGORY_FACE: Readonly<Record<string, { label: string; tone: 'danger' | 'warning'; verb: string }>> = {
   'Out of Stock': { label: 'Out of stock', tone: 'danger', verb: 'Mark in stock' },
-  'Buyer Request': { label: 'Buyer request', tone: 'warning', verb: 'Acknowledge note' },
   'Shipping Issue': { label: 'Shipping issue', tone: 'danger', verb: 'Review shipment' },
 };
 const FBM_FALLBACK_FACE = { label: 'On hold', tone: 'warning' as const, verb: 'Review order' };

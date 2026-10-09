@@ -6,7 +6,8 @@
  * (edit one line, pick a value, scan into a field) cannot drift from it:
  *   1. a non-sticky identity header (eyebrow · title · description);
  *   2. ONE scrolling body;
- *   3. a non-sticky `DetailDock placement="sheet"` action floor — up to three
+ *   3. an optional pinned input surface (a number pad) that never scrolls away;
+ *   4. a non-sticky `DetailDock placement="sheet"` action floor — up to three
  *      secondary tools above one full-width primary verb at the safe-area edge.
  * A picker with no verbs (choosing a row IS the action) passes `verbs={[]}`.
  */
@@ -26,6 +27,7 @@ export function MobileV2ActionSheet<Id extends string>({
   onVerb,
   dockLabel,
   testId,
+  pinned,
 }: {
   open: boolean;
   onClose: () => void;
@@ -40,6 +42,8 @@ export function MobileV2ActionSheet<Id extends string>({
   /** Accessible name of the action floor. */
   dockLabel: string;
   testId?: string;
+  /** An input surface pinned under the scrolling body, above the action floor (a number pad under the thumb). */
+  pinned?: ReactNode;
 }) {
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
@@ -49,10 +53,12 @@ export function MobileV2ActionSheet<Id extends string>({
           <SheetTitle className="line-clamp-2 text-left text-base">{title}</SheetTitle>
           <SheetDescription className={description ? 'text-left' : 'sr-only'}>{description ?? title}</SheetDescription>
         </SheetHeader>
-        <div className={`min-h-0 flex-1 overscroll-contain overflow-y-auto ${verbs.length > 0 ? '' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'}`}>
+        <div className={`min-h-0 flex-1 overscroll-contain overflow-y-auto ${verbs.length > 0 || pinned ? '' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'}`}>
           {children}
         </div>
-        {verbs.length > 0 ? <DetailDock label={dockLabel} placement="sheet" verbs={verbs} onVerb={onVerb} /> : null}
+        {pinned ? <div className="shrink-0">{pinned}</div> : null}
+        {/* Keyed by its label: a new step's floor is a new dock, so the last step's double-tap lock never eats its first tap. */}
+        {verbs.length > 0 ? <DetailDock key={dockLabel} label={dockLabel} placement="sheet" verbs={verbs} onVerb={onVerb} /> : null}
       </SheetContent>
     </Sheet>
   );

@@ -19,6 +19,7 @@ import { columnsToClassification, classificationToColumns } from '@/lib/receivin
 import { tapWorkflow } from '@/lib/workflow/tap';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { returnOrderLineFill } from '@/lib/receiving/return-order-imported';
+import { UNBOX_SALES_ORDER_IMPORT_REASON, UNBOX_SERIAL_SCAN_REASON } from '@/lib/orders/order-returns';
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -339,7 +340,7 @@ export async function linkReturnedSerial(
   orgId: OrgId,
   deps: ReturnedSerialLinkDeps = defaultDeps,
 ): Promise<ReturnedSerialLinkResult> {
-  const reason = input.reason?.trim() || 'customer return (unbox scan)';
+  const reason = input.reason?.trim() || UNBOX_SERIAL_SCAN_REASON;
 
   const result = await deps.runTransaction(orgId, async (client) => {
     // 1. Reverse-link: resolve the order this serial last shipped on (BEFORE the
@@ -556,7 +557,7 @@ export async function importSalesOrderByNumber(
 ): Promise<ImportSalesOrderResult> {
   const orderNumber = (input.orderNumber || '').trim();
   if (!orderNumber) return { imported: false, promotedToFound: false, matchedOrder: null, linePatch: null };
-  const reason = input.reason?.trim() || 'sales order import (unbox)';
+  const reason = input.reason?.trim() || UNBOX_SALES_ORDER_IMPORT_REASON;
 
   return deps.runTransaction(orgId, async (client) => {
     // Prior link state — the return_reason signal below fires only on a

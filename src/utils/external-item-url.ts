@@ -8,8 +8,9 @@ export function getExternalUrlByItemNumber(itemNumber: string | null | undefined
   if (!item) return null;
   if (/^B0/i.test(item)) return `https://www.amazon.com/dp/${item}`;
   if (/^\d{12}$/.test(item)) return `https://www.ebay.com/itm/${item}`;
-  if (item.length < 12) return `https://usavshop.com/products/search?keyword=${encodeURIComponent(item)}`;
-  return `https://usavshop.com/products/search?keyword=${encodeURIComponent(item)}`;
+  // No eBay/Amazon item-number shape → no link. Never fall back to an Ecwid store search;
+  // a real Ecwid listing comes from a stored URL or an explicit `ecwid` platform row.
+  return null;
 }
 
 /** Compact listing-URL face for diagnostics / non-table chrome — host + path, no scheme, no `www.`. */
@@ -65,8 +66,8 @@ const LISTING_STOREFRONT: Readonly<Record<string, ListingStorefront>> = {
 /**
  * Does the item-number listing ({@link getExternalUrlByItemNumber}) open on the ORDER's own
  * platform? `orderPlatformLabel` is `getOrderPlatformLabel(...)` ("eBay", "Amazon", "FBA",
- * "Walmart", "Ecwid", a store name…). An eBay order whose item number resolves to the Ecwid
- * storefront would open the wrong listing → false (owner 2026-09-29: grey it out). A platform
+ * "Walmart", "Ecwid", a store name…). An eBay order whose item number is not an eBay id
+ * (labelled Ecwid by shape) is a mismatch → false (owner 2026-09-29: grey it out). A platform
  * with no storefront rule (Shopify, manual, blank) → true: nothing to contradict.
  */
 export function listingMatchesOrderPlatform(

@@ -12,7 +12,6 @@ import { clearUnitPackPlacement } from '@/lib/packing/unit-pack-placement';
 import { createPackerLog } from '@/lib/packing/packer-log-writer';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
-import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 
 /** Thrown when a unit's guarded SHIPPED transition is rejected (it isn't in a shippable state). */
 class UnitTransitionError extends Error {
@@ -155,14 +154,7 @@ export const POST = withAuth(async (request, ctx) => {
         return { ok: false as const, status: 404, error: 'order not found' };
       }
 
-      // 4a. Buyer-note interlock: the order's current buyer note must be
-      //     acknowledged before it packs (src/lib/orders/buyer-note-interlock.ts).
-      const buyerNoteHold = await readBuyerNoteHold(client, orgId, orderId);
-      if (buyerNoteHold) {
-        return { ...buyerNoteHoldBody(buyerNoteHold), status: 409 };
-      }
-
-      // 4b. Block-until-approved gate:
+      // 4a. Block-until-approved gate:
       if (isFulfillmentSubstitution()) {
         const pendingQ = await client.query<{ id: number }>(
           `SELECT id FROM order_unit_amendments

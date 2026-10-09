@@ -127,7 +127,7 @@ const BodySchema = z.object({
       phone: z.string().trim().min(1),
       name: z.string().trim().nullable().optional(),
       email: z.string().trim().nullable().optional(),
-      // Callers: KioskCartLedger. API: POST /api/kiosk/intake. Schema: CounterCustomerInput. User: "intake their information like name, email address, phone number, address"
+      // The visit's ship-to as `encodeShipToAddress` writes it (lib/customers/ship-to-address); a plain string reads as the street line.
       address: z.string().trim().max(400).nullable().optional(),
     })
     .optional(),

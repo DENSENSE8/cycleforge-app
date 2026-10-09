@@ -22,6 +22,8 @@ interface RepairPaperworkFacts {
   >[];
   /** The number the sheet heading states; `''` collapses to no heading. */
   ticketNumber: string | number;
+  /** The visit's ship-back address on one line; `''` = pickup. */
+  shipTo: string;
 }
 
 interface RepairPaperworkSheet {
@@ -33,13 +35,16 @@ interface RepairPaperworkSheet {
 export function repairPaperworkSheets(facts: RepairPaperworkFacts): RepairPaperworkSheet[] {
   return facts.devices.map((device) => ({
     lineId: device.lineId,
-    props: repairReceiptPropsForDevice(
-      facts.customer,
-      device,
-      device.repairReasons.join(', ') || facts.visitNotes,
-      '',
-      facts.ticketNumber,
-    ),
+    props: {
+      ...repairReceiptPropsForDevice(
+        facts.customer,
+        device,
+        device.repairReasons.join(', ') || facts.visitNotes,
+        '',
+        facts.ticketNumber,
+      ),
+      shipTo: facts.shipTo,
+    },
   }));
 }
 

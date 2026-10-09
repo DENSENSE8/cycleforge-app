@@ -352,7 +352,8 @@ export async function drainTicketWorkOutbox(
         const created = await deps.createTicket(
           claim.organizationId,
           {
-            subject: claim.payload.subject?.trim() || `Counter service — ${claim.entityType} #${claim.entityId}`,
+            // Never an internal id in a ticket (operator 2026-10-09) — the requester names it.
+            subject: claim.payload.subject?.trim() || `Counter service${claim.payload.requesterName ? ` — ${claim.payload.requesterName}` : ''}`,
             body: claim.payload.body?.trim() || 'Created from a counter transaction.',
             // Internal by default — see TicketWorkPayload.publicReply.
             publicReply: claim.payload.publicReply === true,

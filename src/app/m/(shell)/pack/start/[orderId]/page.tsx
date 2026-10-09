@@ -10,8 +10,7 @@ import { useOrderHub } from '@/components/mobile/orders/useOrderHub';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { DetailHubScreen } from '@/design-system/components/DetailHubScreen';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
-import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
-import type { OrderHubData } from '@/lib/orders/order-hub';
+import { orderHubTitle, type OrderHubData } from '@/lib/orders/order-hub';
 import { triggerPackPrintBundle, type PrintBundleUiState } from '@/lib/print/pack-print-bundle-client';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
@@ -69,17 +68,17 @@ function PackJobInner() {
     if (starting) return;
     setStarting(true);
     try {
-      const response = await sendWithBuyerNoteAck(() => {
-        const idempotencyKey = safeRandomUUID();
-        return fetch('/api/packing-logs/draft', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
-          body: JSON.stringify({ orderId: order.id, clientEventId: idempotencyKey }),
-        });
+      const idempotencyKey = safeRandomUUID();
+      const response = await fetch('/api/packing-logs/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ orderId: order.id, clientEventId: idempotencyKey }),
       });
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok || !isStartResponse(body)) throw new Error(startFailureMessage(body));
       const query = new URLSearchParams({ orderId: body.orderId, orderRowId: String(order.id), complete: '1' });
+      // The capture paints the title + order id top-left.
+      query.set('title', hub.data ? orderHubTitle(hub.data) : order.product_title || '');
       router.push(`/m/p/${body.packerLogId}/photos?${query}`);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Could not start packing.');

@@ -18,6 +18,8 @@ export interface ListingGalleryItem {
   sortOrder: number;
   isCover: boolean;
   createdAt: string;
+  /** The marketplace / legacy source URL behind the photo, when it has one — readers dedupe renditions on it. */
+  legacyUrl: string | null;
 }
 
 export interface ListingPhotoDeps {
@@ -62,6 +64,22 @@ interface RawGalleryRow {
   sort_order: number | string;
   is_cover: boolean;
   created_at: string;
+  legacy_url?: string | null;
+}
+
+/** The ordered gallery rows of one target, each with its primary legacy URL. */
+function gallerySelectSql(column: 'sku_catalog_id' | 'serial_unit_id'): string {
+  return `SELECT id, photo_id, sort_order, is_cover, created_at,
+                 (SELECT NULLIF(BTRIM(ps.legacy_url), '')
+                    FROM photo_storage ps
+                   WHERE ps.organization_id = lp.organization_id
+                     AND ps.photo_id = lp.photo_id
+                     AND ps.provider = 'legacy_url'
+                     AND ps.is_primary = TRUE
+                   LIMIT 1) AS legacy_url
+            FROM listing_photos lp
+           WHERE lp.organization_id = $1 AND lp.${column} = $2
+           ORDER BY lp.sort_order, lp.id`;
 }
 
 function mapGalleryRow(row: RawGalleryRow): ListingGalleryItem {
@@ -71,6 +89,7 @@ function mapGalleryRow(row: RawGalleryRow): ListingGalleryItem {
     sortOrder: Number(row.sort_order),
     isCover: Boolean(row.is_cover),
     createdAt: row.created_at,
+    legacyUrl: row.legacy_url ?? null,
   };
 }
 
@@ -81,14 +100,7 @@ export async function getListingGallery(
   deps: ListingPhotoDeps = defaultDeps,
 ): Promise<ListingGalleryItem[]> {
   const { column, id } = targetColumn(target);
-  const res = await deps.tenantQuery<RawGalleryRow>(
-    orgId,
-    `SELECT id, photo_id, sort_order, is_cover, created_at
-       FROM listing_photos
-      WHERE organization_id = $1 AND ${column} = $2
-      ORDER BY sort_order, id`,
-    [orgId, id],
-  );
+  const res = await deps.tenantQuery<RawGalleryRow>(orgId, gallerySelectSql(column), [orgId, id]);
   return res.rows.map(mapGalleryRow);
 }
 
@@ -249,12 +261,6 @@ async function readGallery(
   column: 'sku_catalog_id' | 'serial_unit_id',
   id: number,
 ): Promise<ListingGalleryItem[]> {
-  const res = await client.query<RawGalleryRow>(
-    `SELECT id, photo_id, sort_order, is_cover, created_at
-       FROM listing_photos
-      WHERE organization_id = $1 AND ${column} = $2
-      ORDER BY sort_order, id`,
-    [orgId, id],
-  );
+  const res = await client.query<RawGalleryRow>(gallerySelectSql(column), [orgId, id]);
   return res.rows.map(mapGalleryRow);
 }

@@ -37,7 +37,7 @@ export const exceptionRowId = (row: ExceptionRow): number => exceptionCardId(row
 export type ExceptionCardModel = TriageCardModelBase<ExceptionRow>;
 
 /**
- * Rows → one band per status TAG ("Out of stock", "Buyer request"), in the
+ * Rows → one band per status TAG ("Out of stock", "Shipping issue"), in the
  * order each tag first appears (newest raised first within a band). The
  * section header says the status word ONCE with its count; the cards under it
  * carry it ambiently (rail + glyph, word on hover) — never a pill per card.

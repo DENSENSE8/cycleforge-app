@@ -34,14 +34,6 @@ export const POST = withAuth(async (req, ctx) => {
     if (outcome.kind === 'voided') {
       return v1Error(409, 'LABEL_PURCHASE_VOIDED', 'That label was voided. Get fresh rates to buy a new one.');
     }
-    if (outcome.kind === 'buyer_note_hold') {
-      return v1Error(
-        409,
-        'BUYER_NOTE_UNACKNOWLEDGED',
-        `Order ${body.data.reference} has a buyer note. Read and acknowledge it before buying a label for it.`,
-        { extra: { orderRowId: outcome.hold.orderRowId, buyerNote: outcome.hold.buyerNote } },
-      );
-    }
 
     const { result, orderId, purpose, label, shipmentId, isFirstLabel } = outcome;
     if (!result.replayed) {

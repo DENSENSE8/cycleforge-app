@@ -125,8 +125,7 @@ its letter; delete probe scripts from `/tmp` when done.
     `OPEN → SEALED → DISSOLVED`): one master label over N serial units. The old
     Unbox Prebox display and its unreachable wizard were removed; a future owner
     must place this workflow explicitly rather than reviving that display leaf.
-  - Location labels: `src/lib/print/printLocationLabel.ts`, special-bin print page
-    `src/app/inventory/locations/print/special-bin/page.tsx`.
+  - Location labels: `src/lib/print/printLocationLabel.ts`.
   - Printing channels + queue: `src/lib/label-prints/{contracts,print-queue,print-route}.ts`
     (Labels & docs session's — read, don't edit).
 

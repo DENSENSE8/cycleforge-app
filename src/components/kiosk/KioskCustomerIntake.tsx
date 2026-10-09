@@ -10,9 +10,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { PhoneKeypadPress } from '@/components/kiosk/KioskAmountKeypad';
 import { KioskFloatingPhoneKeypad } from '@/components/kiosk/KioskFloatingPhoneKeypad';
 import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
-import { Mail, MapPin, Phone, User } from '@/components/Icons';
+import { KioskShipToDisclosure } from '@/components/kiosk/KioskShipToDisclosure';
+import { Mail, Phone, User } from '@/components/Icons';
 import { useKioskCustomerMatch, type KioskCustomerMatch } from '@/components/kiosk/useKioskCustomerMatch';
-import { TextField } from '@/design-system/primitives';
+import { Button, TextField } from '@/design-system/primitives';
+import { KIOSK_TEST_CUSTOMER } from '@/lib/kiosk/test-customer';
 import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import { counterCorner } from '@/app/kiosk/kiosk-counter-surface';
 import { cn } from '@/utils/_cn';
@@ -63,6 +65,9 @@ interface KioskCustomerIntakeProps {
 }
 
 const PHONE_DIGITS = 10;
+
+/** The "Test customer" key — a dev/audit aid, never on a production tablet. */
+const OFFER_TEST_CUSTOMER = process.env.NODE_ENV !== 'production';
 
 /** One glass key → the next phone string, in the one kiosk phone shape. */
 function pressPhone(phone: string, key: PhoneKeypadPress): string {
@@ -172,6 +177,27 @@ export function KioskCustomerIntake({
       )}
       <div className="space-y-3 px-4 py-4">
         {lead}
+        {OFFER_TEST_CUSTOMER && show('phone') ? (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              icon={<User className="h-4 w-4" />}
+              onClick={() =>
+                patch({
+                  phone: KIOSK_TEST_CUSTOMER.phone,
+                  ...(show('name') ? { name: KIOSK_TEST_CUSTOMER.name } : {}),
+                  ...(show('email') ? { email: KIOSK_TEST_CUSTOMER.email } : {}),
+                  ...(show('address') ? { address: KIOSK_TEST_CUSTOMER.address } : {}),
+                })
+              }
+              data-testid="kiosk-customer-fill-test"
+            >
+              Test customer
+            </Button>
+          </div>
+        ) : null}
         {show('phone') &&
           (entry ? (
             <div className="space-y-2">
@@ -263,28 +289,14 @@ export function KioskCustomerIntake({
               data-testid="kiosk-customer-email"
             />
           ))}
-        {show('address') &&
-          (entry ? (
-            <KioskEntryField
-              name="Address"
-              value={current.address ?? ''}
-              onChange={(v) => patch({ address: v })}
-              autoComplete="street-address"
-              icon={<MapPin className="h-4 w-4" />}
-                iconTone="neutral"
-                testId="kiosk-customer-address"
-              onEnter={onSubmit}
-            />
-          ) : (
-            <TextField
-              label="Address"
-              value={current.address ?? ''}
-              onChange={(v) => patch({ address: v })}
-              autoComplete="street-address"
-              inputClassName={cn(counterCorner('field'))}
-              data-testid="kiosk-customer-address"
-            />
-          ))}
+        {show('address') && (
+          <KioskShipToDisclosure
+            entry={entry}
+            value={current.address ?? ''}
+            onChange={(address) => patch({ address })}
+            onEnter={onSubmit}
+          />
+        )}
         {extras}
       </div>
     </section>

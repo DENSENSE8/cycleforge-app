@@ -51,10 +51,8 @@ Search splits by the ANSWER it gives, not by widget:
   `ContextualSidebar` top band, `SpineNavChrome` and `GlobalHeaderSearch`. Without a list
   (identify pages, the page map, the header) it is the palette's face.
 - **No scope chip:** the view switcher under the field already names the list.
-- **Overflow:** while focused, the page field grows right to max(slot, 28rem) over the
-  header's task and pin keys (`FindField overflowRight`). The slot keeps its 32px, and
-  `SidebarNavColumn` stops clipping and sits above the header only while the field is grown
-  (`has-[[data-find-expanded]]`).
+- **Width:** fixed width (operator 2026-10-08): the well and its panel stay inside the sidebar's width — they never grow over the header or the page; the sidebar's resize sash is how they get wider. A paste (⌘V or the paste key) replaces the field's text.
+  Nowhere in the section → the ⌘K palette opens at once, searching everywhere for the text.
 - **Locate (backend):** `src/lib/nav/locate/` plus `src/app/api/nav/locate/route.ts`.
   - A bucket is a place a record can be: a view (Outbound: Exceptions, PO paired, Pick
     list, To ship, Shipped) or a verdict (Inbound: Received, Not received, Exceptions).

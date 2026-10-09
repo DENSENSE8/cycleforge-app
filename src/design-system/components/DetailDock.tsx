@@ -222,7 +222,8 @@ export function DetailDock<Id extends string>({
           className={`${inline
             ? 'h-auto min-h-mode-hit w-full whitespace-normal leading-tight'
             : size === 'glove'
-              ? 'min-h-mode-hit-cta w-full whitespace-nowrap text-role-caption'
+              // `h-auto` lets the grid stretch each verb to the row: beside the collapsed Scan bar every cell is one height.
+              ? 'h-auto min-h-mode-hit-cta w-full self-stretch whitespace-nowrap text-role-caption'
               : 'min-h-mode-hit-cta w-full'} ${stacked && size !== 'glove' ? 'flex-col gap-1 whitespace-nowrap px-2' : ''} ${floating ? FLOATING_ACTION_DISABLED_FACE : ''} ${verb.className ?? ''}`}
           icon={verb.iconPosition === 'trailing' ? undefined : verb.icon}
           iconRight={verb.iconPosition === 'trailing' ? verb.icon : undefined}

@@ -81,6 +81,21 @@ export function getLast8Serial(value: string | null | undefined): string {
 }
 
 /**
+ * A hand-typed serial tail → the one full serial it names (the phone pick's "Last 8 of the serial
+ * number", owner 2026-10-08). `typed` up to {@link CHIP_DISPLAY_LEN} chars matches a candidate that
+ * ends with it or whose last-8 face is it; only a unique match expands — an ambiguous or unknown tail
+ * comes back unchanged for the server to judge.
+ */
+export function expandSerialTail(typed: string, candidates: readonly string[]): string {
+  const tail = normalizeCopyText(typed).toUpperCase();
+  if (!tail || tail.length > CHIP_DISPLAY_LEN) return typed;
+  const serials = candidates.map((c) => normalizeCopyText(c)).filter(Boolean);
+  if (serials.some((s) => s.toUpperCase() === tail)) return typed;
+  const matches = serials.filter((s) => s.toUpperCase().endsWith(tail) || abbreviateIdentifier(s).toUpperCase() === tail);
+  return matches.length === 1 ? matches[0]! : typed;
+}
+
+/**
  * Pack/tech "tracking" fields sometimes hold a static SKU code (`PROD:qty`, `:tag`) rather than a carrier number.
  * Those must use the SKU chip, not TrackingChip.
  */

@@ -29,6 +29,7 @@ import {
   Truck,
   Zap,
 } from '@/components/Icons';
+import { isBuyerCancelledStatus } from '@/lib/orders/buyer-cancelled';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { exceptionsQueryKey } from '@/hooks/exceptions';
 import { bustFulfillmentCaches, bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
@@ -429,20 +430,37 @@ function useOrderActionVerbs({
     router.replace(`${EXCEPTIONS_PATH}?${params.toString()}`, { scroll: false });
   };
 
+  const settleBuyerCancel = () => {
+    bustFulfillmentCaches(queryClient);
+    refreshDomain('orders.outbound');
+  };
+  /** Put buyer-cancelled orders back with their prior status (`DELETE /api/orders/list-removal`) — any time, not just the toast's few seconds. */
+  const putBackOnList = async (ids: readonly number[]): Promise<boolean> => {
+    const res = await fetch('/api/orders/list-removal', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderIds: ids }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      toast.error('Could not undo the buyer cancel');
+      return false;
+    }
+    restoreRecords([...ids]);
+    settleBuyerCancel();
+    return true;
+  };
+
   /**
    * Buyer cancelled — every checked order (one order → that order) leaves the
    * list with the `buyer_cancelled` reason (`/api/orders/list-removal`, which
    * also sets the order's Buyer cancel status). Undo on the bottom-right toast
-   * puts them back with their prior status (`DELETE`, same route).
+   * puts them back with their prior status (`DELETE`, same route); so does the
+   * verb itself on an order already cancelled (Undo buyer cancel).
    */
   const buyerCancel = () => {
     const ids = actionIds.length > 0 ? actionIds : [orderId];
     onFinished();
     markDismissed(ids);
-    const settle = () => {
-      bustFulfillmentCaches(queryClient);
-      refreshDomain('orders.outbound');
-    };
     void afterDismissPaint().then(async () => {
       hideRecords(ids);
       try {
@@ -457,27 +475,22 @@ function useOrderActionVerbs({
           toast.error(body?.error || 'Could not mark the order buyer cancelled');
           return;
         }
-        settle();
+        settleBuyerCancel();
         toast.undo(ids.length === 1 ? 'Buyer cancelled' : `${ids.length} orders buyer cancelled`, {
-          onUndo: () => {
-            void fetch('/api/orders/list-removal', {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderIds: ids }),
-            }).then((undo) => {
-              if (!undo.ok) {
-                toast.error('Could not undo the buyer cancel');
-                return;
-              }
-              restoreRecords(ids);
-              settle();
-            });
-          },
+          onUndo: () => void putBackOnList(ids),
         });
       } catch {
         restoreRecords(ids);
         toast.error('Could not mark the order buyer cancelled');
       }
+    });
+  };
+  // Live-derived like urgent: an order already cancelled offers the way back, not a second cancel.
+  const selectionBuyerCancelled = stateRows.length > 0 && stateRows.every((row) => isBuyerCancelledStatus(row.status));
+  const undoBuyerCancel = () => {
+    const ids = actionIds.length > 0 ? actionIds : [orderId];
+    void putBackOnList(ids).then((ok) => {
+      if (ok) toast.success(ids.length === 1 ? 'Buyer cancel undone' : `Buyer cancel undone on ${ids.length} orders`);
     });
   };
 
@@ -630,7 +643,8 @@ function useOrderActionVerbs({
     });
   }
   verbs.push(...catalogVerb('copy', 'Copy', <Copy />, ORDER_VERB_HOTKEYS.copy));
-  verbs.push(...catalogVerb('print', 'Print', <Printer />, ORDER_VERB_HOTKEYS.print));
+  // Keyless: P views the open order's photos (`ORDER_RECORD_PHOTOS_KEY`).
+  verbs.push(...catalogVerb('print', 'Print', <Printer />));
 
   // ── ⋮ overflow ──
   if (viewOffersVerb(viewKey, 'create-rule')) {
@@ -758,25 +772,37 @@ function useOrderActionVerbs({
       },
     });
   }
-  verbs.push({
-    id: 'buyer-cancelled',
-    label: actionIds.length > 1 ? `Buyer cancelled ${actionIds.length}` : 'Buyer cancelled',
-    icon: <PackageX />,
-    hotkey: ORDER_VERB_HOTKEYS['buyer-cancelled'],
-    tone: 'danger',
-    scope: 'both',
-    // The centered dialog every order form shares; only its focused button (Enter) confirms, never Z again.
-    dialog: (done) => (
-      <BuyerCancelDialog
-        rows={actionRows}
-        onCancel={done}
-        onConfirm={() => {
-          done();
-          buyerCancel();
-        }}
-      />
-    ),
-  });
+  verbs.push(
+    selectionBuyerCancelled
+      ? {
+          id: 'buyer-cancelled',
+          label: actionIds.length > 1 ? `Undo buyer cancel ${actionIds.length}` : 'Undo buyer cancel',
+          icon: <RotateCcw />,
+          hotkey: ORDER_VERB_HOTKEYS['buyer-cancelled'],
+          scope: 'both',
+          pressed: true,
+          run: undoBuyerCancel,
+        }
+      : {
+          id: 'buyer-cancelled',
+          label: actionIds.length > 1 ? `Buyer cancelled ${actionIds.length}` : 'Buyer cancelled',
+          icon: <PackageX />,
+          hotkey: ORDER_VERB_HOTKEYS['buyer-cancelled'],
+          tone: 'danger',
+          scope: 'both',
+          // The centered dialog every order form shares; only its focused button (Enter) confirms, never Z again.
+          dialog: (done) => (
+            <BuyerCancelDialog
+              rows={actionRows}
+              onCancel={done}
+              onConfirm={() => {
+                done();
+                buyerCancel();
+              }}
+            />
+          ),
+        },
+  );
   verbs.push({
     id: 'delete',
     label: actionIds.length > 1 ? `Delete ${actionIds.length}` : 'Delete',

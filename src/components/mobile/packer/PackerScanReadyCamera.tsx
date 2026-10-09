@@ -1,12 +1,17 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getPackerBridgeChannelName } from '@/lib/realtime/channels';
 import { publishDeviceAck } from '@/lib/realtime/device-handshake';
+import { PACKING_PATHS } from '@/lib/nav/route-tree';
+import { packerPhotoUploadQueue } from '@/components/mobile/packer/PackerPhotoUploadQueue';
+
+/** `/m/p/<packerLogId>/photos` — the packer capture this listener itself opens. */
+const PACKER_CAPTURE_PATH = /^\/m\/p\/(\d+)\/photos\/?$/;
 
 interface PackerScanReadyPayload {
   type?: string;
@@ -14,12 +19,17 @@ interface PackerScanReadyPayload {
   packerLogId?: number | null;
   variant?: string;
   scannedValue?: string;
-  order?: { orderId?: string } | null;
+  order?: { orderId?: string; productTitle?: string } | null;
+  fba?: { productTitle?: string } | null;
   /** Present on a MANUAL re-send from the desktop pack identity bar ({@link PackSendToPhoneButton}). */
   requestId?: string;
 }
 
-/** Phone listener for desktop packing scans. */
+/**
+ * Phone listener for desktop packing scans. Also the app-wide resume point for
+ * the packer upload queue: shots left pending by a reload or a dropped network
+ * push again on every phone page, not only when the capture screen reopens.
+ */
 export function PackerScanReadyCamera() {
   const router = useRouter();
   const pathname = usePathname();
@@ -32,6 +42,10 @@ export function PackerScanReadyCamera() {
   const lastKeyRef = useRef<string | null>(null);
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
+
+  useEffect(() => {
+    packerPhotoUploadQueue.resume();
+  }, []);
 
   const handleReady = useCallback(
     (msg: { data?: PackerScanReadyPayload }) => {
@@ -55,18 +69,24 @@ export function PackerScanReadyCamera() {
       if (lastKeyRef.current === key) return;
       lastKeyRef.current = key;
 
-      if (pathnameRef.current?.endsWith('/photos') || pathnameRef.current?.includes('/unit-photos/')) {
-        return;
-      }
+      // The next desk scan always moves the packer to that order's capture —
+      // shots already taken upload on their own (queued at the shutter, never
+      // behind ✓). Same order already open: stay. Other capture screens
+      // (Unbox, unit photos) are never hijacked.
+      const current = pathnameRef.current ?? '';
+      const openPack = PACKER_CAPTURE_PATH.exec(current);
+      if (openPack && Number(openPack[1]) === packerLogId) return;
+      if (!openPack && (current.endsWith('/photos') || current.includes('/unit-photos/'))) return;
 
-      // §1d deep-link: carry the order number + start the guided flow on the
-      // slip step so the phone opens straight into pack_slip capture.
+      // Deep-link: the order number + product title paint the camera's top-left;
+      // closing the capture always returns to the Packing photo feed.
       const qs = new URLSearchParams();
       const orderId = String(data.order?.orderId || '').trim();
       if (orderId) qs.set('orderId', orderId);
-      qs.set('step', 'slip');
-      const suffix = qs.toString();
-      router.replace(`/m/p/${packerLogId}/photos${suffix ? `?${suffix}` : ''}`);
+      const title = String(data.order?.productTitle || data.fba?.productTitle || '').trim();
+      if (title) qs.set('title', title);
+      qs.set('back', PACKING_PATHS.mobile);
+      router.replace(`/m/p/${packerLogId}/photos?${qs.toString()}`);
     },
     [router, getClient, channel],
   );

@@ -25,6 +25,12 @@ export interface StockLocationSummary {
   /** Zero-count provisional placement that needs cleanup, not active stock. */
   hasCleanup: boolean;
   lastTouched: string | null;
+  /**
+   * The place's photo: of the items here, the photo of the one photographed
+   * last (newest `SKU_STOCK` link); else the first item's catalog / Zoho image.
+   * Null when nothing here has a picture.
+   */
+  photoUrl: string | null;
   rows: LocationStockTableRow[];
 }
 
@@ -42,6 +48,15 @@ function newestInstant(rows: readonly LocationStockTableRow[]): string | null {
     }
   }
   return newest;
+}
+
+function newestPhoto(rows: readonly LocationStockTableRow[]): string | null {
+  let newest: LocationStockTableRow | null = null;
+  for (const row of rows) {
+    if (!row.latest_photo_url || !row.latest_photo_at) continue;
+    if (!newest || row.latest_photo_at > newest.latest_photo_at!) newest = row;
+  }
+  return newest?.latest_photo_url ?? rows.find((row) => row.image_url)?.image_url ?? null;
 }
 
 /** Fold the desktop stock read into a physical-location walk without losing source rows. */
@@ -88,6 +103,7 @@ export function summarizeStockLocations(
       hasOnHold: stockRows.some((row) => row.is_provisional),
       hasCleanup: inventoryRows.some((row) => row.is_provisional && row.qty <= 0),
       lastTouched: newestInstant(sourceRows),
+      photoUrl: newestPhoto(stockRows),
       rows: sourceRows,
     };
   });

@@ -169,6 +169,12 @@ test('regression: photos.view gates the photo library route', () => {
   assert.ok(paths.includes('/api/photos/library/route.ts'), 'photos.view should gate /api/photos/library');
 });
 
+test('regression: sku_stock.adjust gates the bin-SKU stock-row ensure (row camera first photo)', () => {
+  // Same waist as the SKU_STOCK photo upload it precedes (uploadPermissionFor('SKU_STOCK')).
+  const paths = routesGatedBy('sku_stock.adjust').map((r) => r.path);
+  assert.ok(paths.includes('/api/sku-stock/[sku]/ensure/route.ts'), 'sku_stock.adjust should gate POST /api/sku-stock/[sku]/ensure');
+});
+
 test('regression: photos.share gates share pack creation', () => {
   const paths = routesGatedBy('photos.share').map((r) => r.path);
   assert.ok(paths.includes('/api/photos/share-packs/route.ts'), 'photos.share should gate share pack POST');
@@ -478,6 +484,13 @@ test('regression: handling_unit.manage gates the assign/unassign mutations', () 
   );
 });
 
+test('regression: bin.adjust gates loading shelf stock into a tote', () => {
+  // A tote load moves stock (TRANSFER_OUT/IN legs), so the stock-move permission
+  // gates it; parking the tote in the same call is checked inside the handler.
+  const paths = routesGatedBy('bin.adjust').map((r) => r.path);
+  assert.ok(paths.includes('/api/handling-units/[id]/load/route.ts'), 'bin.adjust should gate tote load');
+});
+
 test('regression: integrations.google_drive gates the Drive connect + health routes', () => {
   // Google Drive photo backup. The OAuth callback is intentionally ungated
   // (encrypted-state public redirect, like the Amazon/eBay callbacks) and is
@@ -592,16 +605,6 @@ test('every internal /api/picking/* route gates on a picking.* permission, never
   for (const route of picking) {
     assert.ok(route.permission?.startsWith('picking.'), `${route.path} gates on ${route.permission}`);
   }
-});
-
-test('regression: buyer-note ack enforces packing.complete_order OR shipping.buy_label in-handler', () => {
-  // The ack releases the pack / label interlock (src/lib/orders/buyer-note-interlock.ts),
-  // so it is open to exactly the two verbs the interlock holds. withAuth can't
-  // express an OR — same in-handler pattern as the substitute POST above.
-  const ack = routeByPath('/api/orders/[id]/buyer-note/ack/route.ts');
-  assert.ok(ack, 'the buyer-note ack route should be in the manifest');
-  assert.equal(ack.gate, 'withAuth (no permission)');
-  assert.ok(ack.methods.includes('POST'));
 });
 
 test('regression: order manuals — reads are orders.view, every manual write is product_manuals.manage', () => {

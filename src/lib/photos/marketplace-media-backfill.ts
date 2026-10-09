@@ -12,6 +12,7 @@ import { getShopifyVariantImageUrl, shopifyValidate } from '@/lib/integrations/c
 import { fetchEcwidProductImageUrl, resolveEcwidCreds } from '@/lib/ecwid/client';
 import { listConnections } from '@/lib/integrations/connectors/connections';
 import { productImageUrl } from './product-image-url';
+import { marketplaceFullUrl } from './marketplace-thumb-url';
 import { addPhotosToListingInTx } from './listing-photos';
 import { attachPhotoWithLegacyUrlInTx } from './service';
 import { placedElseImportedSql } from '@/lib/orders/order-dates';
@@ -212,7 +213,8 @@ function planMarketplaceMediaBackfill(
     const state = orderImageState(row);
     orders[state] += 1;
     const rowRefs = marketplaceRefsFor(row);
-    const sourceImageUrl = String(row.sourceImageUrl ?? '').trim() || null;
+    // ShipStation carries the store's thumb rendition (eBay `$_12` / `s-l140`); store the full-size one.
+    const sourceImageUrl = marketplaceFullUrl(row.sourceImageUrl);
     if (state === 'no_product' && (rowRefs.length > 0 || sourceImageUrl)) {
       if (rowRefs.length > 0) noProductWithMarketplaceId += 1;
       // Group repeated orders for the same listing so the provider is queried

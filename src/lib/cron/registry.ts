@@ -51,6 +51,7 @@ export const CRON_JOBS: CronJobDef[] = [
   // vercel.json is UTC-only: `0 15`, `0 21`, `30 1` are 08:00, 14:00 and 18:30
   // PDT (one hour earlier under PST). The 18:30 run lands the day's sheet tab.
   { job: 'orders.backfill_pipeline', label: 'Orders backfill (ShipStation → Sheets → channels → exceptions)', category: 'Integrations', schedule: 'daily 08:00 + 14:00 + 18:30 PT', expectedEveryMs: 12 * HOUR },
+  { job: 'returns.sync', label: 'Platform returns (eBay + Amazon) sync + history backfill', category: 'Integrations', schedule: 'hourly :40', expectedEveryMs: HOUR },
   { job: 'documents.ecwid_packing_slips', label: 'ECWID packing-slip retry queue', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
   { job: 'documents.ensure_outbound', label: 'Outbound document ensure', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
   { job: 'documents.nas_mirror', label: 'Outbound document NAS mirror', category: 'Integrations', schedule: 'daily 04:45', expectedEveryMs: DAY },
@@ -101,6 +102,7 @@ export const CRON_JOB_TRIGGER_PATH: Record<string, string> = {
   'ebay.refresh_tokens': '/api/cron/ebay/refresh-tokens',
   'ebay.purchase_sync': '/api/cron/ebay/purchase-sync',
   'orders.backfill_pipeline': '/api/cron/orders/backfill',
+  'returns.sync': '/api/cron/returns/sync',
   'documents.ecwid_packing_slips': '/api/cron/documents/ecwid-packing-slips?limit=25',
   'staff_goals.history': '/api/cron/staff-goals/history',
   'tickets.designated_assign': '/api/cron/tickets/designated-assign',

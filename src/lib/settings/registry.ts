@@ -247,7 +247,7 @@ export const SETTINGS: readonly SettingDef[] = [
     scope: 'org',
     label: 'Returns testing bin',
     description:
-      'Bin barcode that return cartons auto-stage into when scanned at receiving. Printable as a 2×1 special-bin label.',
+      'Bin barcode that return cartons auto-stage into when scanned at receiving.',
     control: 'text',
     schema: z.string().trim().min(1).max(64).default('RETURNS-TEST'),
     permission: 'admin.manage_features',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Images, Loader2, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { usePressHaptic } from '@/lib/scan-feedback/useScanFeedback';
@@ -11,14 +11,21 @@ import {
 import { warmCamera } from '@/lib/scan/warm-camera';
 
 interface MobileContinuousPhotoCameraProps {
+  /** Photos taken this session — the top-left count. */
   count: number;
-  maxPhotos: number;
+  /** Optional host cap; omitted = no cap (packing). The count never shows a denominator. */
+  maxPhotos?: number;
   processing: boolean;
   onCapture: (blob: Blob) => Promise<void>;
   onClose: () => void;
   onDone: () => void;
-  onOpenLibrary: () => void;
+  /** Bottom-left gallery button. Omit with `bottomLeft` for a camera-only host. */
+  onOpenLibrary?: () => void;
   onUnavailable: (message: string) => void;
+  /** Replaces the gallery button in the bottom-left thumb position (packer: last-shot review). */
+  bottomLeft?: ReactNode;
+  /** Host copy painted top-left under the shot count. */
+  overlay?: ReactNode;
 }
 
 function cameraErrorMessage(error: unknown): string {
@@ -44,6 +51,8 @@ export function MobileContinuousPhotoCamera({
   onDone,
   onOpenLibrary,
   onUnavailable,
+  bottomLeft,
+  overlay,
 }: MobileContinuousPhotoCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -51,7 +60,7 @@ export function MobileContinuousPhotoCamera({
   const choosingLibraryRef = useRef(false);
   const haptic = usePressHaptic();
   const [starting, setStarting] = useState(true);
-  const atCap = count >= maxPhotos;
+  const atCap = maxPhotos != null && count >= maxPhotos;
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -134,6 +143,7 @@ export function MobileContinuousPhotoCamera({
   }, [atCap, haptic, onCapture, onUnavailable, processing, starting]);
 
   const openLibrary = useCallback(() => {
+    if (!onOpenLibrary) return;
     choosingLibraryRef.current = true;
     onOpenLibrary();
   }, [onOpenLibrary]);
@@ -165,8 +175,12 @@ export function MobileContinuousPhotoCamera({
         />
       </div>
 
-      <div className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-panelOverlay rounded-full bg-black/55 px-3 py-2 font-mono text-xs font-semibold backdrop-blur-md">
-        {count}/{maxPhotos}
+      {/* Top row: count left, ✕ right. The host's copy (packer: title + order id) sits under the count. */}
+      <div className="absolute left-3 right-16 top-[max(0.75rem,env(safe-area-inset-top))] z-panelOverlay flex flex-col items-start gap-2">
+        <div className="rounded-full bg-black/55 px-3 py-2 font-mono text-xs font-semibold backdrop-blur-md">
+          {count}
+        </div>
+        {overlay}
       </div>
 
       {starting ? (
@@ -183,16 +197,18 @@ export function MobileContinuousPhotoCamera({
       ) : null}
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 grid grid-cols-[1fr_auto_1fr] items-center px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5">
-        <button
-          type="button"
-          onClick={openLibrary}
-          disabled={processing || atCap}
-          aria-label="Choose more photos"
-          className="pointer-events-auto grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white backdrop-blur-md disabled:opacity-40 active:scale-95"
-          data-testid="mobile-continuous-camera-gallery"
-        >
-          <Images className="h-6 w-6" />
-        </button>
+        {bottomLeft ?? (onOpenLibrary ? (
+          <button
+            type="button"
+            onClick={openLibrary}
+            disabled={processing || atCap}
+            aria-label="Choose more photos"
+            className="pointer-events-auto grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white backdrop-blur-md disabled:opacity-40 active:scale-95"
+            data-testid="mobile-continuous-camera-gallery"
+          >
+            <Images className="h-6 w-6" />
+          </button>
+        ) : <span aria-hidden />)}
         <button
           type="button"
           onClick={() => void capture()}

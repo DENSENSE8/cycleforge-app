@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * The one controller behind `LocationLabelBuilder` — location (`bin`) and bay
- * (`rack`) labels share it; a bay label is a location label pinned to position 0.
+ * The one controller behind `LocationLabelBuilder`. A label with no position
+ * reads `C-03-10-3`; there is no separate bay label.
  *
  * The address lives in the per-browser store (`useLabelPrinterStore`) so the
  * desk tab and the phone pick up where the operator left off. Printing goes to
  * the label station this staffer picked (`usePrintStations().target.label`):
- * this computer prints here through `printLocationLabelRun` / `printRackLabelRun`
- * (registration included); any other station is sent the job after this screen
- * registers the stickers itself, so a refused code reads here, not over there.
+ * this computer prints here through `printLocationLabelRun` (registration
+ * included); any other station is sent the job after this screen registers
+ * the stickers itself, so a refused code reads here, not over there.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -19,17 +19,15 @@ import { useOrgGs1 } from '@/hooks/useOrgGs1';
 import { patchLabelPrinterState, resetLabelPrinterState, useLabelPrinterStore } from '@/hooks/useLabelPrinterStore';
 import { usePrintStations, type PrintStationEntry, type PrintStations } from '@/hooks/usePrintStations';
 import type { LocationSegments } from '@/lib/barcode-routing';
-import { printLocationLabelRun, printRackLabelRun } from '@/lib/print/printLabelRun';
+import { printLocationLabelRun } from '@/lib/print/printLabelRun';
 import { toast } from '@/lib/toast';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
-import { registerRackLocations } from '@/components/barcode/rack-printer/rack-printer-api';
 import {
   labelFace,
   labelSegments,
   nextLabelStep,
   parseLabelCode,
   roomsForZone,
-  type LabelKind,
   type LabelSelection,
   type LabelStep,
 } from './location-label-model';
@@ -55,7 +53,6 @@ function plural(n: number): string {
 
 /** What the builder reads and drives. */
 export interface LocationLabelBuilderController {
-  kind: LabelKind;
   loading: boolean;
   /** Room names in room order. */
   rooms: string[];
@@ -90,10 +87,8 @@ export interface LocationLabelBuilderController {
 }
 
 export function useLocationLabelBuilder({
-  initialKind,
   initialCode,
 }: {
-  initialKind: LabelKind;
   initialCode?: string | null;
 }): LocationLabelBuilderController {
   const { rooms, roomNames, loading } = useLocations();
@@ -102,7 +97,6 @@ export function useLocationLabelBuilder({
   const stations = usePrintStations();
   const selection = useLabelPrinterStore();
 
-  const kind = initialKind;
   const [overrideStep, setOverrideStep] = useState<LabelStep | null>(null);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,8 +157,8 @@ export function useLocationLabelBuilder({
 
   const zoneLetter = selection.room ? zoneMap[selection.room] : undefined;
   const missingLetter = !!selection.room && !zoneLetter;
-  const step = overrideStep ?? nextLabelStep(kind, selection);
-  const single = labelSegments(kind, zoneLetter, selection);
+  const step = overrideStep ?? nextLabelStep(selection);
+  const single = labelSegments(zoneLetter, selection);
 
   const pickRoom = useCallback(
     (room: string) => {
@@ -208,10 +202,10 @@ export function useLocationLabelBuilder({
         level: selection.level != null,
         position: selection.position != null || selection.level != null,
       };
-      if (!done[target] && target !== nextLabelStep(kind, selection)) return;
+      if (!done[target] && target !== nextLabelStep(selection)) return;
       setOverrideStep(target);
     },
-    [kind, selection],
+    [selection],
   );
 
   const reset = useCallback(() => {
@@ -272,14 +266,7 @@ export function useLocationLabelBuilder({
       try {
         if (station.thisComputer) {
           const common = { roomName: room, gln: orgGs1.gln, orgSlug: user?.organizationSlug };
-          const result =
-            kind === 'rack'
-              ? await printRackLabelRun({
-                  ...common,
-                  racks: labels.map(({ zone, aisle, bay, level }) => ({ zone, aisle, bay, level })),
-                  register: registerRackLocations,
-                })
-              : await printLocationLabelRun({ ...common, segments: labels, register: registerLocations });
+          const result = await printLocationLabelRun({ ...common, segments: labels, register: registerLocations });
           if (result.status === 'register_failed' || result.status === 'mint_failed') {
             setError(result.error || 'Could not register these locations for printing.');
             return false;
@@ -295,7 +282,7 @@ export function useLocationLabelBuilder({
           setError(err instanceof Error ? err.message : 'Could not register these locations for printing.');
           return false;
         }
-        const acked = await stations.sendLocationLabels(station.stationId, kind, {
+        const acked = await stations.sendLocationLabels(station.stationId, {
           roomName: room,
           gln: orgGs1.gln,
           orgSlug: user?.organizationSlug,
@@ -311,11 +298,10 @@ export function useLocationLabelBuilder({
         setPrinting(false);
       }
     },
-    [kind, orgGs1.gln, printerBlocked, selection.room, station, stations, user?.organizationSlug],
+    [orgGs1.gln, printerBlocked, selection.room, station, stations, user?.organizationSlug],
   );
 
   return {
-    kind,
     loading,
     rooms: roomList,
     zoneMap,

@@ -11,26 +11,35 @@ import {
 } from '@/lib/repair/repair-paper-html';
 import { formatPhoneNumber } from '@/utils/phone';
 import pool from '@/lib/db';
+import { tenantQuery } from '@/lib/tenancy/db';
+import { postalLines } from '@/lib/customers/customer-display';
 import { getOrganization } from '@/lib/tenancy/organizations';
-import { getOrgLetterhead } from '@/lib/branding/letterhead';
+import { getOrgLetterhead, type OrgLetterhead } from '@/lib/branding/letterhead';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/** Render the full printable HTML document for one repair. */
-export async function renderRepairPaperHtml(
+interface ShipToRow {
+  shipping_address_1: string | null;
+  shipping_address_2: string | null;
+  shipping_city: string | null;
+  shipping_state: string | null;
+  shipping_postal_code: string | null;
+  shipping_country: string | null;
+}
+
+interface RepairPaperSheet {
+  /** `RS-<id>` — names the print document. */
+  code: string;
+  formHtml: string;
+}
+
+/** One repair's sheet body, or null when the repair is not in this org. */
+async function renderRepairPaperSheet(
   orgId: OrgId,
   repairId: number,
-  opts?: { autoPrint?: boolean },
-): Promise<string | null> {
-  const [repair, org] = await Promise.all([
-    getRepairById(repairId, orgId),
-    getOrganization(orgId),
-  ]);
-  const letterhead = getOrgLetterhead({
-    name: org?.name ?? '',
-    settings: org?.settings ?? parseOrgSettings(undefined),
-  });
-
+  letterhead: OrgLetterhead,
+): Promise<RepairPaperSheet | null> {
+  const repair = await getRepairById(repairId, orgId);
   if (!repair) return null;
 
   // Format date
@@ -92,6 +101,34 @@ export async function renderRepairPaperHtml(
 
   // Format contact as "Name, Phone, Email"
   const contactDisplay = [name, phoneNumber, email].filter(Boolean).join(', ');
+
+  // Where a shipped-back repair goes — the customer's `shipping_*` columns.
+  let shipTo = '';
+  if (repair.customer_id) {
+    try {
+      const r = await tenantQuery<ShipToRow>(
+        orgId,
+        `SELECT shipping_address_1, shipping_address_2, shipping_city,
+                shipping_state, shipping_postal_code, shipping_country
+           FROM customers
+          WHERE organization_id = $1 AND id = $2`,
+        [orgId, repair.customer_id],
+      );
+      const row = r.rows[0];
+      if (row) {
+        shipTo = postalLines({
+          line1: row.shipping_address_1,
+          line2: row.shipping_address_2,
+          city: row.shipping_city,
+          state: row.shipping_state,
+          postal: row.shipping_postal_code,
+          country: row.shipping_country,
+        }).join(', ');
+      }
+    } catch (err) {
+      console.warn(`Failed to load ship-to for repair ${repair.id}:`, err);
+    }
+  }
 
   // Capture the DB id outside the closure — TS narrowing of `repair`
   // doesn't carry into the nested async function.
@@ -254,6 +291,10 @@ export async function renderRepairPaperHtml(
             <div class="w-40 p-2 font-semibold bg-surface-canvas border-r border-black">Contact Info:</div>${'' /* ds-allow-raw-neutral: print ink */}
             <div class="flex-1 p-2">${contactDisplay}</div>
           </div>
+          ${shipTo ? `<div class="flex border-b border-r border-black">${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="w-40 p-2 font-semibold bg-surface-canvas border-r border-black">Ship To:</div>${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="flex-1 p-2">${escapeHtml(shipTo)}</div>
+          </div>` : ''}
         </div>
 
         <!-- Price Section -->
@@ -324,9 +365,31 @@ export async function renderRepairPaperHtml(
 
       </div>
     `;
+  return { code: repairServiceCode, formHtml };
+}
+
+/**
+ * The printable HTML document for one or more repairs — one A4 sheet each,
+ * page-broken, in the order given. Repairs not in this org are skipped; null
+ * when none resolve.
+ */
+export async function renderRepairPapersHtml(
+  orgId: OrgId,
+  repairIds: readonly number[],
+  opts?: { autoPrint?: boolean },
+): Promise<string | null> {
+  const org = await getOrganization(orgId);
+  const letterhead = getOrgLetterhead({
+    name: org?.name ?? '',
+    settings: org?.settings ?? parseOrgSettings(undefined),
+  });
+  const sheets = (
+    await Promise.all(repairIds.map((id) => renderRepairPaperSheet(orgId, id, letterhead)))
+  ).filter((sheet): sheet is RepairPaperSheet => sheet !== null);
+  if (sheets.length === 0) return null;
 
   // The on-load print hook. Default-on: the desk's Print buttons and the
-  // tablet's History reprint both want the dialog without a second click.
+  // tablet's prints all want the dialog without a second click.
   const autoPrintScript = (opts?.autoPrint ?? true)
     ? `
   <script>
@@ -334,13 +397,12 @@ export async function renderRepairPaperHtml(
   </script>`
     : '';
 
-  // Return full HTML page with print styles
-  const html = `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Repair Service - ${repairServiceCode}</title>
+  <title>Repair Service - ${sheets.map((sheet) => sheet.code).join(', ')}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     * {
@@ -353,6 +415,10 @@ export async function renderRepairPaperHtml(
       min-height: 297mm;
       margin: 0;
       padding: 0;
+    }
+    .page-break {
+      break-after: page;
+      page-break-after: always;
     }
     @media print {
       html, body {
@@ -369,10 +435,17 @@ export async function renderRepairPaperHtml(
   </style>${autoPrintScript}
 </head>
 <body>
-  ${formHtml}
+  ${sheets.map((sheet) => sheet.formHtml).join('\n  <div class="page-break"></div>\n')}
 </body>
 </html>
     `;
+}
 
-  return html;
+/** The printable HTML document for one repair — the desk and History reprint door. */
+export async function renderRepairPaperHtml(
+  orgId: OrgId,
+  repairId: number,
+  opts?: { autoPrint?: boolean },
+): Promise<string | null> {
+  return renderRepairPapersHtml(orgId, [repairId], opts);
 }

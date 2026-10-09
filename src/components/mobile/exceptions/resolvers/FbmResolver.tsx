@@ -2,15 +2,13 @@
 
 /**
  * FBM — a merchant-fulfilled order held by an order exception other than SKU
- * mapping. The queue only ever holds three categories (ExceptionsData
- * 2026-09-28): Out of Stock clears in place (`isOutOfStock: false`); Buyer
- * Request records the read (the note keeps the row until it is removed on the
- * order); Shipping Issue is the carrier's own exception, shown as evidence with
- * the order one tap away.
+ * mapping. The queue holds two categories: Out of Stock clears in place
+ * (`isOutOfStock: false`); Shipping Issue is the carrier's own exception,
+ * shown as evidence with the order one tap away.
  */
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ClipboardList, MessageSquare, PackageCheck } from '@/components/Icons';
+import { ClipboardList, PackageCheck } from '@/components/Icons';
 import { DetailFact, DetailFacts, DetailNavRow } from '@/components/mobile/detail/DetailParts';
 import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,7 +18,7 @@ import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { toast } from '@/lib/toast';
 import type { PhoneResolverProps } from './resolver-props';
 
-type FbmVerb = 'in-stock' | 'ack-note';
+type FbmVerb = 'in-stock';
 
 export function FbmResolver({ facts, onResolved }: PhoneResolverProps<FbmExceptionFacts>) {
   const { has } = useAuth();
@@ -33,7 +31,6 @@ export function FbmResolver({ facts, onResolved }: PhoneResolverProps<FbmExcepti
   const here = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`;
 
   const canEdit = has('orders.create');
-  const canAck = has('packing.complete_order') || has('shipping.buy_label');
 
   const verbs: DetailDockVerb<FbmVerb>[] = [];
   if (category === 'Out of Stock') {
@@ -46,36 +43,19 @@ export function FbmResolver({ facts, onResolved }: PhoneResolverProps<FbmExcepti
       loading: resolve.isPending,
     });
   }
-  if (order.buyerNote) {
-    verbs.push({
-      id: 'ack-note',
-      label: 'Acknowledge note',
-      icon: <MessageSquare />,
-      primary: category === 'Buyer Request',
-      disabled: !canAck,
-      loading: resolve.isPending && resolve.variables?.action === 'ack-buyer-note',
-    });
-  }
 
-  const onVerb = (verb: FbmVerb) =>
-    verb === 'in-stock'
-      ? resolve
-          .mutateAsync({ action: 'update-order', orderId: order.id, patch: { isOutOfStock: false } })
-          .then(() => onResolved(`${orderRef} is back in stock.`))
-          .catch((error: Error) => toast.error(error.message || 'Could not update the order.'))
-      : resolve
-          .mutateAsync({ action: 'ack-buyer-note', orderId: order.id })
-          .then(() => toast.success('Buyer note acknowledged — it stays on the order until it is removed.'))
-          .catch((error: Error) => toast.error(error.message || 'Could not acknowledge the note.'));
+  const onVerb = () =>
+    resolve
+      .mutateAsync({ action: 'update-order', orderId: order.id, patch: { isOutOfStock: false } })
+      .then(() => onResolved(`${orderRef} is back in stock.`))
+      .catch((error: Error) => toast.error(error.message || 'Could not update the order.'));
 
   const blockedReason =
     category === 'Out of Stock' && !canEdit
       ? 'Your role cannot edit orders, so it cannot clear Out of Stock.'
-      : order.buyerNote && !canAck
-        ? 'Acknowledging a buyer note needs packing or label-buying access.'
-        : category === 'Shipping Issue'
-          ? 'The carrier flagged this shipment. It clears when the carrier updates — open the order to act on the label or tracking.'
-          : null;
+      : category === 'Shipping Issue'
+        ? 'The carrier flagged this shipment. It clears when the carrier updates — open the order to act on the label or tracking.'
+        : null;
 
   return (
     <>

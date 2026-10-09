@@ -7,7 +7,15 @@ import {
 } from '@/lib/image/downscale';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
-/** Module-singleton store for in-flight PACKER photo uploads — the packing mirror of `receiving/PhotoUploadQueue.ts`. */
+/**
+ * Module-singleton store for in-flight PACKER photo uploads — the packing mirror of `receiving/PhotoUploadQueue.ts`.
+ *
+ * Delivery guarantee (owner 2026-10-08: "it must still upload"): a shot is
+ * queued the instant it is taken, survives route changes (module state) and
+ * reloads (localStorage mirror), and a failed POST retries itself with backoff
+ * — also on `online` and whenever any packing screen resumes the queue — until
+ * {@link MAX_AUTO_ATTEMPTS}; only then is it `failed` (operator Retry).
+ */
 
 type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
 
@@ -39,7 +47,14 @@ interface UploadEntry {
   originalBytes: number;
   finalBytes: number;
   createdAt: number;
+  /** POST attempts so far — drives the backoff and the final `failed`. */
+  attempts: number;
 }
+
+const MAX_AUTO_ATTEMPTS = 8;
+/** 2s, 4s, 8s … capped at 60s. */
+const retryDelayMs = (attempts: number) => Math.min(60_000, 1_000 * 2 ** attempts);
+const inFlight = new Set<string>();
 
 interface QueueState {
   entries: UploadEntry[];
@@ -160,9 +175,10 @@ function rehydrate(): void {
       const blob = dataUrlToBlob(item.dataUrl);
       if (!blob) continue;
       const previewUrl = URL.createObjectURL(blob);
-      const restoredState: UploadState =
-        item.meta.state === 'uploading' ? 'queued' : item.meta.state;
-      const entry: UploadEntry = { ...item.meta, previewUrl, state: restoredState };
+      // A crash mid-upload or a final failure from a previous page life both
+      // get a fresh run of attempts — the shot must still land.
+      const restoredState: UploadState = item.meta.state === 'done' ? 'done' : 'queued';
+      const entry: UploadEntry = { ...item.meta, attempts: 0, previewUrl, state: restoredState };
       state.entries.push(entry);
       blobCache.set(entry.id, blob);
       persistedDataUrls.set(entry.id, item.dataUrl);
@@ -192,18 +208,23 @@ async function postPhoto(
     entityId: entry.scope.packerLogId,
     photoType: entry.scope.photoType ?? 'packer_photo',
     poRef: entry.scope.orderId ?? undefined,
+    // The queue entry id survives retries and reloads (localStorage meta).
+    idempotencyKey: `packer-photo:${entry.id}`,
     clientCapturedAtMs: entry.scope.capturedAtMs ?? null,
   });
   return { id: result.id, url: result.url };
 }
 
 async function processEntry(id: string, blob: Blob): Promise<void> {
-  patch(id, { state: 'uploading', error: null });
+  if (inFlight.has(id)) return;
+  const entry = state.entries.find((e) => e.id === id);
+  if (!entry || entry.state === 'done') return;
+  inFlight.add(id);
+  const attempts = entry.attempts + 1;
+  patch(id, { state: 'uploading', attempts });
   try {
-    const entry = state.entries.find((e) => e.id === id);
-    if (!entry) return;
     const { id: photoId, url } = await postPhoto(entry, blob);
-    patch(id, { state: 'done', photoId, photoUrl: url });
+    patch(id, { state: 'done', photoId, photoUrl: url, error: null });
     try {
       uploadNotifier?.({
         packerLogId: entry.scope.packerLogId,
@@ -218,8 +239,29 @@ async function processEntry(id: string, blob: Blob): Promise<void> {
     persist();
   } catch (err) {
     const message = err instanceof Error ? err.message : 'upload failed';
-    patch(id, { state: 'failed', error: message });
+    if (attempts < MAX_AUTO_ATTEMPTS) {
+      // Still pending: retry on its own (the shot is in memory + localStorage).
+      patch(id, { state: 'queued', error: message });
+      setTimeout(() => void processEntry(id, blob), retryDelayMs(attempts));
+    } else {
+      patch(id, { state: 'failed', error: message });
+    }
+  } finally {
+    inFlight.delete(id);
   }
+}
+
+/** Push every pending shot now (network back, screen resumed). */
+function flushQueued(): void {
+  for (const e of state.entries) {
+    if (e.state !== 'queued') continue;
+    const blob = blobCache.get(e.id);
+    if (blob) void processEntry(e.id, blob);
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', flushQueued);
 }
 
 async function prepareAndUpload(id: string, rawBlob: Blob): Promise<void> {
@@ -265,6 +307,7 @@ export const packerPhotoUploadQueue = {
       originalBytes: blob.size,
       finalBytes: 0,
       createdAt: Date.now(),
+      attempts: 0,
     };
     state.entries = [...state.entries, entry];
     blobCache.set(id, blob);
@@ -275,7 +318,18 @@ export const packerPhotoUploadQueue = {
   retry(id: string) {
     const blob = blobCache.get(id);
     if (!blob) return;
+    // Operator Retry starts a fresh run of automatic attempts.
+    patch(id, { state: 'queued', attempts: 0 });
     void processEntry(id, blob);
+  },
+  /**
+   * Load shots a previous page life left behind and push anything pending.
+   * Mounted app-wide on the phone (`PackerScanReadyCamera`) so an upload never
+   * waits for the operator to reopen the capture screen.
+   */
+  resume() {
+    rehydrate();
+    flushQueued();
   },
   clearDone() {
     const remaining = state.entries.filter((e) => e.state !== 'done');

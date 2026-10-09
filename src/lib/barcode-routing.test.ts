@@ -19,6 +19,7 @@ import {
   scannedUnitKey,
   scannedReceivingId,
   unwrapScannedLocation,
+  locationCodeCandidates,
   unwrapScannedSerial,
   locationLabelPayload,
   type LocationSegments,
@@ -442,6 +443,22 @@ test('unwrapScannedLocation unwraps every location form, typed codes untouched',
   // routeScan's leading-letter arm is a guess, not a decode.
   strictEqual(unwrapScannedLocation('A12'), 'A12');
   strictEqual(unwrapScannedLocation('  Overflow shelf '), 'Overflow shelf');
+});
+
+test('a hand-typed location reads the same in any spelling (dash, dashless, case, unpadded)', () => {
+  // Zone-C rack-level stickers carry no position: C-02-09-4 is barcode C0209400.
+  for (const typed of ['c02094', 'C02094', 'C-02-09-4', 'c-2-9-4', 'C 02 09 4', 'C02-09-4', 'C0209-4', 'c.02.09.4', 'C0209400']) {
+    strictEqual(unwrapScannedLocation(typed), 'C0209400', typed);
+  }
+  strictEqual(unwrapScannedLocation('C-02-09-10'), 'C02091000', 'two-digit level');
+  strictEqual(unwrapScannedLocation('c-2-9-4-3'), 'C0209403', 'with a position');
+  // Six digits read two ways — left for the server to settle against real rows.
+  deepStrictEqual(locationCodeCandidates('C020910'), ['C02091000', 'C0209100']);
+  strictEqual(unwrapScannedLocation('C020910'), 'C020910');
+  // Not addresses: other label classes and too-short codes keep their bytes.
+  deepStrictEqual(locationCodeCandidates('H-12345'), []);
+  deepStrictEqual(locationCodeCandidates('A12'), []);
+  deepStrictEqual(locationCodeCandidates('C-00-09-4'), [], 'aisle 0 is not an address');
 });
 
 test('T-{id} ticket label scans to Support deep-link', () => {

@@ -116,6 +116,26 @@ export function rackWalkOrderSql(barcodeCol: string): string {
   ].join(', ');
 }
 
+/**
+ * ORDER BY keys walking legacy flat bin codes (`C0201100` = zone C, aisle 02,
+ * bay 01, level 1, position 00 — {@link parseLocationCodeFlat}) physically:
+ * zone, aisle, bay, level, position, numerically, so level 2 follows level 1
+ * and level 10 comes last (the text `col_label` `1-00` < `10-00` < `2-00` does
+ * not). Every key is NULL for any other barcode, so the next keys decide.
+ */
+export function legacyBinWalkOrderSql(barcodeCol: string): string {
+  if (!/^([a-z_][a-z0-9_]*\.)?[a-z_][a-z0-9_]*$/i.test(barcodeCol)) {
+    throw new Error(`legacyBinWalkOrderSql: bad column ${barcodeCol}`);
+  }
+  return [
+    `upper(substring(${barcodeCol} from '^([A-Za-z])[0-9]{7,8}$'))`,
+    `substring(${barcodeCol} from '^[A-Za-z]([0-9]{2})[0-9]{5,6}$')::int`,
+    `substring(${barcodeCol} from '^[A-Za-z][0-9]{2}([0-9]{2})[0-9]{3,4}$')::int`,
+    `substring(${barcodeCol} from '^[A-Za-z][0-9]{4}([0-9]{1,2})[0-9]{2}$')::int`,
+    `substring(${barcodeCol} from '^[A-Za-z][0-9]{4}[0-9]{1,2}([0-9]{2})$')::int`,
+  ].join(', ');
+}
+
 /** One location's derived room: `$1` = organization_id, `$2` = location id. */
 export const DERIVED_ROOM_BY_ID_SQL = `SELECT room.id, room.name, room.barcode
   FROM locations l

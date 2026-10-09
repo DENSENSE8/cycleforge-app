@@ -36,7 +36,7 @@ while the sidebar is closed). On EVERY face:
 - The rows live in the **well's own dropdown** (`FindField` `drop` →
   `FindPanel`, portaled to `<body>` through `AnchoredLayer` at the
   `panelPopover` band — never inside the sidebar column, whose stacking
-  context clipped it under the page; at least 28rem wide, flips and clamps to
+  context clipped it under the page; exactly the well's width, flips and clamps to
   the viewport, max-height with internal scroll):
   - a count + sort line;
   - status chips with counts (`AnimatedStat`);
@@ -146,14 +146,7 @@ full screen or is removed; "Clear recent" empties them.
 
 ## Search bar hover + ⌘K palette
 
-- **Hover grow:** the page field and the everywhere face grow to max(slot,
-  28rem) on 180ms mouse intent, focus or an open list (`useHoverIntent` +
-  `findWellGrowClass`, ease-in-out 300ms in / 200ms out). The well carries
-  `[data-find-expanded]`.
-- **Header recede:** GlobalHeader's children (except the one holding the
-  field) fade to 60%, scale .985, blur 5px while any well is expanded — a DOM
-  attribute, no import. It stays while the field is focused or its panel is
-  open (no flicker under a typing operator).
+- **No grow:** fixed width (operator 2026-10-08): the well and its panel stay inside the sidebar's width — they never grow over the header or the page; the sidebar's resize sash is how they get wider.
 - **Palette list:** a 2+ paste into the ⌘K input holds ONE list
   (`useLocalBulkList('everywhere')`) and swaps the results for the same
   `NavBulkPanel` — the two faces crossfade while their heights fold/unfold
@@ -176,7 +169,6 @@ full screen or is removed; "Clear recent" empties them.
 | Full list page | `src/app/search/list/page.tsx`, `src/components/search/pasted-list/*` |
 | Sheet column layout (resize · fit · freeze, persisted) | `src/components/tables/useSheetColumns.ts` + `LedgerGridColumnHeader` (`onFreezeColumn`, double-click fit) |
 | ⌘K palette list | `src/components/CommandBar.tsx` |
-| Header recede | `src/components/layout/GlobalHeader.tsx` (`RECEDE_WHILE_FINDING`) |
 | Bucket filter URL hygiene | `src/lib/routing/locate-bucket-param.ts` |
 | Hover key card rows + intent/beat | `src/components/sidebar/contextual/find-key-card.ts` (`useFindKeyCard`, `findKeyRows`) |
 | Well, token, panel shell | `src/design-system/components/FindField.tsx` (`FindToken`, `FindLead`, `FindPanel`, `HINT_INTENT_MS`) |
@@ -197,8 +189,6 @@ plain fades through `useMotionPresence` / `useMotionTransition`.
 | Token in the well | `findListToken` | blur 6px, scale .96→1 · 0.24s |
 | Panel height | `CollapseItem timing` = `findListPanelOpen` / `findListPanelClose` | 0.32s open / 0.20s close |
 | Palette results ⇄ list | `CollapseItem timing` = `findListPanelOpen` / `findListPanelClose` | crossfade + height fold/unfold, same timing |
-| Well hover grow | `findWellGrowClass` (CSS, `ease-[cubic-bezier(0.65,0,0.35,1)]`) | width · 300ms in / 200ms out |
-| Header recede | `RECEDE_WHILE_FINDING` (CSS) | opacity .6, scale .985, blur 5px · 300ms in / 200ms out |
 | Rows cascade | `findListRow` | blur 2px, y 4→0 · 0.24s, 30ms stagger, capped at 14 rows |
 | Pending row breath | `findListPending` | opacity 1 ↔ .45 mirror loop, 0.9s half-cycle |
 | Pending → verdict | `findListVerdict` | 0.22s crossfade in one grid cell |

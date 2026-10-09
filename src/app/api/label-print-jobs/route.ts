@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
-import { recordLabelPrintJob } from '@/lib/labels/print-jobs';
+import { countPrintedWarehouseLabels, recordLabelPrintJob } from '@/lib/labels/print-jobs';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
+
+/** GET /api/label-print-jobs — distinct location codes and totes printed so far (the Labels grid's counts). */
+export const GET = withAuth(
+  async (_request, ctx) => {
+    const counts = await countPrintedWarehouseLabels(ctx.organizationId as OrgId);
+    return NextResponse.json({ ok: true, counts });
+  },
+  { permission: 'print.label' },
+);
 
 /** POST /api/label-print-jobs */
 const JobSchema = z.object({

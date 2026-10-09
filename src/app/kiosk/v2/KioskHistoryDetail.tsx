@@ -2,7 +2,7 @@
 
 /** History DETAIL — one past record, read the way a point-of-sale reads one. */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import {
@@ -22,6 +22,7 @@ import {
   FileText,
   Loader2,
   MoreVertical,
+  ChevronUp,
   Printer,
 } from '@/components/Icons';
 import { repairStorefrontUrl } from '@/lib/repair/repair-storefront-url';
@@ -676,46 +677,6 @@ export function KioskHistoryDetail({
                   signedAt={device.pickupSignedAt}
                 />
               </div>
-
-              {/* With ONE device the action bar carries its label, so a second
-                  button here would be the same act twice. With two or more the
-                  bar cannot know which device you meant — so each card does. */}
-              {!editing && provenance.length > 1 ? (
-                <div className="flex flex-wrap gap-2 pb-3">
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    className={KIOSK_POS_CTA_SECONDARY}
-                    icon={<Barcode className="h-4 w-4" aria-hidden />}
-                    disabled={busy}
-                    onClick={() => {
-                      printRepairLabel(
-                        buildRepairLabelPayload({
-                          repairId: device.repairId,
-                          customerName: customer?.name ?? '',
-                          ticketNumber: device.rsNumber,
-                          intakeAt: device.receivedAt,
-                        }),
-                      );
-                      onPrintLabel(device.repairId);
-                    }}
-                    data-testid="kiosk-history-print-label"
-                  >
-                    {device.labelPrintedAt ? 'Reprint label' : 'Print label'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    className={KIOSK_POS_CTA_SECONDARY}
-                    icon={<FileText className="h-4 w-4" aria-hidden />}
-                    disabled={busy}
-                    onClick={() => onPrintPaperwork(device.repairId)}
-                    data-testid="kiosk-history-print-paperwork"
-                  >
-                    Paperwork
-                  </Button>
-                </div>
-              ) : null}
             </section>
           );
         })}
@@ -771,30 +732,6 @@ export function KioskHistoryDetail({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-56">
-                <DropdownMenuLabel>Print</DropdownMenuLabel>
-                {visit ? (
-                  <DropdownMenuItem
-                    onSelect={() => onPrintReceipt(true)}
-                    data-testid="kiosk-history-print-staff"
-                  >
-                    <Printer className="mr-2 h-4 w-4" aria-hidden />
-                    Staff copy of receipt
-                  </DropdownMenuItem>
-                ) : null}
-                {provenance.map((device) => (
-                  <DropdownMenuItem
-                    key={`paper-${device.repairId}`}
-                    onSelect={() => onPrintPaperwork(device.repairId)}
-                    data-testid="kiosk-history-more-paperwork"
-                  >
-                    <FileText className="mr-2 h-4 w-4" aria-hidden />
-                    {provenance.length > 1
-                      ? `Paperwork · ${device.rsNumber || `RS-${device.repairId}`}`
-                      : 'Repair paperwork'}
-                  </DropdownMenuItem>
-                ))}
-
-                <DropdownMenuSeparator />
                 <DropdownMenuLabel>Copy</DropdownMenuLabel>
                 {title ? (
                   <DropdownMenuItem
@@ -855,52 +792,77 @@ export function KioskHistoryDetail({
               </Button>
             ) : null}
 
-            {soleDevice ? (
-              <Button
-                variant="secondary"
-                size="lg"
-                className={cn(KIOSK_POS_CTA_SECONDARY, ACTION_KEY)}
-                icon={<Barcode className="h-4 w-4" aria-hidden />}
-                disabled={busy}
-                onClick={() => {
-                  printRepairLabel(
-                    buildRepairLabelPayload({
-                      repairId: soleDevice.repairId,
-                      customerName: customer?.name ?? '',
-                      ticketNumber: soleDevice.rsNumber,
-                      intakeAt: soleDevice.receivedAt,
-                    }),
-                  );
-                  onPrintLabel(soleDevice.repairId);
-                }}
-                data-testid="kiosk-history-print-label"
-              >
-                {soleDevice.labelPrintedAt ? 'Reprint label' : 'Print label'}
-              </Button>
-            ) : null}
-
-            {visit ? (
-              <Button
-                size="lg"
-                className={cn(KIOSK_POS_CTA, ACTION_KEY)}
-                icon={<Printer className="h-4 w-4" aria-hidden />}
-                disabled={busy}
-                onClick={() => onPrintReceipt(false)}
-                data-testid="kiosk-history-print-receipt"
-              >
-                Print receipt
-              </Button>
-            ) : soleDevice ? (
-              <Button
-                size="lg"
-                className={cn(KIOSK_POS_CTA, ACTION_KEY)}
-                icon={<FileText className="h-4 w-4" aria-hidden />}
-                disabled={busy}
-                onClick={() => onPrintPaperwork(soleDevice.repairId)}
-                data-testid="kiosk-history-print-paperwork"
-              >
-                Print paperwork
-              </Button>
+            {visit || provenance.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="lg"
+                    className={cn(KIOSK_POS_CTA, ACTION_KEY)}
+                    icon={<Printer className="h-4 w-4" aria-hidden />}
+                    iconRight={<ChevronUp className="h-4 w-4" aria-hidden />}
+                    disabled={busy}
+                    data-testid="kiosk-history-print"
+                  >
+                    Print
+                  </Button>
+                </DropdownMenuTrigger>
+                {/* Opens UPWARD off the bottom dock: every paper this record
+                    can print, in one list (operator 2026-10-09). */}
+                <DropdownMenuContent side="top" align="end" className="min-w-64">
+                  {visit ? (
+                    <>
+                      <DropdownMenuLabel>Receipt</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onSelect={() => onPrintReceipt(false)}
+                        data-testid="kiosk-history-print-receipt"
+                      >
+                        <Printer className="mr-2 h-4 w-4" aria-hidden />
+                        Receipt
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => onPrintReceipt(true)}
+                        data-testid="kiosk-history-print-staff"
+                      >
+                        <Printer className="mr-2 h-4 w-4" aria-hidden />
+                        Staff copy of receipt
+                      </DropdownMenuItem>
+                    </>
+                  ) : null}
+                  {provenance.map((device, index) => {
+                    const rs = device.rsNumber || `RS-${device.repairId}`;
+                    return (
+                      <Fragment key={device.repairId}>
+                        {visit || index > 0 ? <DropdownMenuSeparator /> : null}
+                        <DropdownMenuLabel>{provenance.length > 1 ? rs : 'Repair'}</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onSelect={() => onPrintPaperwork(device.repairId)}
+                          data-testid="kiosk-history-print-paperwork"
+                        >
+                          <FileText className="mr-2 h-4 w-4" aria-hidden />
+                          Repair paperwork
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            printRepairLabel(
+                              buildRepairLabelPayload({
+                                repairId: device.repairId,
+                                customerName: customer?.name ?? '',
+                                ticketNumber: device.rsNumber,
+                                intakeAt: device.receivedAt,
+                              }),
+                            );
+                            onPrintLabel(device.repairId);
+                          }}
+                          data-testid="kiosk-history-print-label"
+                        >
+                          <Barcode className="mr-2 h-4 w-4" aria-hidden />
+                          {device.labelPrintedAt ? 'Reprint label' : 'Label'}
+                        </DropdownMenuItem>
+                      </Fragment>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : null}
           </>
         )}

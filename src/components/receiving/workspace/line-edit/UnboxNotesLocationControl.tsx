@@ -5,7 +5,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { History, MapPin, Smartphone } from '@/components/Icons';
+import { History, MapPin, Plus, Smartphone } from '@/components/Icons';
 import { LocationCrudDialog } from '@/components/locations/LocationCrudDialog';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { StationLocationPill } from '@/components/station/location';
@@ -37,6 +37,7 @@ export function UnboxNotesLocationControl({
   currentLocationName,
   currentLocationBarcode,
   currentLocationRoom,
+  onOpenLocations,
 }: {
   lineId: number | null | undefined;
   /** The open LPN — placed itself on Unbox when there is no real line (unfound). */
@@ -44,6 +45,8 @@ export function UnboxNotesLocationControl({
   currentLocationName?: string | null;
   currentLocationBarcode?: string | null;
   currentLocationRoom?: string | null;
+  /** Open this station's Displays › Locations leaf (place · reprint · mint). Absent → no menu row. */
+  onOpenLocations?: () => void;
 }) {
   const pathname = usePathname();
   const onUnbox = receivingSurfaceBasePath(pathname) === UNBOX_SURFACE_ROUTE;
@@ -164,15 +167,26 @@ export function UnboxNotesLocationControl({
         disabled: !menuState.hasLast || busy,
         onClick: applyLast,
       },
+      ...(onOpenLocations
+        ? [
+            {
+              label: 'New location',
+              title: 'Browse, reprint, or mint a shelf on Displays',
+              icon: <Plus className="h-3.5 w-3.5 shrink-0" />,
+              separatorBefore: true,
+              onClick: onOpenLocations,
+            },
+          ]
+        : []),
       {
         label: 'Locations…',
         title: 'Browse, create, reprint, or edit locations',
         icon: <MapPin className="h-3.5 w-3.5 shrink-0" />,
-        separatorBefore: true,
+        separatorBefore: !onOpenLocations,
         onClick: () => setEditOpen(true),
       },
     ],
-    [applyLast, busy, menuState, onUnbox, phone.pending, sendToPhone],
+    [applyLast, busy, menuState, onOpenLocations, onUnbox, phone.pending, sendToPhone],
   );
 
   return (

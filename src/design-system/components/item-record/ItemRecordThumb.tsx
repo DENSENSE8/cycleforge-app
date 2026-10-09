@@ -12,6 +12,7 @@ export function ItemRecordThumb({
   className,
   plainEmpty = false,
   iconClassName = ITEM_RECORD_FACE.packageIcon,
+  fit = 'contain',
 }: {
   imageUrl?: string | null;
   className?: string;
@@ -19,6 +20,11 @@ export function ItemRecordThumb({
   plainEmpty?: boolean;
   /** Glyph measure for the no-photo state. */
   iconClassName?: string;
+  /**
+   * `contain` keeps the photo's full frame; `cover` fills the slot and crops
+   * around the centre (a portrait shot in a row shows its middle).
+   */
+  fit?: 'contain' | 'cover';
 }) {
   return (
     <span
@@ -44,7 +50,7 @@ export function ItemRecordThumb({
         <img
           src={imageUrl}
           alt=""
-          className="absolute inset-0 size-full object-contain"
+          className={cn('absolute inset-0 size-full', fit === 'cover' ? 'object-cover object-center' : 'object-contain')}
           loading="lazy"
           decoding="async"
         />

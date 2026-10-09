@@ -7,7 +7,6 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { PICKUP_FULFILLMENT_CHANNEL, evaluateReleaseGates } from './release-gates';
 import { exceptionHeldSql, sqlOrderInExceptionQueue } from './exception-membership';
-import { buyerNoteUnacknowledgedSql } from './buyer-note-interlock';
 import { G2_DOCUMENT_COUNT_SQL, G2_SKU_PAPERWORK_NOT_REQUIRED_SQL } from './g2-paperwork-sql';
 import {
   ORDER_EXCEPTION_CATEGORIES,
@@ -153,7 +152,6 @@ function mapRow(row: RawExceptionRow): OrderExceptionRow {
  */
 export const ORDER_EXCEPTION_CATEGORY_SQL = `CASE
       WHEN o.is_out_of_stock THEN 'Out of Stock'
-      WHEN ${buyerNoteUnacknowledgedSql('o')} THEN 'Buyer Request'
       WHEN COALESCE(stn.has_exception, false) THEN 'Shipping Issue'
       WHEN ${exceptionHeldSql('o')} THEN 'SKU Mapping'
       ELSE 'Other'

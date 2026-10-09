@@ -16,6 +16,7 @@ import type {
   CounterServiceLine,
   CounterTransactionInput,
 } from './counter-transaction-types';
+import { encodeShipToAddress } from '@/lib/customers/ship-to-address';
 
 const ORG = '00000000-0000-0000-0000-000000000002';
 const KEY = 'aaaaaaaa-1111-2222-3333-444444444444';
@@ -67,6 +68,7 @@ function fakes(opts: FakeOpts = {}) {
     staged: [] as Array<{ count: number; idempotencyKey: string; lines: CounterRetailLine[] }>,
     priorOrderChecks: [] as Array<{ orderNumber: string; phone: string }>,
     enqueued: [] as Array<Record<string, unknown>>,
+    shipTos: [] as Array<{ customerId: number; shipTo: Record<string, string> }>,
   };
 
   const deps: SubmitCounterTransactionDeps = {
@@ -77,6 +79,9 @@ function fakes(opts: FakeOpts = {}) {
     async createCustomer(_orgId, args) {
       calls.createdCustomers.push({ name: args.name, phone: args.phone });
       return { id: 500, storedPhone: args.phone, storedName: args.name };
+    },
+    async patchCustomerShipTo(_orgId, customerId, shipTo) {
+      calls.shipTos.push({ customerId, shipTo: { ...shipTo } });
     },
     async findHeaderByClientEvent() {
       if (!opts.existingHeader) return null;
@@ -894,4 +899,53 @@ test('interpretStageOrderResponse reads the provider order id and total on succe
     data: { order: { id: 'sq-order-9', total_money: { amount: 13500 } } },
   });
   assert.deepEqual(outcome, { staged: true, providerOrderId: 'sq-order-9', totalCents: 13500 });
+});
+
+// ── Walk-in repair, end to end: the ship-to and the ticket ──────────────────
+
+test('a walk-in repair writes every ship-to field and opens a ticket that can reach the customer', async () => {
+  const { deps, calls } = fakes();
+  const address = encodeShipToAddress({
+    address1: ' 12 Main St ',
+    address2: 'Apt 4',
+    city: 'Springfield',
+    state: 'IL',
+    postalCode: '62701',
+  });
+
+  await submitCounterTransaction(
+    input({
+      customer: { phone: '555-123-4567', name: 'Jane Doe', email: 'jane@example.com', address },
+      services: [service({ repairReasons: ['No sound'], repairNotes: 'Dropped', notes: 'Rush' })],
+      ticketWork: { mode: 'create' },
+    }),
+    ORG,
+    deps,
+  );
+
+  assert.deepEqual(calls.shipTos, [
+    {
+      customerId: 500,
+      shipTo: { address1: '12 Main St', address2: 'Apt 4', city: 'Springfield', state: 'IL', postalCode: '62701' },
+    },
+  ]);
+  const payload = calls.enqueued[0]!.payload as { subject: string; body: string };
+  assert.match(payload.subject, /Jane Doe · 555-123-4567/);
+  for (const fact of [
+    'Phone: 555-123-4567',
+    'Email: jane@example.com',
+    'Issue: No sound',
+    'Visit notes: Dropped',
+    'Device notes: Rush',
+    'Serial: SN1',
+    'Ship to: 12 Main St, Apt 4, Springfield IL 62701',
+  ]) {
+    assert.ok(payload.body.includes(fact), `ticket body is missing "${fact}"`);
+  }
+});
+
+test('a pickup leaves the customer\'s ship-to alone', async () => {
+  const { deps, calls } = fakes({ existingCustomer: { id: 7, storedPhone: '5551234567', storedName: 'Jane' } });
+  await submitCounterTransaction(input({ services: [service()] }), ORG, deps);
+  assert.deepEqual(calls.shipTos, []);
 });

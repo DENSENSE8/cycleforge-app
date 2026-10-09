@@ -12,16 +12,13 @@ import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
 import { StatusChips } from './StatusChip';
-import { Edit, ExternalLink, Printer } from '@/components/Icons';
+import { Edit, ExternalLink } from '@/components/Icons';
 import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFloorDelete } from '@/components/right-rail/InspectorFloorDelete';
 import { Button, Panel, IconButton } from '@/design-system/primitives';
 import { LocationCrudDialog } from '@/components/locations/LocationCrudDialog';
-import {
-  isSpecialBinBarcode,
-  printSpecialBinLabelFromRow,
-} from '@/lib/print/printSpecialBinLabel';
-import { toast } from '@/lib/toast';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
+import { cn } from '@/utils/_cn';
 
 interface BinContentRow {
   id: number;
@@ -107,21 +104,6 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
             <>
               {row.barcode ? (
                 <span className="flex h-full items-center gap-1">
-                  {isSpecialBinBarcode(row.barcode) ? (
-                    <HoverTooltip label="Reprint 2×1 special-bin label" asChild>
-                      <IconButton
-                        size="xs"
-                        tone="neutral"
-                        ariaLabel="Reprint bin label"
-                        icon={<Printer className="h-4 w-4" />}
-                        onClick={() => {
-                          if (printSpecialBinLabelFromRow(row)) {
-                            toast.success('Printing 2×1 bin label');
-                          }
-                        }}
-                      />
-                    </HoverTooltip>
-                  ) : null}
                   <HoverTooltip label="Open full bin page" asChild>
                     <IconButton
                       size="xs"
@@ -204,7 +186,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
                         >
                           {c.sku}
                         </Link>
-                        <span className="font-mono text-sm font-semibold tabular-nums text-text-default">
+                        <span className={cn('font-mono text-sm font-semibold tabular-nums', stockQtyToneClass(c.qty))}>
                           {c.qty}
                         </span>
                       </div>

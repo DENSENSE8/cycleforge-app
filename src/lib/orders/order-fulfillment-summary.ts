@@ -4,6 +4,7 @@ import { CARRIER_STATUS, OUTBOUND_INTERNAL_STATUS, carrierStatusLabel } from '@/
 import type { ShippedOrder } from '@/types/orders';
 import { isBuyerCancelledStatus } from './buyer-cancelled';
 import { orderFulfillmentBadge, type OrderFulfillmentLine } from './order-fulfillment-badge';
+import { ordersUrgentLabel } from './orders-compound-view';
 
 export type FulfillmentSummaryLine = OrderFulfillmentLine &
   Pick<
@@ -14,6 +15,9 @@ export type FulfillmentSummaryLine = OrderFulfillmentLine &
     | 'latest_status_description'
     | 'latest_status_label'
     | 'status'
+    | 'is_urgent'
+    | 'service_level'
+    | 'label_service_code'
   >;
 
 /** The order's current fulfillment status. Painted in ONE pinned tone by the record, so it carries no tone of its own. */
@@ -84,4 +88,23 @@ export function fulfillmentCurrentStatus(lines: readonly FulfillmentSummaryLine[
   }
 
   return { label: orderFulfillmentBadge(lines).label };
+}
+
+/** One status the record header paints, top right: where the order is, and any flag riding on it. */
+export interface OrderStatusTag extends FulfillmentCurrentStatus {
+  id: 'current' | 'urgent';
+}
+
+/**
+ * Every status the order wears right now, in reading order (operator
+ * 2026-10-08: the current status — Buyer cancel, Urgent… — top right of the
+ * record, more than one at once): where it is ({@link fulfillmentCurrentStatus}),
+ * then Urgent with its word ("Next day", "Urgent") while the order has not
+ * reached the carrier — after the handoff, speed is the carrier's.
+ */
+export function orderStatusTags(lines: readonly FulfillmentSummaryLine[]): OrderStatusTag[] {
+  const tags: OrderStatusTag[] = [{ id: 'current', ...fulfillmentCurrentStatus(lines) }];
+  const urgent = hasExternalFulfillmentHandoff(lines) ? null : lines.map(ordersUrgentLabel).find((label) => label != null);
+  if (urgent) tags.push({ id: 'urgent', label: urgent });
+  return tags;
 }

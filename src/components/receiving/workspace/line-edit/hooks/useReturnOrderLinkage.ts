@@ -1,6 +1,6 @@
 'use client';
 
-/** useReturnOrderLinkage — resolve a scanned/returned serial to its OUTBOUND order via the closed-loop linkage SoT (`/api/order-linkage`,… */
+/** useReturnOrderLinkage — resolve a scanned/returned serial to its OUTBOUND order via the closed-loop linkage SoT (`/api/order-linkage`), debounced so a live-typed serial resolves once it settles. */
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -18,7 +18,7 @@ function useDebounced<T>(value: T, ms = 400): T {
 
 export function useReturnOrderLinkage(
   serial: string | null | undefined,
-): { orderId: string } | null {
+): { orderPk: number; orderId: string | null } | null {
   const trimmed = (serial ?? '').trim();
   const debounced = useDebounced(trimmed);
   // Serials are ≥ several chars; the short guard avoids a resolve request on a
@@ -39,6 +39,7 @@ export function useReturnOrderLinkage(
     },
   });
 
-  const orderId = (data?.order?.orderId ?? '').trim();
-  return orderId ? { orderId } : null;
+  const order = enabled ? data?.order : null;
+  if (!order) return null;
+  return { orderPk: order.id, orderId: (order.orderId ?? '').trim() || null };
 }

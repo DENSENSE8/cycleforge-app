@@ -36,7 +36,7 @@ Supersedes the view list in `HANDOFF-stock-sidebar-contract-2026-10-08.md` (four
 
 ## Print label (4×6)
 
-`StockLabelPopover` / `StockLabelSteps`: Image → Notes → Preview & print under `MobileStepProgress`.
+`StockLabelDialog` (the Print label verb's centered dialog) / `StockLabelSteps`: Image → Notes → Preview & print under `MobileStepProgress`.
 Label (`src/lib/print/stockLabel.ts`), top-aligned: the primary photo at full width, the title (0.3in), the
 SKU (small, 0.14in), then **Notes** and its value. No barcode, QR or location. Print goes to the print
 station (`stock_label` job carrying `labels[]`, ≤ 100 per job, `usePrintStations.sendStockLabels`).
@@ -64,3 +64,22 @@ three single-label steps. The lane then switched again, before the larger title/
    SKU, then Notes. Print → station toast. Browser print → 4×6 dialog. Reopen: notes are pre-filled.
 2. Select cards → Print label → Print all. One page per card, no notes.
 3. Trash with mixed selected cards: the confirm names the breakdown and the cards it skips.
+
+## Follow-up (same day)
+
+- Corner tab: `h-24` with `text-5xl` count. Its three free corners use the card radius (`rounded-mode
+  rounded-tr-none`). The count is red at ≤ 0 and yellow at ≤ 10 (`LOW_STOCK_AT`), no longer by `min_qty`.
+- TMP Title / Description (`SkuExceptionProductSection`): a footer bottom-right under Description holds
+  the autosave feedback (Unsaved changes · Saving… · Saved · error · title-length warning) and a **Save** CTA.
+  A landed save also runs `router.refresh()`, so the record header and item card show the new title (before,
+  the save only refetched the SKU-exception query and the header kept the old title).
+- Ported from `station-pack`, the location-label printer simplification (its working-tree diff against
+  `a459b8f58`, merged with `git merge-file`):
+  - `LabelCatalogDesk` / `label-catalog`, `printFlatLocationLabel` and the simpler single/bulk run in
+    `LocationLabelRun` / `expand-print-run`.
+  - Removed: the `rack` print grain, `expand-bay-levels`, the special-bin / returns-bin printers and their
+    page, and `rack-printer-api`.
+  - `GET /api/label-print-jobs` counts printed labels.
+  - Conflicts were resolved by keeping `stock_label` alongside station-pack's grain list.
+  - Not ported (they belong to the pack station): `src/features/pack-station`, `docs/stations`, the
+    pack-box migration, the `pack_contents` photo type and `PACK_STATION_STEPS`.

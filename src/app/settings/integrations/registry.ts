@@ -39,7 +39,7 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
   {
     key: 'amazon',
     label: 'Amazon',
-    description: 'Selling Partner API — import sales orders (SKU / FBA-item scoped).',
+    description: 'Selling Partner API — import sales orders (SKU / FBA-item scoped) and return reports (seller-fulfilled + FBA) with their reasons.',
     category: 'Sales channels',
     connect: 'amazon',
     oauthStartPath: '/api/amazon/oauth/start',
@@ -51,7 +51,7 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
   {
     key: 'ebay',
     label: 'eBay',
-    description: 'Selling: storefront orders + tracking. Purchasing: buyer-account orders flow into Incoming.',
+    description: 'Selling: storefront orders + tracking, buyer returns with their reasons. Purchasing: buyer-account orders flow into Incoming.',
     category: 'Sales channels',
     connect: 'ebay',
     oauthStartPath: '/api/ebay/connect',

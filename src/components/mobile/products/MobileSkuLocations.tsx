@@ -13,6 +13,8 @@ import { commitStockRequest, stockSetRequest } from '@/lib/inventory/stock-bin-v
 import { skuPlacesQueryKey, skuPlaceWriteTarget, type SkuPlaceRow } from '@/lib/inventory/sku-stock-places';
 import { skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
 import { toast } from '@/lib/toast';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
+import { cn } from '@/utils/_cn';
 
 function MobilePlaceCount({
   sku,
@@ -50,7 +52,7 @@ function MobilePlaceCount({
           <span className="block truncate font-mono text-sm font-semibold text-mode-ink">{face}</span>
           {row.location.room ? <span className="block truncate text-[11px] text-mode-muted">{row.location.room}</span> : null}
         </span>
-        <strong className="font-mono text-base tabular-nums text-mode-ink">{row.qty}</strong>
+        <strong className={cn('font-mono text-base tabular-nums', stockQtyToneClass(row.qty, { inkClass: 'text-mode-ink' }))}>{row.qty}</strong>
       </div>
       <div className="flex items-center gap-2">
         <StockQtySlider value={count} onChange={setCount} anchor={row.qty} ariaLabel={`Count at ${face}`} disabled={busy} />

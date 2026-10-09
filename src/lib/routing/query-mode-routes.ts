@@ -9,11 +9,11 @@ import {
 } from '@/components/sourcing/sourcing-shared';
 import { parseOperationsModeWire } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { parseHomeModeWire } from '@/features/home/home-modes';
+import { parseLabelCatalogKind } from '@/features/location-labels/label-catalog';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
 import { LOCATION_STOCK_SORTS } from '@/lib/inventory/location-stock-row';
 import { parseQcLabelViewWire } from '@/lib/labels/qc-label-views';
-import { parseLabelCopiesWire } from '@/lib/print/labelCopies';
 import {
   RECEIVING_HISTORY_URL_PARAMS,
   parseReceivingHistorySearchFieldWire,
@@ -396,6 +396,8 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
   owns: {
     /** All is the default and rides the bare URL. */
     tab: paramCanonical(parseLocationsTabWire),
+    /** Labels tab: which sticker's printer is open; absent is the label grid. */
+    kind: paramCanonical(parseLabelCatalogKind),
     room: paramText,
     excludeRoom: paramText,
     code: paramText,
@@ -496,16 +498,6 @@ const INVENTORY_QC_LABELS_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-const SPECIAL_BIN_PRINT_ROUTE_PARAMS = defineRouteParams({
-  route: '/inventory/locations/print/special-bin',
-  owns: {
-    barcode: paramText,
-    /** Bulk copies — silent USB sends TSPL PRINT N in one job. Default 1 omitted. */
-    count: paramRoundTrip(parseLabelCopiesWire),
-  },
-  carries: WORKBENCH_CARRIES,
-});
-
 const INVENTORY_THROUGHPUT_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/throughput',
   owns: {
@@ -559,7 +551,6 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   PICK_ROUTE_PARAMS,
   WALK_IN_ROUTE_PARAMS,
   INVENTORY_ROUTE_PARAMS,
-  SPECIAL_BIN_PRINT_ROUTE_PARAMS,
   INVENTORY_LOCATIONS_ROUTE_PARAMS,
   INVENTORY_STOCK_ROUTE_PARAMS,
   INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS,

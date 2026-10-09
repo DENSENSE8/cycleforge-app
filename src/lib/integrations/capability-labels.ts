@@ -5,6 +5,7 @@ import type { Capability } from '@/lib/integrations/connectors/types';
 /** Lowercase noun for mid-sentence interpolation ("Save to {noun}"). */
 const CAPABILITY_NOUN: Record<Capability, string> = {
   orders: 'sales channel',
+  returns: 'returns source',
   inventory: 'inventory',
   tracking: 'carrier tracking',
   labels: 'label engine',
@@ -19,6 +20,7 @@ const CAPABILITY_NOUN: Record<Capability, string> = {
 /** Title-case name for headings, empty states, and connect CTAs. */
 const CAPABILITY_TITLE: Record<Capability, string> = {
   orders: 'Sales channel',
+  returns: 'Returns source',
   inventory: 'Inventory',
   tracking: 'Carrier tracking',
   labels: 'Label engine',

@@ -23,7 +23,7 @@
  * {@link RecordCardMobileModel} (Law 1).
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ArrowRight, ChevronDown, Package } from '@/components/Icons';
 import { LocationBadge } from '@/design-system/components/LocationBadge';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
@@ -45,32 +45,75 @@ export interface RecordCardMobileProps {
   location?: { path: string | null; onPress?: () => void };
   onOpen: () => void;
   testIdPrefix: string;
+  /**
+   * `card` (default): a rounded card with its own hairline ring, spaced in a stack.
+   * `row`: a dense list row — square, no ring; the list paints one horizontal
+   * hairline between rows and no side lines (the pick list, owner 2026-10-08).
+   */
+  density?: 'card' | 'row';
 }
 
 const PHOTO_BOX = { lg: RECORD_MOBILE_PHOTO_SIZE_CLASS, md: 'size-16', xl: 'size-28' } as const;
+/** `fit="natural"`: the box's width at the image's own height. `lg` has no width-only face, so it stays the square. */
+const NATURAL_PHOTO_BOX = { lg: cn(RECORD_MOBILE_PHOTO_SIZE_CLASS, 'object-contain'), md: 'h-auto w-16', xl: 'h-auto w-28' } as const;
 
 /**
- * The phone's product photo: square, no corner, the image filling the square
+ * The phone's product photo: no corner, the image filling the square
  * (`object-cover` — a letterboxed well reads as padding); no photo → the
  * package placeholder. `lg`: the list card's lines, exactly their two body
  * rows tall. `md`: a pick list where the photo is how the item is told apart
  * (Pair to SKU's results). `xl`: the order's pick screen, big enough to find
- * the item on the shelf.
+ * the item on the shelf. `fit="natural"` keeps the whole image visible at
+ * the box's width and its own height — no crop, no letterbox well
+ * (the pick screen, owner 2026-10-08). `onOpen` makes the photo its own
+ * press — the full-screen viewer (pick screen, owner 2026-10-08).
  */
-export function RecordSquarePhoto({ url, size, alt = '' }: { url: string | null; size: keyof typeof PHOTO_BOX; alt?: string }) {
+export function RecordSquarePhoto({
+  url,
+  size,
+  alt = '',
+  fit = 'cover',
+  onOpen,
+}: {
+  url: string | null;
+  size: keyof typeof PHOTO_BOX;
+  alt?: string;
+  fit?: 'cover' | 'natural';
+  /** Tap the photo to open it full screen. Ignored without a photo. */
+  onOpen?: () => void;
+}) {
   const box = PHOTO_BOX[size];
-  return url ? (
+  if (!url) {
+    return (
+      <span aria-hidden className={cn('flex shrink-0 items-center justify-center rounded-none bg-surface-sunken text-text-faint', box)}>
+        <Package className={size === 'lg' ? 'size-4' : 'size-6'} />
+      </span>
+    );
+  }
+  const image = (
     <img
       src={url}
       alt={alt}
       loading="lazy"
       decoding="async"
-      className={cn('block shrink-0 rounded-none bg-surface-sunken object-cover', box)}
+      className={cn(
+        'block shrink-0 rounded-none',
+        fit === 'natural' ? NATURAL_PHOTO_BOX[size] : cn('bg-surface-sunken object-cover', box),
+      )}
     />
+  );
+  return onOpen ? (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={alt ? `View photo: ${alt}` : 'View photo'}
+      data-testid="record-photo-open"
+      className={cn('ds-raw-button block shrink-0 cursor-zoom-in rounded-none', focusRing('control'))}
+    >
+      {image}
+    </button>
   ) : (
-    <span aria-hidden className={cn('flex shrink-0 items-center justify-center rounded-none bg-surface-sunken text-text-faint', box)}>
-      <Package className={size === 'lg' ? 'size-4' : 'size-6'} />
-    </span>
+    image
   );
 }
 
@@ -81,15 +124,21 @@ function CardLine({
   channel,
   next,
   testId,
+  compact = false,
+  footer,
 }: {
   line: RecordCardLine;
   factColumns: readonly RecordFactColumn[];
   channel: RecordCardMobileModel['channel'];
   next?: RecordCardMobileModel['next'];
   testId?: (part: string) => string;
+  /** The boxy row: tighter photo gap. */
+  compact?: boolean;
+  /** Under the facts — the boxy row's status · due line. */
+  footer?: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-3">
+    <div className={cn('flex min-w-0 items-start', compact ? 'gap-2' : 'gap-3')}>
       <RecordSquarePhoto url={line.photoUrl} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col">
         <p data-testid={testId?.('title')} className="break-words text-role-body font-medium text-text-default">
@@ -121,12 +170,13 @@ function CardLine({
           ) : null}
         </div>
         {line.alertNote ? <p className="text-role-caption font-medium text-text-danger">{line.alertNote}</p> : null}
+        {footer}
       </div>
     </div>
   );
 }
 
-export function RecordCardMobile({ model, factColumns, location, onOpen, testIdPrefix }: RecordCardMobileProps) {
+export function RecordCardMobile({ model, factColumns, location, onOpen, testIdPrefix, density = 'card' }: RecordCardMobileProps) {
   const [expanded, setExpanded] = useState(false);
   const lead = model.lines[0];
   if (!lead) return null;
@@ -134,12 +184,42 @@ export function RecordCardMobile({ model, factColumns, location, onOpen, testIdP
   const more = model.lines.slice(1);
   const { deadline } = model;
 
+  // `row` (the pick list, owner 2026-10-08): boxy and tight so every fact reads at a glance — the location
+  // is a full-width square band that wraps (never scrolls off the row), the status and due date ride
+  // one line under the facts. `card` keeps its top row.
+  const boxy = density === 'row';
+  const deadlineFace = (
+    <span
+      data-testid={id('deadline')}
+      title={deadline.tip ?? undefined}
+      className={cn('ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-role-caption tabular-nums', RECORD_DEADLINE_TONE_CLASS[deadline.tone])}
+    >
+      <span aria-hidden className={cn('size-2 rounded-full', RECORD_DEADLINE_DOT_CLASS[deadline.tone])} />
+      {deadline.face}
+    </span>
+  );
+  const codeFace = model.code ? (
+    // `state-badge` styles its corner outside the utility layer, so the boxy row forces the square.
+    <LifecycleCode state={model.code} srLabel={model.code.label} className={cn('shrink-0 whitespace-nowrap text-role-eyebrow', boxy && '!rounded-none')}>
+      {model.code.code}
+    </LifecycleCode>
+  ) : null;
+  const refFace = model.ref ? (
+    <span data-testid={id('ref')} className="shrink-0 font-mono text-role-caption font-semibold text-text-muted">
+      {model.ref}
+    </span>
+  ) : null;
+
   return (
     <article
       data-testid={testIdPrefix}
       data-record-key={model.leadId}
       aria-label={model.aria.card}
-      className="relative isolate flex w-full min-w-0 flex-col gap-2 overflow-hidden rounded-mode bg-surface-card p-3 ring-1 ring-inset ring-border-hairline"
+      className={cn(
+        'relative isolate flex w-full min-w-0 flex-col overflow-hidden bg-surface-card',
+        boxy ? 'gap-0 p-0' : 'gap-2 p-3',
+        density === 'card' && 'rounded-mode ring-1 ring-inset ring-border-hairline',
+      )}
     >
       {/* The open target — the whole card. */}
       <button
@@ -147,39 +227,63 @@ export function RecordCardMobile({ model, factColumns, location, onOpen, testIdP
         aria-label={model.aria.open}
         data-testid={id('open')}
         onClick={onOpen}
-        className={cn('absolute inset-0 z-0 cursor-pointer rounded-mode', focusRing('control'))}
+        className={cn('absolute inset-0 z-0 cursor-pointer', density === 'card' && 'rounded-mode', focusRing('control'))}
       />
 
-      {/* Top row — location · code · ref …… due date. */}
-      <div data-testid={id('row')} className="pointer-events-none relative z-10 flex min-w-0 items-center gap-2">
-        {location ? <LocationBadge text={location.path} onPress={location.onPress} className="pointer-events-auto shrink" /> : null}
-        {model.code ? (
-          <LifecycleCode state={model.code} srLabel={model.code.label} className="shrink-0 text-role-eyebrow">
-            {model.code.code}
-          </LifecycleCode>
-        ) : null}
-        {model.ref ? (
-          <span data-testid={id('ref')} className="shrink-0 font-mono text-role-caption font-semibold text-text-muted">
-            {model.ref}
-          </span>
-        ) : null}
-        <span
-          data-testid={id('deadline')}
-          title={deadline.tip ?? undefined}
-          className={cn('ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-role-caption tabular-nums', RECORD_DEADLINE_TONE_CLASS[deadline.tone])}
-        >
-          <span aria-hidden className={cn('size-2 rounded-full', RECORD_DEADLINE_DOT_CLASS[deadline.tone])} />
-          {deadline.face}
-        </span>
-      </div>
+      {boxy ? (
+        <>
+          {location ? (
+            <div data-testid={id('row')} className="pointer-events-none relative z-10">
+              <LocationBadge text={location.path} onPress={location.onPress} fit="band" className="pointer-events-auto" />
+            </div>
+          ) : null}
+          <div className="pointer-events-none relative z-10 px-2 py-1.5">
+            <CardLine
+              line={lead}
+              factColumns={factColumns}
+              channel={model.channel}
+              next={model.next}
+              testId={id}
+              compact
+              footer={
+                <div className="flex min-w-0 items-center gap-1.5 pt-0.5">
+                  {codeFace}
+                  {refFace}
+                  {deadlineFace}
+                </div>
+              }
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Top row — location · code · ref …… due date. The location strip scrolls left ↔ right so the
+              whole path and the status chip stay readable; the due date stays pinned right. */}
+          <div data-testid={id('row')} className="pointer-events-none relative z-10 flex min-w-0 items-center gap-2">
+            {/* The strip takes pointer events only to scroll; a tap on it (not on the location door) still
+                opens the card — keyboard users open via the card's own button. */}
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+            <div
+              data-testid={id('location-strip')}
+              onClick={onOpen}
+              className="pointer-events-auto flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {location ? <LocationBadge text={location.path} onPress={location.onPress} fit="full" className="shrink-0" /> : null}
+              {codeFace}
+              {refFace}
+            </div>
+            {deadlineFace}
+          </div>
 
-      {/* Body row — the lead line. */}
-      <div className="pointer-events-none relative z-10">
-        <CardLine line={lead} factColumns={factColumns} channel={model.channel} next={model.next} testId={id} />
-      </div>
+          {/* Body row — the lead line. */}
+          <div className="pointer-events-none relative z-10">
+            <CardLine line={lead} factColumns={factColumns} channel={model.channel} next={model.next} testId={id} />
+          </div>
+        </>
+      )}
 
       {more.length > 0 ? (
-        <div className="pointer-events-none relative z-10 flex min-w-0 flex-col gap-2">
+        <div className={cn('pointer-events-none relative z-10 flex min-w-0 flex-col gap-2', boxy && 'px-2 pb-1.5')}>
           {expanded ? (
             <ul aria-label="More items" className="flex flex-col gap-2">
               {more.map((line) => (

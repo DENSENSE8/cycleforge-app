@@ -403,8 +403,9 @@ export function routeScan(raw: string): ScanRoute | null {
   // 5. Bin / rack:
   const dashed = DASHED_LOCATION_RE.exec(value);
   if (dashed) {
-    const flat = dashed.slice(1, 6).filter(Boolean).join('').toUpperCase();
-    return routeLocationCode(value, flat);
+    // A sticker without a position (`C-02-09-4`) is the rack-level address `…00`.
+    const [, zone, aisle, bay, level, position] = dashed;
+    return routeLocationCode(value, `${zone}${aisle}${bay}${level}${position ?? '00'}`.toUpperCase());
   }
 
   // 5b. FLAT location code — `A0101101`, a zone letter then 7–8 digits.
@@ -472,8 +473,13 @@ export function unwrapScannedSerial(raw: string): string {
   return scannedUnitKey(raw) ?? String(raw ?? '').trim();
 }
 
-/** For a scan of a **printed location label**, return the flat location code (`A0101101`) — the exact string `locations.barcode` stores. */
-function scannedLocationCode(raw: string): string | null {
+/**
+ * For a scan of a **printed location label** (flat `A0101101`, dashed
+ * `A-01-01-1`, GS1, URL, rack `RK12-3`), the flat code `locations.barcode`
+ * stores; null for anything else — a loose typed spelling (`c02094`) or an item
+ * barcode is not a label, so it must never mint a location.
+ */
+export function printedLocationCode(raw: string): string | null {
   const route = routeScan(raw);
   if (!route || route.type !== 'bin') return null;
   const redirect = route.redirect || '';
@@ -489,7 +495,52 @@ function scannedLocationCode(raw: string): string | null {
 
 /** Unwrap a value typed or scanned into a **bin / location** field. */
 export function unwrapScannedLocation(raw: string): string {
-  return scannedLocationCode(raw) ?? String(raw ?? '').trim();
+  const decoded = printedLocationCode(raw);
+  if (decoded) return decoded;
+  // A hand-typed address in a loose spelling (`c02094`, `C 2 9 4`, `C02-09-4`)
+  // that reads ONE way is that address; an ambiguous one stays as typed for
+  // the server's lookup to settle against the locations that exist.
+  const candidates = locationCodeCandidates(raw);
+  return candidates.length === 1 ? candidates[0]! : String(raw ?? '').trim();
+}
+
+/** A zone letter, then digits with any separators (space . _ / -) between them. */
+const LOOSE_LOCATION_RE = /^([A-Z])[\s._/-]*(\d(?:[\d\s._/-]*\d)?)$/i;
+
+/**
+ * Every flat address (`C0209400`) a hand-typed location could mean, most
+ * likely first. Separators and case are free and segments may be unpadded
+ * (`C-2-9-4`); a dashless run reads by length — 5 digits `AABBL`, 6 `AABBLL`
+ * then `AABBLP`, 7 `AABBLPP`, 8 `AABBLLPP` — and a missing position is `00`
+ * (the rack-level sticker). Empty when the text is not an address.
+ */
+export function locationCodeCandidates(raw: string): string[] {
+  const m = LOOSE_LOCATION_RE.exec(String(raw ?? '').trim());
+  // Another label class (a tote `H-12345`, a carton `R-…`) is never an address.
+  if (!m || routeScan(raw)?.type !== 'bin') return [];
+  const zone = m[1]!.toUpperCase();
+  const out: string[] = [];
+  const add = (aisle: string, bay: string, level: string, position = '0') => {
+    const segs = parseLocationCodeFlat(`${zone}${pad2(aisle)}${pad2(bay)}${noPad(level)}${pad2(position)}`);
+    if (!segs) return;
+    const flat = locationCodeFlat(segs);
+    if (!out.includes(flat)) out.push(flat);
+  };
+  let parts = m[2]!.split(/[\s._/-]+/);
+  // `C0209-4`: an `AABB` block, then the level (and position).
+  if (parts.length > 1 && parts[0]!.length === 4) parts = [parts[0]!.slice(0, 2), parts[0]!.slice(2), ...parts.slice(1)];
+  if (parts.length === 3 || parts.length === 4) {
+    if (parts.every((part) => part.length <= 2)) add(parts[0]!, parts[1]!, parts[2]!, parts[3]);
+    return out;
+  }
+  const d = parts.join('');
+  if (d.length === 5) add(d.slice(0, 2), d.slice(2, 4), d.slice(4));
+  else if (d.length === 6) {
+    add(d.slice(0, 2), d.slice(2, 4), d.slice(4));
+    add(d.slice(0, 2), d.slice(2, 4), d.slice(4, 5), d.slice(5));
+  } else if (d.length === 7) add(d.slice(0, 2), d.slice(2, 4), d.slice(4, 5), d.slice(5));
+  else if (d.length === 8) add(d.slice(0, 2), d.slice(2, 4), d.slice(4, 6), d.slice(6));
+  return out;
 }
 
 /**

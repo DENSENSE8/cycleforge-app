@@ -8,6 +8,8 @@ import { Button } from '@/design-system/primitives/Button';
 import { Loader2 } from '@/components/Icons';
 import type { SkuStockedAt } from '@/lib/neon/pair-candidates-queries';
 import { SkuLinkedPhotoStrip } from '@/components/mobile/stock/SkuLinkedPhotoStrip';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
+import { cn } from '@/utils/_cn';
 
 export function PairDetailSheet({
   sku,
@@ -70,7 +72,7 @@ export function PairDetailSheet({
                       <span className="min-w-0 truncate font-mono text-role-caption text-text-default">
                         {row.barcode || row.locationName}
                       </span>
-                      <span className="shrink-0 font-mono text-role-caption tabular-nums text-text-soft">
+                      <span className={cn('shrink-0 font-mono text-role-caption font-semibold tabular-nums', stockQtyToneClass(row.qty))}>
                         {row.qty}
                       </span>
                     </li>

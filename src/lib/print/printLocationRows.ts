@@ -6,8 +6,8 @@
  * gets a rack-family face — the rack placard, a shelf or a position sticker,
  * words only and never a room. A row whose barcode is a room-coded rack
  * address (`Z AA BB L PP`, dashed or flat) gets the structured location face;
- * any other barcode (`RETURNS-TEST`, `QA-SHELF-A01`) gets the flat special-bin
- * face. A location label is identification only — it never carries urgency
+ * any other barcode (`QA-SHELF-A01`) gets the flat location face. A location
+ * label is identification only — it never carries urgency
  * (operator 2026-10-05). Every face goes out as one run on the same
  * {@link printLabelFacesJob} channel every label uses (silent USB when
  * paired, else one iframe print dialog).
@@ -24,10 +24,7 @@ import type { LabelFaceModel } from '@/lib/print/labelFace';
 import { printLabelFacesJob } from '@/lib/print/printLabelFacesJob';
 import { locationLabelToFace } from '@/lib/print/printLocationLabel';
 import { encodePrintMatrix } from '@/lib/qr/platform-link';
-import {
-  specialBinFaceForBarcode,
-  specialBinPayloadToFace,
-} from '@/lib/print/printSpecialBinLabel';
+import { flatLocationFace } from '@/lib/print/printFlatLocationLabel';
 
 export interface PrintableLocationRow {
   id: number;
@@ -48,7 +45,8 @@ export interface LocationRowFacePlan {
   /** Movable-rack rows (placard / shelf / position). */
   rack: number;
   structured: number;
-  special: number;
+  /** Free-form barcodes (`QA-SHELF-A01`) — the flat location face. */
+  flat: number;
   /** Rows with no barcode — nothing scannable to print. */
   skipped: number;
   /** Canonical codes of the rack-family faces, in input order (`location.labels.printed`). */
@@ -58,7 +56,7 @@ export interface LocationRowFacePlan {
 export interface PrintLocationRowsResult {
   rack: number;
   structured: number;
-  special: number;
+  flat: number;
   skipped: number;
   transport: 'usb' | 'iframe' | 'skipped';
   /** Canonical rack-family codes the run carried; report them only when it printed. */
@@ -125,7 +123,7 @@ export function planLocationRowFaces(
   const rackCodes: string[] = [];
   let rack = 0;
   let structured = 0;
-  let special = 0;
+  let flat = 0;
   let skipped = 0;
   for (const row of rows) {
     const barcode = (row.barcode ?? '').trim();
@@ -134,7 +132,7 @@ export function planLocationRowFaces(
       continue;
     }
     // Rack grammar first: `RK…` is never a room-coded address, and the face
-    // must not fall through to the room-coded or special-bin families.
+    // must not fall through to the room-coded or flat families.
     const address = parseRackCode(barcode);
     if (address) {
       faces.push(rackLabelToFace({ address, gln: identity.gln }));
@@ -155,11 +153,10 @@ export function planLocationRowFaces(
       structured += 1;
       continue;
     }
-    const payload = specialBinFaceForBarcode(barcode, { room: row.roomName, name: row.name });
-    faces.push(specialBinPayloadToFace(payload));
-    special += 1;
+    faces.push(flatLocationFace({ barcode, name: row.name, room: row.roomName }));
+    flat += 1;
   }
-  return { faces, rack, structured, special, skipped, rackCodes };
+  return { faces, rack, structured, flat, skipped, rackCodes };
 }
 
 /** Print the rows' stickers as one run on the shared 2×1 label channel. */
@@ -179,13 +176,13 @@ export async function printLocationRowLabels(
         ? `Rack ${face.hri ?? face.matrix.value}`
         : face.kind === 'location'
           ? `Location ${face.center}`
-          : `Bin ${face.matrix.value}`,
+          : `Location ${face.matrix.value}`,
     onProgress: opts.onProgress,
   });
   return {
     rack: plan.rack,
     structured: plan.structured,
-    special: plan.special,
+    flat: plan.flat,
     skipped: plan.skipped,
     transport,
     rackCodes: plan.rackCodes,
@@ -200,8 +197,8 @@ function plural(count: number, noun: string): string {
 export function locationLabelPrintSummary(result: PrintLocationRowsResult): string {
   const parts: string[] = [];
   if (result.rack > 0) parts.push(plural(result.rack, 'rack label'));
-  if (result.structured > 0) parts.push(plural(result.structured, 'location label'));
-  if (result.special > 0) parts.push(plural(result.special, 'special bin label'));
+  const locations = result.structured + result.flat;
+  if (locations > 0) parts.push(plural(locations, 'location label'));
   const printed = result.transport === 'skipped' || parts.length === 0
     ? 'Nothing was printed'
     : result.transport === 'usb'

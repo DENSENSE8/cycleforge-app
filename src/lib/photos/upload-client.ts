@@ -13,6 +13,8 @@ interface ClientUploadInput {
   clientCapturedAtMs?: number | null;
   /** What this shot SHOWS, within its stage (`./photo-aspects.ts`). */
   photoAspect?: string | null;
+  /** Stable per shot across retries / reloads — the server replays instead of filing a duplicate. */
+  idempotencyKey?: string | null;
 }
 
 export interface ClientUploadResult {
@@ -39,7 +41,11 @@ export async function uploadPhotoClient(input: ClientUploadInput): Promise<Clien
     form.append(CLIENT_CAPTURED_AT_FIELD, String(Math.trunc(input.clientCapturedAtMs)));
   }
 
-  const res = await fetch('/api/photos/upload', { method: 'POST', body: form });
+  const res = await fetch('/api/photos/upload', {
+    method: 'POST',
+    body: form,
+    headers: input.idempotencyKey ? { 'Idempotency-Key': input.idempotencyKey } : undefined,
+  });
   const data = (await res.json().catch(() => null)) as ClientUploadResult & {
     error?: string;
     details?: string;

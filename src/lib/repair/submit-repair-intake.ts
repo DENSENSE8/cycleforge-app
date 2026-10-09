@@ -251,12 +251,10 @@ export async function submitRepairIntake(
   const ticketResult = await createRepairIntakeTicket({
     orgId,
     repairServiceId: dbId,
-    repairServiceNumber: finalRSNumber,
     customerName: normalizedName,
     customerPhone: normalizedPhone,
     customerEmail: customer?.email || '',
     productTitle: productString,
-    contactInfo,
     issue: issueString,
     serialNumber: normalizedSerialNumber,
     price: normalizedPrice,

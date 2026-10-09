@@ -7,7 +7,6 @@ export const ORDER_EXCEPTION_CATEGORIES = [
   'SKU Mapping',
   'Out of Stock',
   'Address Issue',
-  'Buyer Request',
   'Marketplace Hold',
   'Testing Issue',
   'Shipping Issue',
@@ -55,7 +54,6 @@ export function resolveOrderExceptionRouting(
     > = {
       'Out of Stock': { actionRequired: 'Replenish or approve a substitute', owner: 'Inventory' },
       'Address Issue': { actionRequired: 'Verify the ship-to address', owner: 'Customer Service' },
-      'Buyer Request': { actionRequired: 'Review and acknowledge the buyer instruction', owner: 'Customer Service' },
       'Marketplace Hold': { actionRequired: 'Review the marketplace hold', owner: 'Marketplace Operations' },
       'Testing Issue': { actionRequired: 'Complete or correct the test', owner: 'Testing' },
       'Shipping Issue': { actionRequired: 'Resolve the carrier or label issue', owner: 'Shipping' },

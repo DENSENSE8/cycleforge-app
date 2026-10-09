@@ -39,7 +39,7 @@ ungated writes (their device-cookie gate isn't detected by `scripts/audit-route-
 
 Buying already works end to end on ShipStation **v2** (`src/lib/shipping/shipstation/client.ts`,
 `API-Key` header): `POST /api/shipping/order-rates` → `/order-labels/purchase` → `/void`,
-`shipping.buy_label` gated, buyer-note hold enforced, label PDF stored as the order's
+`shipping.buy_label` gated, label PDF stored as the order's
 `shipping_label`, packing slip generated, tracking written, audited. v1 (`orders-v1.ts`, Basic
 auth) is read-only order/weight sync. Fix, in order:
 

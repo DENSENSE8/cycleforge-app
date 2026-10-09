@@ -76,7 +76,7 @@ export function BinsSelectionActions({ selected, rows, onDeleteSelected }: Props
   }, [selectedRows]);
 
   // Every selected row prints here, now: rack addresses as location faces,
-  // anything else as a 2×1 special-bin face — one run on the shared label
+  // anything else as a 2×1 flat location face — one run on the shared label
   // channel.
   const printLabels = useCallback(() => {
     if (selectedRows.length === 0) return;

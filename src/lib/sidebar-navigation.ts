@@ -1579,7 +1579,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'rooms', label: 'Rooms', icon: Warehouse, to: () => ({ pathname: `${INVENTORY}/locations`, params: { tab: 'rooms', code: null, room: null, new: null } }) },
       { id: 'racks', label: 'Racks', icon: ShelvingUnit, to: () => ({ pathname: `${INVENTORY}/locations`, params: { tab: 'movable', code: null, room: null, new: null } }) },
       { id: 'map', label: 'Map', icon: Layers, to: () => ({ pathname: `${INVENTORY}/locations`, params: { tab: 'map', code: null, new: null } }) },
-      { id: 'labels', label: 'Labels', icon: Barcode, to: () => ({ pathname: `${INVENTORY}/locations`, params: { tab: 'labels', code: null, room: null, new: null } }) },
+      { id: 'labels', label: 'Labels', icon: Barcode, to: () => ({ pathname: `${INVENTORY}/locations`, params: { tab: 'labels', kind: null, code: null, room: null, new: null } }) },
     ],
     resolveChild: ({ pathname, params }) => {
       if (
@@ -1591,7 +1591,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         if (tab === 'rooms') return 'rooms';
         if (tab === 'movable') return 'racks';
         if (tab === 'map') return 'map';
-        if (tab === 'labels' || tab === 'bays' || tab === 'racks') return 'labels';
+        if (tab === 'labels' || tab === 'bays' || tab === 'racks' || tab === 'totes') return 'labels';
         return 'locations';
       }
       return 'locations';

@@ -8,8 +8,15 @@
 import { getBinContentsByBarcode } from '@/lib/neon/location-queries';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { derivedRoomJoinSql, derivedRoomLabelSql, derivedRoomSetJoinSql, rackWalkOrderSql } from '@/lib/locations/derived-room';
+import {
+  derivedRoomJoinSql,
+  derivedRoomLabelSql,
+  derivedRoomSetJoinSql,
+  legacyBinWalkOrderSql,
+  rackWalkOrderSql,
+} from '@/lib/locations/derived-room';
 import { photoContentUrl } from '@/lib/photos/display-url';
+import { resolveLocationBarcode } from '@/lib/locations/location-lookup';
 
 type HandlingUnitStatus = 'OPEN' | 'STAGED' | 'IN_TEST' | 'CLOSED';
 
@@ -22,6 +29,7 @@ type HandlingUnitRow = {
   total_units: number;
   tested_units: number;
   hold_units: number;
+  stock_units: number;
 };
 
 type WalkRow = { position: number; total: number; previous: string | null; next: string | null; room: string | null };
@@ -61,6 +69,8 @@ export type LocationRecordPayload = {
     totalUnits: number;
     testedUnits: number;
     holdUnits: number;
+    /** Loose stock loaded into the tote's own stock place (`bin_contents` under its code). */
+    stockUnits: number;
     pairedOrderId: number | null;
     createdAt: string;
   }>;
@@ -77,7 +87,15 @@ const HANDLING_UNITS_SQL = `
          COUNT(su.id) FILTER (
            WHERE COALESCE(su.current_status::text, 'UNKNOWN') NOT IN ('UNKNOWN', 'RECEIVED')
          )::int AS tested_units,
-         COUNT(su.id) FILTER (WHERE su.current_status::text = 'ON_HOLD')::int AS hold_units
+         COUNT(su.id) FILTER (WHERE su.current_status::text = 'ON_HOLD')::int AS hold_units,
+         (SELECT COALESCE(SUM(bc.qty), 0)::int
+            FROM locations tote_place
+            JOIN bin_contents bc
+              ON bc.location_id = tote_place.id
+             AND bc.organization_id = tote_place.organization_id
+           WHERE tote_place.organization_id = hu.organization_id
+             AND tote_place.barcode = hu.code
+             AND bc.qty > 0) AS stock_units
     FROM locations l
     JOIN handling_units hu
       ON hu.location_id = l.id
@@ -116,7 +134,7 @@ const WALK_SQL = `
        AND l.is_active = true
        AND NULLIF(BTRIM(l.barcode), '') IS NOT NULL
        AND ${derivedRoomLabelSql('l', 'room')} IS NOT DISTINCT FROM here.room
-    WINDOW w AS (ORDER BY ${rackWalkOrderSql('l.barcode')}, l.sort_order, l.row_label, l.col_label, l.name)
+    WINDOW w AS (ORDER BY ${rackWalkOrderSql('l.barcode')}, l.sort_order, ${legacyBinWalkOrderSql('l.barcode')}, l.row_label, l.col_label, l.name)
   )
   SELECT walk.position::int, walk.total::int, walk.previous, walk.next, here.room
     FROM walk CROSS JOIN here
@@ -124,12 +142,25 @@ const WALK_SQL = `
 `;
 
 /**
- * One active location's record, or null when no active location carries
- * `code` in this org. A location is an address; LPNs are movable containers
- * parked at it and stay distinct from fungible SKU counts. Every read is keyed
- * by barcode, so all three travel in parallel, one round trip each.
+ * One active location's record, or null when no active location answers to
+ * `code` in this org. A printed barcode reads exactly; on a miss the code is
+ * read as typed (`c02094`, `C-2-9-4`, a name) via {@link resolveLocationBarcode},
+ * and the record carries the real barcode — callers key on
+ * `location.barcode`, never on what was typed.
  */
 export async function readLocationRecord(code: string, orgId: OrgId): Promise<LocationRecordPayload | null> {
+  const exact = await readLocationRecordExact(code, orgId);
+  if (exact) return exact;
+  const barcode = await resolveLocationBarcode(code, orgId);
+  return barcode && barcode !== code ? readLocationRecordExact(barcode, orgId) : null;
+}
+
+/**
+ * The record for one exact barcode. A location is an address; LPNs are
+ * movable containers parked at it and stay distinct from fungible SKU counts.
+ * Every read is keyed by barcode, so all three travel in parallel.
+ */
+async function readLocationRecordExact(code: string, orgId: OrgId): Promise<LocationRecordPayload | null> {
   const [result, handlingUnits, walk] = await Promise.all([
     getBinContentsByBarcode(code, orgId),
     tenantQueryOneTrip<HandlingUnitRow>(orgId, HANDLING_UNITS_SQL, [orgId, code]),
@@ -173,6 +204,7 @@ export async function readLocationRecord(code: string, orgId: OrgId): Promise<Lo
       totalUnits: Number(unit.total_units) || 0,
       testedUnits: Number(unit.tested_units) || 0,
       holdUnits: Number(unit.hold_units) || 0,
+      stockUnits: Number(unit.stock_units) || 0,
       pairedOrderId: unit.paired_order_id == null ? null : Number(unit.paired_order_id),
       createdAt: unit.created_at,
     })),

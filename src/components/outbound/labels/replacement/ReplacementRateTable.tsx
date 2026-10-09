@@ -35,8 +35,13 @@ const COVERAGE_TABS: { id: CoverageFilter; label: string }[] = [
   { id: 'no_coverage', label: 'No coverage' },
 ];
 
-/** The row grid, shared by the column header and every rate row so the columns line up. */
-const RATE_GRID = 'grid grid-cols-12 items-center gap-3';
+/**
+ * The row grid, shared by the column header and every rate row so the columns
+ * line up. From `sm` up: one row of five columns. On a phone the header hides
+ * and a row stacks: carrier · service | total, then arrival | coverage (+ the
+ * insurance price when insured) — the `order-*` classes below.
+ */
+const RATE_GRID = 'grid grid-cols-12 items-center gap-x-3 gap-y-1';
 
 export function ReplacementRateFilters({
   facets,
@@ -114,7 +119,7 @@ export function ReplacementRateFilters({
           fit="hug"
         />
       </div>
-      <div className={cn(RATE_GRID, 'px-3 mode-label text-text-muted')} aria-hidden>
+      <div className={cn(RATE_GRID, 'hidden px-3 mode-label text-text-muted sm:grid')} aria-hidden>
         <span className="col-span-4">Carrier · service</span>
         <span className="col-span-2">Arrives</span>
         <span className="col-span-2 text-right">Insurance</span>
@@ -194,14 +199,14 @@ export function ReplacementRateRows({
                   focusRing('control'),
                 )}
               >
-                <span className="col-span-4 flex min-w-0 items-center gap-2">
+                <span className="order-1 col-span-8 flex min-w-0 items-center gap-2 sm:order-none sm:col-span-4">
                   <Truck className={cn('h-4 w-4 shrink-0', selected ? 'text-text-accent' : 'text-text-faint')} />
                   <span className="min-w-0">
                     <span className="block truncate text-role-caption font-semibold text-text-default">{rate.carrierName}</span>
                     <span className="block truncate text-role-micro text-text-soft">{rate.serviceName}</span>
                   </span>
                 </span>
-                <span className="col-span-2 min-w-0">
+                <span className="order-3 col-span-6 min-w-0 sm:order-none sm:col-span-2">
                   <span className="flex items-center gap-1 text-role-caption text-text-default">
                     <Clock className="h-3 w-3 shrink-0 text-text-faint" />
                     {transitText(rate)}
@@ -210,14 +215,20 @@ export function ReplacementRateRows({
                     {arrival ? formatDateKeyMedium(arrival) : '—'}
                   </span>
                 </span>
-                <span className="col-span-2 text-right text-role-caption tabular-nums text-text-soft">
+                <span
+                  className={cn(
+                    'order-5 col-span-12 text-role-caption tabular-nums text-text-soft sm:order-none sm:col-span-2 sm:block sm:text-right',
+                    !insured && 'hidden',
+                  )}
+                >
+                  <span className="sm:hidden">Insurance </span>
                   {rate.insuranceAmount != null
                     ? formatMoney(rate.insuranceAmount, rate.currency)
                     : insured
                       ? 'Not quoted'
                       : '—'}
                 </span>
-                <span className="col-span-2 min-w-0">
+                <span className="order-4 col-span-6 min-w-0 text-right sm:order-none sm:col-span-2 sm:text-left">
                   {coverageUsd != null ? (
                     <span className="inline-flex max-w-full items-center gap-1 rounded-mode-pill bg-surface-success px-2 py-0.5 text-role-micro font-medium text-text-success ring-1 ring-inset ring-border-success">
                       <ShieldCheck className="h-3 w-3 shrink-0" />
@@ -225,7 +236,7 @@ export function ReplacementRateRows({
                     </span>
                   ) : null}
                 </span>
-                <span className="col-span-2 text-right text-role-caption font-semibold tabular-nums text-text-default">
+                <span className="order-2 col-span-4 text-right text-role-caption font-semibold tabular-nums text-text-default sm:order-none sm:col-span-2">
                   {formatMoney(rateTotal(rate), rate.currency)}
                 </span>
                 <span aria-hidden className={cn(STATE_OUTLINE_CLASS, selected ? 'border-border-accent' : null)} />

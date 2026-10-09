@@ -138,3 +138,22 @@ export async function getPrintHistoryForUnit(
   );
   return res.rows;
 }
+
+/** How many distinct warehouse stickers have ever printed: location codes (by code) and totes (by tote). */
+export interface PrintedWarehouseLabelCounts {
+  location: number;
+  tote: number;
+}
+
+export async function countPrintedWarehouseLabels(orgId: OrgId): Promise<PrintedWarehouseLabelCounts> {
+  const res = await tenantQuery<{ location: string; tote: string }>(
+    orgId,
+    `SELECT COUNT(DISTINCT unit_uid) FILTER (WHERE job_type = 'LOCATION') AS location,
+            COUNT(DISTINCT handling_unit_id) FILTER (WHERE job_type = 'HANDLING_UNIT') AS tote
+       FROM label_print_jobs
+      WHERE organization_id = $1`,
+    [orgId],
+  );
+  const row = res.rows[0];
+  return { location: Number(row?.location ?? 0), tote: Number(row?.tote ?? 0) };
+}

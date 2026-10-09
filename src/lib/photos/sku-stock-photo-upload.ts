@@ -40,3 +40,21 @@ export async function uploadSkuStockShots(stockId: number, shots: readonly Captu
   }
   return added;
 }
+
+/**
+ * The `sku_stock` id a bin SKU's photos hang off, created server-side when the
+ * SKU has none yet (`POST /api/sku-stock/:sku/ensure`). Null on failure, with
+ * a toast; the caller drops the batch.
+ */
+export async function ensureSkuStockId(sku: string): Promise<number | null> {
+  try {
+    const res = await fetch(`/api/sku-stock/${encodeURIComponent(sku)}/ensure`, { method: 'POST' });
+    const body = (await res.json().catch(() => null)) as { stockId?: number; error?: string } | null;
+    if (res.ok && typeof body?.stockId === 'number') return body.stockId;
+    toast.error(body?.error || 'Could not prepare this item for photos', { position: 'top-center' });
+  } catch (err) {
+    console.warn('sku_stock ensure failed', err);
+    toast.error('Could not prepare this item for photos', { position: 'top-center' });
+  }
+  return null;
+}

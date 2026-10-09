@@ -9,6 +9,7 @@
 import { Minus, Plus, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
 import type { LocationBindContent } from './location-bind-types';
 
 export function LocationQtyStrip({
@@ -80,7 +81,7 @@ export function LocationQtyStrip({
           onClick={onOpenKeypad}
           className={cn(
             'w-20 shrink-0 font-mono text-role-title tabular-nums underline decoration-dotted decoration-2 underline-offset-4',
-            pendingDelta < 0 ? 'text-rose-600' : pendingDelta > 0 ? 'text-emerald-700' : 'text-text-default',
+            pendingDelta < 0 ? 'text-rose-600' : pendingDelta > 0 ? 'text-emerald-700' : stockQtyToneClass(live),
           )}
           data-testid="stock-qty-keypad"
         >

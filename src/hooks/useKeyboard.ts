@@ -47,6 +47,16 @@ export function useKeyboard(options: UseKeyboardOptions = {}) {
     if (!vv) return;
 
     baselineRef.current = window.innerHeight;
+    // iOS scrolls the layout viewport to reveal a focused field and can leave it
+    // scrolled after the keys close, parking fixed bottom sheets above a dead
+    // gap. Remember the scroll from before the keys opened and put it back.
+    let wasOpen = false;
+    let scrollBeforeOpen = window.scrollY;
+    // Focus lands before iOS scrolls to the field: that is the position to restore.
+    const rememberScroll = () => {
+      if (!wasOpen) scrollBeforeOpen = window.scrollY;
+    };
+    document.addEventListener('focusin', rememberScroll);
 
     const measure = () => {
       const baseline = baselineRef.current;
@@ -64,6 +74,9 @@ export function useKeyboard(options: UseKeyboardOptions = {}) {
       // When the layout itself resized, a bottom-anchored sheet is already flush
       // — lifting by `layoutShrink` would double-count and leave a gap.
       const keyboardHeight = obscured > threshold ? obscured : 0;
+
+      if (!isOpen && wasOpen && window.scrollY !== scrollBeforeOpen) window.scrollTo(0, scrollBeforeOpen);
+      wasOpen = isOpen;
 
       setState({
         isKeyboardOpen: isOpen,
@@ -109,6 +122,7 @@ export function useKeyboard(options: UseKeyboardOptions = {}) {
       vv.removeEventListener('resize', measure);
       vv.removeEventListener('scroll', measure);
       window.removeEventListener('orientationchange', handleOrientation);
+      document.removeEventListener('focusin', rememberScroll);
     };
   }, [centerOnFocus, threshold]);
 

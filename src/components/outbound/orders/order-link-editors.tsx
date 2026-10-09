@@ -168,6 +168,9 @@ async function patchAdminUrl(ids: readonly number[], adminUrl: string | null): P
  * hovering IT flies out a menu ("Edit admin link" / "Add admin link") that opens
  * the link popover under the number — nothing is reserved beside the number.
  * The ↗ after it only opens. With no link at all, a link icon adds one.
+ *
+ * `copyOnClick` (record headers, operator 2026-10-08): a click on the number
+ * copies it, and the other actions open flush against its right edge.
  */
 export function OrderAdminLinkAction({
   children,
@@ -179,6 +182,7 @@ export function OrderAdminLinkAction({
   platformLabel,
   revealOpenOnHover = false,
   showInlineOpen = true,
+  copyOnClick = false,
 }: {
   /** The order-number face (chip / full id). */
   children: ReactNode;
@@ -195,12 +199,19 @@ export function OrderAdminLinkAction({
   revealOpenOnHover?: boolean;
   /** Dense list rows keep Open in the hover menu instead of painting a fixed icon. */
   showInlineOpen?: boolean;
+  /** A click on the face copies the order id (and opens the other actions beside it). */
+  copyOnClick?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const editLabel = storedUrl || href ? 'Edit order ID link' : 'Add order ID link';
   const revealClass = revealOpenOnHover
     ? 'pointer-events-none absolute left-full top-1/2 ml-0 -translate-y-1/2 opacity-0 transition-opacity group-hover/order-title:pointer-events-auto group-hover/order-title:opacity-100 group-focus-within/order-title:pointer-events-auto group-focus-within/order-title:opacity-100'
     : undefined;
+  const copyId = () => {
+    void copyToClipboard(orderId, { historyKind: 'id', historyDisplay: orderId }).then((ok) =>
+      ok ? toast.success(`Copied ${orderId}`) : toast.error('Could not copy the order ID'),
+    );
+  };
   const face = (
     <span className={cn('flex min-w-0 items-center', fill && 'flex-1')} data-testid="order-admin-link-face">
       <CopyChipHoverMenu
@@ -209,19 +220,24 @@ export function OrderAdminLinkAction({
         // The header's menu flies out to the RIGHT of the full id — never over it (operator 2026-10-08).
         placement={revealOpenOnHover ? 'end' : 'auto'}
         align={revealOpenOnHover ? 'center' : 'start'}
+        // Copy-on-click faces: the menu sits flush on the id's right edge, no gap.
+        gap={copyOnClick ? 0 : undefined}
+        onActivate={copyOnClick ? copyId : undefined}
+        activateLabel={copyOnClick ? `Copy ${orderId}` : undefined}
         className={cn('min-w-0 shrink', fill && 'flex-1')}
         items={[
-          {
-            id: 'copy-order-id',
-            // The hover surface over a compact face: it names the complete id, never the face.
-            label: `Copy ${orderId}`,
-            icon: <Copy />,
-            onSelect: () => {
-              void copyToClipboard(orderId, { historyKind: 'id', historyDisplay: orderId }).then((ok) =>
-                ok ? toast.success(`Copied ${orderId}`) : toast.error('Could not copy the order ID'),
-              );
-            },
-          },
+          // A click already copies the id; the menu keeps only the other actions.
+          ...(copyOnClick
+            ? []
+            : [
+                {
+                  id: 'copy-order-id',
+                  // The hover surface over a compact face: it names the complete id, never the face.
+                  label: `Copy ${orderId}`,
+                  icon: <Copy />,
+                  onSelect: copyId,
+                },
+              ]),
           ...(href
             ? [
                 {

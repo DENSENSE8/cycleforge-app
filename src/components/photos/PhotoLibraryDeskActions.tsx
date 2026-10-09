@@ -1,9 +1,9 @@
 'use client';
 
-/** Media Library desk header actions — overall Download (shown window ZIP) + primary Add photos (entity-leaf upload). */
+/** Media Library desk header actions — overall Back up packer photos (NAS) + Download (shown window ZIP) + primary Add photos (entity-leaf upload). */
 
-import { useCallback, useMemo, useRef } from 'react';
-import { Download, Plus } from '@/components/Icons';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Archive, Download, Plus } from '@/components/Icons';
 import {
   DeskActionSlotRegistrar,
   DeskHeaderAction,
@@ -96,6 +96,71 @@ export function PhotoLibraryDeskActions({
     [onUploaded, uploadTarget],
   );
 
+  const [backingUp, setBackingUp] = useState(false);
+  // Packer photos → NAS `Shipping Packing Photos/<date packed>/<order | tracking>/`
+  // through the Unbox archive agent. Batches until nothing is left or a batch stalls.
+  const onBackupPacker = useCallback(async () => {
+    setBackingUp(true);
+    const toastId = toast.loading('Backing up packer photos to the NAS…');
+    let copied = 0;
+    try {
+      for (;;) {
+        const res = await fetch('/api/photos/packer-nas-backup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        const data = (await res.json().catch(() => null)) as {
+          copied?: number;
+          remaining?: number;
+          error?: string | null;
+          root?: string;
+        } | null;
+        if (!res.ok) throw new Error(data?.error || `Backup failed (${res.status})`);
+        copied += data?.copied ?? 0;
+        const remaining = data?.remaining ?? 0;
+        if (remaining === 0) {
+          toast.success(
+            copied > 0
+              ? `Backed up ${copied} packer photo${copied === 1 ? '' : 's'} to ${data?.root}`
+              : 'Packer photos are already backed up',
+            { id: toastId },
+          );
+          return;
+        }
+        if (!data?.copied) {
+          throw new Error(
+            `${data?.error || 'Backup stalled'} — ${copied} copied, ${remaining} left`,
+          );
+        }
+        toast.loading(`Backed up ${copied} packer photos · ${remaining} left…`, { id: toastId });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Backup failed', { id: toastId });
+    } finally {
+      setBackingUp(false);
+    }
+  }, []);
+
+  const backupControl = useMemo(
+    () => (
+      <DeskHeaderAction
+        type="button"
+        variant="secondary"
+        size="sm"
+        icon={<Archive aria-hidden />}
+        onClick={() => void onBackupPacker()}
+        disabled={backingUp}
+        data-testid="photo-library-packer-nas-backup"
+        ariaLabel="Back up packer photos to the NAS"
+        title="Copy packer photos to USAV Media › Packing › Shipping Packing Photos, by date packed and order"
+      >
+        {backingUp ? 'Backing up…' : 'Back up packer photos'}
+      </DeskHeaderAction>
+    ),
+    [backingUp, onBackupPacker],
+  );
+
   const exportControl = useMemo(() => {
     const empty = shownCount === 0;
     // Download face — ZIP of the shown window. Empty stays visible and
@@ -156,7 +221,10 @@ export function PhotoLibraryDeskActions({
 
   return (
     <>
-      <DeskActionSlotRegistrar role="overall">{exportControl}</DeskActionSlotRegistrar>
+      <DeskActionSlotRegistrar role="overall">
+        {backupControl}
+        {exportControl}
+      </DeskActionSlotRegistrar>
       <DeskActionSlotRegistrar role="primary">{addControl}</DeskActionSlotRegistrar>
     </>
   );

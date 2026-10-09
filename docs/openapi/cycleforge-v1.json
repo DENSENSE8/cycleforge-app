@@ -1082,7 +1082,7 @@
             }
           },
           "409": {
-            "description": "LABEL_PURCHASE_IN_FLIGHT / LABEL_PURCHASE_VOIDED / LABEL_TEST_MODE_BLOCKED / BUYER_NOTE_UNACKNOWLEDGED",
+            "description": "LABEL_PURCHASE_IN_FLIGHT / LABEL_PURCHASE_VOIDED / LABEL_TEST_MODE_BLOCKED",
             "content": {
               "application/json": {
                 "schema": {
@@ -1778,8 +1778,7 @@
                   "LABEL_TEST_MODE_BLOCKED",
                   "SHIPSTATION_ERROR",
                   "LABEL_PURCHASE_IN_FLIGHT",
-                  "LABEL_PURCHASE_VOIDED",
-                  "BUYER_NOTE_UNACKNOWLEDGED"
+                  "LABEL_PURCHASE_VOIDED"
                 ]
               },
               "message": {

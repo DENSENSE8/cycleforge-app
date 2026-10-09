@@ -12,13 +12,11 @@ import {
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
 import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
-import { OrderPackChecklist } from '@/components/packing/OrderPackChecklist';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
 import { useOrderPackChecklist } from '@/hooks/useOrderPackChecklist';
-import { usePackingPolicy } from '@/hooks/usePackingPolicy';
 import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
 import { PackOrderIdentity } from '@/components/packer/PackOrderIdentity';
-import { PackPapersStatusCard } from '@/components/packer/PackPapersStatusCard';
+import { PackOrderLines } from '@/components/packer/PackOrderLines';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 import { StationContextBar } from '@/components/station/entity-context';
 import {
@@ -46,7 +44,8 @@ interface PackOrderPanelProps {
 }
 
 export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
-  const { data: packingPolicy } = usePackingPolicy();
+  // Order lines (title · SKU · qty) + the packed rollup — read-only; the
+  // desktop pack checklist was removed 2026-10-08.
   const { data: checklist, isLoading } = useOrderPackChecklist({
     orderRowId: activeOrder.orderRowId,
     sku: activeOrder.sku,
@@ -68,12 +67,6 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
   useEffect(() => {
     setListingLink(listingIdentity.listingLink);
   }, [listingIdentity.listingLink, listingKey]);
-
-  const resetKey = activeOrder.serialUnitId
-    ? `unit-${activeOrder.serialUnitId}`
-    : activeOrder.orderRowId
-      ? `row-${activeOrder.orderRowId}`
-      : `${activeOrder.sku || activeOrder.tracking}`;
 
   const timelineSerials = useMemo(() => {
     const fromLines = (checklist?.lines ?? []).flatMap((l) => l.serials ?? []);
@@ -250,12 +243,6 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 reserveScrollClearance={false}
                 reserveIdentityClearance={false}
                 bodyGap="none"
-                // Print-bundle status is action feedback (Unbox feedback slot),
-                // never an advisory strip between identity and the checklist.
-                // Rollup lives on Displays → Timeline subtitle — not a centre band.
-                feedback={
-                  <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
-                }
               >
                 <div className={STATION_SCAN_WELL_CLASS}>
                 {isUnitScan ? (
@@ -264,14 +251,9 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                     {hasUnitPhotos ? <UnitPackPhotoPeek serialUnitId={Number(activeOrder.serialUnitId)} preferSource="packing" /> : null}
                   </div>
                 ) : (
-                  <OrderPackChecklist
+                  <PackOrderLines
                     lines={checklist?.lines ?? []}
-                    enforcement={
-                      packingPolicy?.enforcement ?? checklist?.enforcement ?? 'advisory'
-                    }
-                    resetKey={resetKey}
                     isLoading={isLoading}
-                    variant="panel"
                     isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
                     unknownCondition={activeOrder.condition}
                   />

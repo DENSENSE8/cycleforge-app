@@ -11,6 +11,8 @@ export interface RepairReceiptProps {
   contact: string;
   price: string;
   startDateTime: string;
+  /** The ship-back address on one line; absent/blank = pickup, no row printed. */
+  shipTo?: string;
 }
 
 /** The customer facts a repair agreement states — the form's `customer` shape. */

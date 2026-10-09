@@ -50,6 +50,8 @@ interface StockByLocationDbRow {
   stock_title: string | null;
   is_provisional: boolean | null;
   cover_photo_id: number | string | null;
+  latest_photo_id: number | string | null;
+  latest_photo_at: Date | string | null;
   catalog_image_url: string | null;
   zoho_item_id: string | null;
   zoho_image_document_id: string | null;
@@ -286,6 +288,8 @@ export async function getStockByLocation(args: {
         NULLIF(ss.product_title, '')           AS stock_title,
         COALESCE(ss.is_provisional, false)     AS is_provisional,
         ph.cover_photo_id,
+        latest.latest_photo_id,
+        latest.latest_photo_at,
         NULLIF(sc.image_url, '')               AS catalog_image_url,
         zi.zoho_item_id                        AS zoho_item_id,
         zi.image_document_id                   AS zoho_image_document_id,
@@ -326,6 +330,18 @@ export async function getStockByLocation(args: {
          ORDER BY pel.sort_order ASC NULLS LAST, pel.photo_id ASC
          LIMIT 1
       ) ph ON true
+      -- The SKU's newest photo (the link attached last): the bay walk's
+      -- per-level thumbnail is the item photographed most recently.
+      LEFT JOIN LATERAL (
+        SELECT pel.photo_id AS latest_photo_id, pel.created_at AS latest_photo_at
+          FROM photo_entity_links pel
+         WHERE pel.organization_id = $1
+           AND pel.entity_type = 'SKU_STOCK'
+           AND pel.entity_id = ss.id
+           AND pel.link_role = 'primary'
+         ORDER BY pel.created_at DESC, pel.id DESC
+         LIMIT 1
+      ) latest ON true
       -- A soft-deleted bin keeps its bin_contents rows; those are not shelf
       -- stock. An UNRESOLVED unit placement has no locations row at all and
       -- must survive, which is the NULL leg.
@@ -398,6 +414,8 @@ export async function getStockByLocation(args: {
       m.stock_title,
       m.is_provisional,
       m.cover_photo_id,
+      m.latest_photo_id,
+      m.latest_photo_at,
       m.catalog_image_url,
       m.zoho_item_id,
       m.zoho_image_document_id,
@@ -509,6 +527,9 @@ export async function getStockByLocation(args: {
             }),
       cover_photo_url:
         row.cover_photo_id != null ? photoContentUrl(Number(row.cover_photo_id)) : null,
+      latest_photo_url:
+        row.latest_photo_id != null ? photoContentUrl(Number(row.latest_photo_id), 'thumb') : null,
+      latest_photo_at: isoOrNull(row.latest_photo_at),
       source: row.source,
       qty: Number(row.qty) || 0,
       min_qty: row.min_qty == null ? null : Number(row.min_qty),

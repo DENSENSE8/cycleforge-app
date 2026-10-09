@@ -28,6 +28,7 @@ import { errorResponse } from '@/lib/api';
 import { executeWmsPutawayAdjust } from '@/lib/realtime/wms-putaway-adjust';
 import { verifyLocationScanProof } from '@/lib/inventory/location-scan-proof';
 import { readLocationRecord } from '@/lib/locations/location-record';
+import { suggestLocations } from '@/lib/locations/location-lookup';
 
 const ROUTE_LOCATION_PATCH = 'locations.barcode.patch';
 
@@ -54,7 +55,7 @@ export async function GET(
     const record = await readLocationRecord(code, orgId);
     if (!record) {
       return NextResponse.json(
-        { error: 'Bin not found', barcode: code },
+        { error: 'Bin not found', barcode: code, suggestions: await suggestLocations(code, orgId) },
         { status: 404 },
       );
     }

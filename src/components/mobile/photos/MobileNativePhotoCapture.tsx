@@ -20,10 +20,8 @@ import {
   type PhotoCaptureSource,
 } from '@/lib/photos/capture-session';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import {
-  gateStillFrame,
-  PACK_SLIP_GATE_COACHING,
-} from '@/lib/vision/frame-quality';
+import { PACK_SLIP_GATE_COACHING } from '@/lib/vision/frame-quality';
+import { qualityGatePhoto } from '@/lib/photos/quality-gate';
 import { toast } from '@/lib/toast';
 import {
   MobileSwipePhotoViewer,
@@ -98,33 +96,6 @@ interface MobileNativePhotoCaptureProps {
 type GallerySlide =
   | { kind: 'prior'; id: string; previewUrl: string; fullUrl: string; photoId?: number }
   | { kind: 'capture'; id: string; previewUrl: string; fullUrl: string };
-
-const GATE_DIMENSION = 160;
-
-async function qualityGatePhoto(blob: Blob): Promise<boolean> {
-  const url = URL.createObjectURL(blob);
-  try {
-    const image = new Image();
-    image.decoding = 'async';
-    image.src = url;
-    await image.decode();
-    const width = GATE_DIMENSION;
-    const height = Math.max(1, Math.round((width * image.naturalHeight) / image.naturalWidth));
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (!context) return true;
-    context.drawImage(image, 0, 0, width, height);
-    return gateStillFrame(context.getImageData(0, 0, width, height)).ok;
-  } catch {
-    // A device-native format the browser cannot decode should still be handed
-    // to the uploader, which owns its normal format fallback/error handling.
-    return true;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 /**
  * Shared mobile photo-taking surface. The OS owns camera focus, exposure,

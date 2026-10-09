@@ -125,12 +125,16 @@ closed by Esc back to the layer above:
    innermost layer and returns focus to the element that opened it
    (`DeskRecordPlane` → the record's row; `AnchoredLayer` → its opener). Only
    L4 traps focus; L2 / L3 are non-modal so J/K keep walking the list.
-5. **A scan is a drill-down.** On To ship (`/shipping/orders`) a wedge scan of
-   an order # or tracking # opens that order's L3 in place through the record
-   cursor (intent `'scan'`) — `useToShipScanOpen` claims the global wedge's
-   `wedge-scan` event; `matchScannedOrder` (`src/lib/orders/scan-order-match.ts`)
-   resolves loaded rows, `/api/orders/lookup` the rest. Known but off the list
-   → a toast with Open; unknown → a toast. A scan never re-filters the list.
+5. **A scan goes to its URL.** Every page has one scan identification kernel
+   (`src/lib/scan/scan-kernel.ts`, at the `useGlobalWedgeScanner` waist):
+   a printed handle goes to its route, and anything else goes through
+   `POST /api/scan/resolve` to its record. One order opens the way its card
+   does (`recordDetailsHref` / `recordDetailsNavigation`: in place over its
+   own desk's list, else there with `recordBack`). Several orders open the
+   ⌘K palette on the scan. Nothing opens a toast. A scan into a list's Find
+   (`FindField`) is taken back out and handed to the kernel. **A scan never
+   filters, narrows or re-views a list.** No page claims `wedge-scan` to
+   write its find (operator 2026-10-08).
 
 Runtime focus behaviour has no DOM test stack yet (`skill://add-guard` Tier 4)
 — it is enforced by the two primitives above, not by a source regex.

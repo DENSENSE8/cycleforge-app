@@ -94,6 +94,19 @@ display card + Connect button + `/api/integrations/nango/*` flow already exist.
   other linked order channels → exceptions, one step after the other (see
   `google-sheets.md`). eBay, Amazon and Ecwid do not pull orders (no connector `sync()`);
   their connections stay for tokens, catalog, health and update-only backfills.
+- **Platform returns (eBay + Amazon, `returns` capability)** — `/api/cron/returns/sync`
+  (hourly :40, job `returns.sync`) fetches each connected org's returns
+  (`fetchEbayReturnFiles` — eBay returns API; `fetchAmazonReturnFiles` — SP-API MFN +
+  FBA returns reports) as return-report files and lands them through the same
+  inbound import as an uploaded report (`runPoCsvImport` → `ingestInboundOrder`), so
+  every order record shows its return reason. Incremental cursor `returns:<provider>`
+  (`sync_cursors`; first run 30 days back, advances only on a clean, non-dry run); each
+  run is an import run (`order_import_runs`, one step per file). The same cron walks
+  the 18-month history one 30-day chunk per provider per run, newest first, from the
+  frontier `returns-backfill:<provider>`; `POST /api/returns/backfill`
+  (`orders.import`; body `{ providers?, since?, until?, dryRun? }`) runs that walk on
+  demand. Logic: `src/lib/returns/returns-sync.ts`,
+  `src/lib/sync/returns-backfill-pipeline.ts`.
 - **`maxIntegrations`** — each connected provider counts against the org's plan ceiling
   (`src/lib/billing/plans.ts`).
 - **Per-provider crons** — Zoho, ShipStation and the shipping carriers run their own

@@ -4,9 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { HelpdeskProvider } from '@/lib/integrations/helpdesk';
 import type { EnqueueTicketWorkArgs } from '@/lib/support/ticket-outbox';
 import {
-  buildRepairIntakeTicketPayload,
   createRepairIntakeTicket,
-  formatRepairDueDate,
   type CreateRepairIntakeTicketDeps,
   type CreateRepairIntakeTicketInput,
 } from './create-repair-intake-ticket';
@@ -19,12 +17,10 @@ function baseInput(
   return {
     orgId: ORG,
     repairServiceId: 42,
-    repairServiceNumber: 'RS-0042',
     customerName: 'Ada Lovelace',
     customerPhone: '555-0100',
     customerEmail: 'ada@example.com',
     productTitle: 'SoundLink Mini',
-    contactInfo: 'Ada Lovelace, 555-0100, ada@example.com',
     issue: 'No power',
     serialNumber: 'SN-123',
     price: '89.00',
@@ -101,20 +97,6 @@ function fakes(opts: {
 
   return { deps, cap };
 }
-
-test('formatRepairDueDate is MM/DD/YYYY five business days out', () => {
-  // Friday Aug 7 local → +5 business days = Friday Aug 14
-  assert.equal(formatRepairDueDate(new Date(2026, 7, 7)), '08/14/2026');
-});
-
-test('buildRepairIntakeTicketPayload keeps repair facts + walk-in tags', () => {
-  const payload = buildRepairIntakeTicketPayload(baseInput(), '08/14/2026');
-  assert.match(payload.subject, /Repair RS 42/);
-  assert.match(payload.body, /RS-0042/);
-  assert.match(payload.body, /Serial Number: SN-123/);
-  assert.match(payload.body, /Additional Notes:\nWalk-in/);
-  assert.deepEqual(payload.tags, ['repair_service', 'walk_in']);
-});
 
 test('create: happy path creates via helpdesk, stamps #id, and links the repair', async () => {
   const { deps, cap } = fakes();

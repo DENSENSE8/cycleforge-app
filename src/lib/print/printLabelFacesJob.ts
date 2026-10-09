@@ -33,7 +33,7 @@ export async function printLabelFacesJob(input: {
    */
   faceName?: (face: LabelFaceModel) => string;
   /**
-   * Identical stickers of EACH face (the tote / special-bin Copies field).
+   * Identical stickers of EACH face (the tote Copies field).
    * Expanded into extra PLATES in this run — one awaited job per sticker on
    * USB, one page per sticker on the iframe. Never a printer repeat count.
    */

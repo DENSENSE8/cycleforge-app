@@ -122,8 +122,8 @@ export function ReplacementBoughtCard({
           <Check className="h-4 w-4" />
           {`${replacement ? 'Replacement label' : 'Label'} ${bought.idempotent ? 'already purchased' : 'purchased'}`}
         </p>
-        <dl className="mt-2 grid grid-cols-3 gap-3">
-          <div className="min-w-0">
+        <dl className="mt-2 grid grid-cols-2 gap-3">
+          <div className="col-span-2 min-w-0">
             <dt className="mode-label text-text-success">Tracking</dt>
             <dd className="min-w-0">
               {tracking ? <TrackingChip value={tracking} display={tracking} carrierHint={carrier || null} /> : '—'}

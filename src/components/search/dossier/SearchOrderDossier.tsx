@@ -47,6 +47,7 @@ const EMPTY_TIMELINE = {
   unitPhotos: [],
   pickSessions: [],
   packEvents: [],
+  returns: [],
 };
 
 export function SearchOrderDossier({

@@ -14,7 +14,7 @@ const ORG = '00000000-0000-0000-0000-000000000001' as OrgId;
 // ── Membership: an order held for SKU mapping is `pairs`, never `fbm` ─────────
 
 test('an order held for SKU mapping (caged, unpaired) is pairs; a paired or uncaged queued order is fbm', () => {
-  // The split reads only the SKU-mapping hold, so an out-of-stock / buyer-note
+  // The split reads only the SKU-mapping hold, so an out-of-stock / shipping-issue
   // order that is ALSO held for mapping still lands in pairs, never fbm.
   assert.equal(orderQueueKind({ release_state: 'caged', sku_catalog_id: null }), 'pairs');
   assert.equal(orderQueueKind({ release_state: 'caged', sku_catalog_id: '42' }), 'fbm');

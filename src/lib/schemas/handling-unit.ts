@@ -65,3 +65,18 @@ export const HandlingUnitUnassignBody = z
   .strict();
 
 type HandlingUnitUnassignInput = z.infer<typeof HandlingUnitUnassignBody>;
+
+// ─── POST /api/handling-units/[id]/load ─────────────────────────────────────
+
+/** Move a shelf's loose stock (some SKUs or all of them) into the tote. */
+export const HandlingUnitLoadBody = z
+  .object({
+    locationCode: z.string().trim().min(1).max(128),
+    lines: z
+      .array(z.object({ sku: z.string().trim().min(1).max(128), qty: positiveInt }).strict())
+      .min(1, 'Choose at least one item')
+      .max(500, 'Too many items in one request'),
+    park: z.boolean(),
+    idempotencyKey: z.string().trim().min(1).optional(),
+  })
+  .strict();

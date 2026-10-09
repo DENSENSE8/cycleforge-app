@@ -44,11 +44,11 @@ function status(stationId: string, over: Record<string, unknown> = {}): StaffPri
 }
 
 describe('parseStaffPrintJob', () => {
-  it('accepts a targeted rack location job', () => {
+  it('accepts a targeted location job with no position, and refuses the retired bay grain', () => {
     const job = parseStaffPrintJob({
       request_id: 'req-1',
       targetStationId: BENCH,
-      grain: 'rack',
+      grain: 'bin',
       role: 'label',
       location: {
         roomName: 'Zone 3 - Parts',
@@ -59,6 +59,7 @@ describe('parseStaffPrintJob', () => {
     assert.equal(job?.targetStationId, BENCH);
     assert.equal(job?.location?.segments[0]?.zone, 'C');
     assert.equal(job?.location?.segments[0]?.position, 0);
+    assert.equal(parseStaffPrintJob({ request_id: 'req-1', targetStationId: BENCH, grain: 'rack', role: 'label' }), null);
   });
 
   it('treats a job with no target station as junk — it would print on every computer', () => {
@@ -199,17 +200,19 @@ describe('parseStaffPrintJob', () => {
       notes: ' Fragile\r\nTop shelf only\u0007 ',
       image: '/api/photos/88/content',
     };
-    const job = parseStaffPrintJob({ ...base, role: 'paper', stockLabel: { labels: [face, { sku: 'APL-2640', title: 'Dock', notes: '', image: null }] } });
+    const job = parseStaffPrintJob({ ...base, role: 'paper', stockLabel: { labels: [face, { sku: 'TMP-2640', title: 'Dock', notes: '', image: null, onHold: true }] } });
     assert.equal(job?.role, 'label');
     assert.deepEqual(job?.stockLabel, {
       labels: [
-        { sku: 'APL-2639', title: 'Bose SoundDock Series II', notes: 'Fragile\nTop shelf only', image: '/api/photos/88/content' },
-        { sku: 'APL-2640', title: 'Dock', notes: '', image: null },
+        // onHold only from a literal true: a missing flag prints the SKU.
+        { sku: 'APL-2639', title: 'Bose SoundDock Series II', notes: 'Fragile\nTop shelf only', image: '/api/photos/88/content', onHold: false },
+        { sku: 'TMP-2640', title: 'Dock', notes: '', image: null, onHold: true },
       ],
     });
     const one = (over: Record<string, unknown>) => parseStaffPrintJob({ ...base, stockLabel: { labels: [{ ...face, ...over }] } });
     assert.equal(one({ image: '/api/zoho/items/4411/image' })?.stockLabel?.labels[0]?.image, '/api/zoho/items/4411/image');
     assert.equal(one({ image: null, title: '' })?.stockLabel?.labels[0]?.title, 'APL-2639');
+    assert.equal(one({ onHold: 'yes' })?.stockLabel?.labels[0]?.onHold, false);
     for (const image of ['https://evil.test/a.png', '//evil.test/a.png', '/api/photos/88/content?x=1', '/api/../secret', 'data:image/png;base64,AAAA']) {
       assert.equal(one({ image }), null, image);
     }
@@ -371,9 +374,9 @@ describe('thisDeviceCanFulfillPrintJob', () => {
   it('fulfils only when the job targets this station and the role is ready', () => {
     const bench = status(BENCH);
     const pack = status(PACK);
-    assert.equal(thisDeviceCanFulfillPrintJob({ grain: 'rack', targetStationId: BENCH }, bench), true);
+    assert.equal(thisDeviceCanFulfillPrintJob({ grain: 'bin', targetStationId: BENCH }, bench), true);
     // Same staffer, same ready printer — but not the station the phone picked.
-    assert.equal(thisDeviceCanFulfillPrintJob({ grain: 'rack', targetStationId: BENCH }, pack), false);
+    assert.equal(thisDeviceCanFulfillPrintJob({ grain: 'bin', targetStationId: BENCH }, pack), false);
     assert.equal(thisDeviceCanFulfillPrintJob({ grain: 'papers', targetStationId: BENCH }, bench), false);
     assert.equal(
       thisDeviceCanFulfillPrintJob({ grain: 'repair', role: 'label', targetStationId: BENCH }, bench),

@@ -3,6 +3,7 @@
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingPackageUpdatedDetail } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingSelectLineDetail } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan/types';
 import type {
   NavState,
@@ -58,6 +59,11 @@ export interface ReceivingEventDetail {
   'receiving-highlight-line': number;
   /** Workspace / triage / History chrome: step prev/next line in the open table. */
   'receiving-navigate-table': 'prev' | 'next';
+  /** Item-photo dock Link → Unbox Displays › Photos › Link, defaulted to this line / carton aspect. */
+  'receiving-open-photo-link': {
+    lineId?: number;
+    cartonAspect?: PhotoAspect;
+  };
   /**
    * Export the current Unbox History view as CSV. The Band-1 trailing button
    * triggers it; the table (which holds the rows in hand) formats + downloads —

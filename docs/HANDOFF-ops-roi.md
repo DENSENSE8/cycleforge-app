@@ -77,13 +77,15 @@ removes the final completed pack. Migration
 deferred database triggers on both tables, so direct writes and later un-packs cannot split the
 facts. Live cleanup removed 793 invalid `SHIP_CONFIRM` rows; 0 remained.
 
-**Still open in F2:** cage (`release_state`) and unacknowledged buyer-note gates, plus verification
+**Still open in F2:** cage (`release_state`) gate, plus verification
 of the legacy `mirrorAllocations({ packerLogId: activityId })` identifier.
 
 **Owner test**
 1. Scan out a CF-TEST order that was never packed → refused, says "Not packed".
 2. Pack it, scan out again → confirmed.
-3. A CF-TEST order with an unread buyer note → refused until acknowledged.
+
+The buyer-note gate was dropped 2026-10-08 (operator ruling: packers are never interrupted; the
+note shows inline on the record).
 
 ---
 

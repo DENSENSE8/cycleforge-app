@@ -591,7 +591,6 @@ export default [
       'src/components/mobile/redesign/ScanInput.tsx',
       'src/components/mobile/station/MobilePackerSpamCamera.tsx',
       'src/components/packer/PackFbaScanCard.tsx',
-      'src/components/packer/PackPapersStatusCard.tsx',
       'src/components/packer/UnitPackPhotoPeek.tsx',
       'src/components/packing/OrderPackChecklist.tsx',
       'src/components/packing/PackChecklistLineRow.tsx',
@@ -822,6 +821,9 @@ export default [
       // (P / T / F) inside the Fail · Test again · Pass buttons and the Pass dock CTA.
       'src/components/receiving/workspace/TestingStatusPills.tsx',
       'src/design-system/primitives/SlicedActionDock.tsx',
+      // Operator 2026-10-08 exception: the find panel paints "Everywhere" with its key
+      // (⌘↵, or ↵ once ↓ lights the row) — the panel only exists while the staffer is typing.
+      'src/design-system/components/FindField.tsx',
     ],
     languageOptions: {
       parser: tsParser,

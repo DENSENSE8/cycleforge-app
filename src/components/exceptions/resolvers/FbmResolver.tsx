@@ -13,7 +13,7 @@ import { resolveWith, useExceptionsChanged } from './resolve-feedback';
 
 /**
  * FBM — a held order, cleared by its category's own verb, in place:
- * Out of Stock → back in stock; Buyer Request → the note acknowledged;
+ * Out of Stock → back in stock;
  * Shipping Issue → the order's parcel & label panel (rate-shop, buy, link).
  * The buyer's note reads like the Allocate record's (its "Customer note"
  * group, triage face). A verb that
@@ -35,17 +35,6 @@ export function FbmResolver({ row, facts }: { row: ExceptionRow; facts: FbmExcep
         onClick={() =>
           resolveWith(resolve, { action: 'update-order', orderId: order.id, patch: { isOutOfStock: false }, clears: row.key }, `Order ${orderRef} back in stock`)
         }
-        data-testid="exception-resolve-fbm"
-      >
-        {row.resolveVerb}
-      </Button>
-    );
-  } else if (category === 'Buyer Request') {
-    action = (
-      <Button
-        variant="primary"
-        loading={resolve.isPending}
-        onClick={() => resolveWith(resolve, { action: 'ack-buyer-note', orderId: order.id, clears: row.key }, `Buyer note on ${orderRef} acknowledged`)}
         data-testid="exception-resolve-fbm"
       >
         {row.resolveVerb}

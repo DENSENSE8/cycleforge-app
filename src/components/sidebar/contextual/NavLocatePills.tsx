@@ -30,7 +30,7 @@ export function NavLocatePills({
       {!answer ? (
         <span className="text-role-caption text-text-faint">Locating…</span>
       ) : buckets.length === 0 ? (
-        <span className="text-role-caption text-text-faint">Nowhere in this section</span>
+        <span className="text-role-caption text-text-faint">Not in this section — searching everywhere…</span>
       ) : (
         buckets.map((bucket) => (
           // ds-raw-button: a locate pill in the find panel (tone dot · label · count, pressed when its list is on screen) — the sidebar control face, no Button variant paints it.

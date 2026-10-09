@@ -20,22 +20,6 @@ import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 /**
- * Children of the element recede (slight fade · shrink · blur, no pointer)
- * while a find field is expanded over the header — on hover intent, focus or
- * an open list (`[data-find-expanded]`, set by FindField / the everywhere
- * face; no import, one DOM fact) — EXCEPT the child that is, or holds, that
- * field: the operator's search never blurs with its header. Ease-in-out,
- * 300ms in, 200ms out (owner 2026-10-04).
- */
-const RECEDE_WHILE_FINDING = [
-  '[:root:has([data-find-expanded])_&>*:not([data-find-expanded]):not(:has([data-find-expanded]))]:pointer-events-none',
-  '[:root:has([data-find-expanded])_&>*:not([data-find-expanded]):not(:has([data-find-expanded]))]:scale-[0.985]',
-  '[:root:has([data-find-expanded])_&>*:not([data-find-expanded]):not(:has([data-find-expanded]))]:opacity-60',
-  '[:root:has([data-find-expanded])_&>*:not([data-find-expanded]):not(:has([data-find-expanded]))]:blur-[5px]',
-  '[:root:has([data-find-expanded])_&>*:not([data-find-expanded]):not(:has([data-find-expanded]))]:duration-300',
-].join(' ');
-
-/**
  * Global desktop header — one persistent utility bar. The left says what the
  * operator does next, the geometric center switches the current page/record
  * context, and the right reports system work plus global actions.
@@ -64,21 +48,10 @@ export function GlobalHeader({
         TOP_CHROME_ZONE_GAP,
         HEADER_INSET_X,
         appChromeMutedClass,
-        // While the search field is engaged (grown over the header), every
-        // header zone recedes — fades and blurs out of focus — so the only
-        // sharp thing at the top of the screen is the search. With the
-        // sidebar closed the search lives IN the nav zone, so the zone that
-        // holds the field stays sharp and only its other children recede.
-        '[&>*]:transition-[opacity,filter,transform] [&>*]:duration-200 [&>*]:ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:[&>*]:transition-none',
-        RECEDE_WHILE_FINDING,
       )}
     >
       <div
-        className={cn(
-          HEADER_ICON_CLUSTER,
-          '[&>*]:transition-[opacity,filter,transform] [&>*]:duration-200 [&>*]:ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:[&>*]:transition-none',
-          RECEDE_WHILE_FINDING,
-        )}
+        className={HEADER_ICON_CLUSTER}
         data-header-zone="nav"
       >
         {!navOpen && (

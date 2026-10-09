@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { signLocationScanProof } from '@/lib/inventory/location-scan-proof';
-import { locationCodeFlat, parseLocationCodeFlat } from '@/lib/barcode-routing';
+import { locationCode, locationCodeFlat, parseLocationCodeFlat } from '@/lib/barcode-routing';
+import { locationLookupKeys, suggestLocations } from '@/lib/locations/location-lookup';
 import { readLocationRecord } from '@/lib/locations/location-record';
 import { LOCATION_REGISTER_PERMISSION, registerLocationsAudited } from '@/lib/locations/location-registration';
 import { errorResponse } from '@/lib/api';
@@ -29,16 +30,29 @@ export async function POST(
   try {
     let record = await readLocationRecord(code, orgId);
     if (!record) {
-      const segs = parseLocationCodeFlat(code);
-      if (!segs) {
+      // Only a scanned sticker that reads as exactly ONE address is registered
+      // (`?typed=1` never registers: a typo must not mint a location); anything
+      // else answers with the real locations it is closest to.
+      const typed = request.nextUrl.searchParams.get('typed') === '1';
+      const addresses = locationLookupKeys(code).filter((key) => parseLocationCodeFlat(key) != null);
+      const segs = addresses.length === 1 ? parseLocationCodeFlat(addresses[0]!) : null;
+      if (!segs || typed) {
+        const suggestions = await suggestLocations(code, orgId);
+        const named = segs ? locationCode(segs) : code;
         return NextResponse.json({
-          error: `No location ${code}. Location stickers read zone-aisle-bay-level-position (e.g. C-01-01-1-01).`,
+          error: suggestions.length > 0
+            ? `No location ${named}. Did you mean ${suggestions[0]!.face}?`
+            : segs
+              ? `No location ${named}. Scan its sticker to add it.`
+              : `No location ${code}. Location stickers read zone-aisle-bay-level (e.g. C-02-09-4).`,
+          suggestions,
         }, { status: 404 });
       }
       if (!gate.ctx.can(LOCATION_REGISTER_PERMISSION)) {
         return NextResponse.json({
-          error: `Location ${code} is not set up yet, and your role cannot add locations. Ask a lead to print or register it.`,
+          error: `Location ${locationCode(segs)} is not set up yet, and your role cannot add locations. Ask a lead to print or register it.`,
           permission: LOCATION_REGISTER_PERMISSION,
+          suggestions: await suggestLocations(code, orgId),
         }, { status: 403 });
       }
       await registerLocationsAudited(request, gate.ctx, { room: `Zone ${segs.zone}`, segments: [segs] });

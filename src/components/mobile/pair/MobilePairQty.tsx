@@ -5,9 +5,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, X } from '@/components/Icons';
+import { Check } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
-import { MOBILE_DATA_LIST_ROW_INTERACTION_CLASS } from '@/design-system/components/MobileDataListRow';
+import { DIGIT_PAD_CELL, DIGIT_PAD_QUIET_CELL, MobileDigitPad } from '@/components/mobile/keypad/MobileDigitPad';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { takeReasonPayload, type TakeReasonChoice } from '@/lib/inventory/take-reason';
@@ -21,21 +21,10 @@ import { previousMobilePath } from '@/lib/mobile/nav-trail';
 import { locationHubHref, withLocationScanProof } from '@/lib/mobile/location-hub-href';
 import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { cn } from '@/utils/_cn';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
 
 type Mode = 'minus' | 'plus';
-
-const KEYS: ReadonlyArray<string | number> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 'clear', 0, 'back'];
-
-/** Flush keypad / toggle cell: square, no gap, no scale. */
-const CELL = 'h-auto w-full justify-center shadow-none ring-0 enabled:active:scale-100';
-
-/**
- * Press for a neutral cell: the house quiet wash (owner 2026-10-05: never a
- * black flash). The chosen Take / Put cell keeps its own rose / emerald
- * variant's hover and press instead, so nothing paints over that fill.
- */
-const QUIET_CELL = cn(CELL, MOBILE_DATA_LIST_ROW_INTERACTION_CLASS);
 
 /** The tally's mono micro-label — the same face as `DetailFact`. */
 const TALLY_LABEL = 'font-mono text-role-eyebrow text-mode-muted';
@@ -116,22 +105,6 @@ export function MobilePairQty({
   }, [draft]);
 
   const projected = Math.max(0, onHand + (mode === 'minus' ? -numericDraft : numericDraft));
-
-  const pressKey = useCallback((key: string | number) => {
-    setError(null);
-    if (key === 'clear') {
-      setDraft('');
-      return;
-    }
-    if (key === 'back') {
-      setDraft((prev) => prev.slice(0, -1));
-      return;
-    }
-    setDraft((prev) => {
-      const next = `${prev}${key}`.replace(/^0+(?=\d)/, '');
-      return next.length > 5 ? prev : next;
-    });
-  }, []);
 
   const confirm = useCallback(async () => {
     if (busy) return;
@@ -259,7 +232,7 @@ export function MobilePairQty({
         <dl className="grid grid-cols-3 divide-x divide-mode-rule">
           <div className="px-mode-page py-3">
             <dt className={TALLY_LABEL}>On hand</dt>
-            <dd className="mt-1 font-mono text-role-title font-semibold tabular-nums text-mode-ink">{onHand}</dd>
+            <dd className={cn('mt-1 font-mono text-role-title font-semibold tabular-nums', stockQtyToneClass(onHand, { inkClass: 'text-mode-ink' }))}>{onHand}</dd>
           </div>
           <div className="px-mode-page py-3">
             <dt className={TALLY_LABEL}>Change</dt>
@@ -270,7 +243,7 @@ export function MobilePairQty({
           </div>
           <div className="px-mode-page py-3">
             <dt className={TALLY_LABEL}>After</dt>
-            <dd className="mt-1 font-mono text-role-title font-semibold tabular-nums text-mode-ink">{projected}</dd>
+            <dd className={cn('mt-1 font-mono text-role-title font-semibold tabular-nums', stockQtyToneClass(projected, { inkClass: 'text-mode-ink' }))}>{projected}</dd>
           </div>
         </dl>
 
@@ -296,7 +269,7 @@ export function MobilePairQty({
             radius="flush"
             aria-pressed={mode === 'minus'}
             onClick={() => setMode('minus')}
-            className={cn(mode === 'minus' ? CELL : cn(QUIET_CELL, 'bg-mode-panel text-mode-muted'), 'min-h-14 font-mono text-base')}
+            className={cn(mode === 'minus' ? DIGIT_PAD_CELL : cn(DIGIT_PAD_QUIET_CELL, 'bg-mode-panel text-mode-muted'), 'min-h-14 font-mono text-base')}
             data-testid="pair-qty-take"
           >
             − Take
@@ -306,31 +279,22 @@ export function MobilePairQty({
             radius="flush"
             aria-pressed={mode === 'plus'}
             onClick={() => setMode('plus')}
-            className={cn(mode === 'plus' ? CELL : cn(QUIET_CELL, 'bg-mode-panel text-mode-muted'), 'min-h-14 font-mono text-base')}
+            className={cn(mode === 'plus' ? DIGIT_PAD_CELL : cn(DIGIT_PAD_QUIET_CELL, 'bg-mode-panel text-mode-muted'), 'min-h-14 font-mono text-base')}
             data-testid="pair-qty-put"
           >
             + Put
           </Button>
         </div>
 
-        <div className="grid grid-cols-3 gap-px border-t border-mode-rule bg-mode-rule">
-          {KEYS.map((key) => (
-            <Button
-              key={String(key)}
-              variant="secondary"
-              radius="flush"
-              ariaLabel={typeof key === 'string' ? key : `digit ${key}`}
-              onClick={() => pressKey(key)}
-              className={cn(
-                QUIET_CELL,
-                'min-h-16 font-mono text-2xl',
-                key === 'clear' || key === 'back' ? 'bg-mode-well text-mode-muted' : 'bg-mode-panel text-mode-ink',
-              )}
-            >
-              {key === 'clear' ? <X className="h-5 w-5" /> : key === 'back' ? '⌫' : String(key)}
-            </Button>
-          ))}
-        </div>
+        <MobileDigitPad
+          value={draft}
+          maxLength={5}
+          label="Quantity"
+          onChange={(next) => {
+            setError(null);
+            setDraft(next);
+          }}
+        />
       </div>
 
       <DetailDock

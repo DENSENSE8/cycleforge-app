@@ -1,4 +1,4 @@
-/** Optional org override for Unbox capture-step order. */
+/** Org override for Unbox capture-step order (Displays › Checklist drag-to-reorder). */
 
 type UnboxFlowCaptureOrderFlowId = 'found' | 'unfound' | 'return';
 
@@ -60,5 +60,23 @@ export function parseUnboxFlowCaptureOrder(raw: string | null | undefined): Unbo
   return out;
 }
 
+/** Settings JSON for the override map — trimmed, deduped, empty flows dropped. */
+export function serializeUnboxFlowCaptureOrder(map: UnboxFlowCaptureOrderMap): string {
+  const clean: UnboxFlowCaptureOrderMap = {};
+  for (const flow of FLOW_IDS) {
+    const list = map[flow];
+    if (!list?.length) continue;
+    const keys: string[] = [];
+    const seen = new Set<string>();
+    for (const item of list) {
+      const key = String(item).trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      keys.push(key);
+    }
+    if (keys.length > 0) clean[flow] = keys;
+  }
+  return JSON.stringify(clean);
+}
 
 export const UNBOX_FLOW_CAPTURE_ORDER_SETTING_KEY = 'receiving.unboxFlowCaptureOrder' as const;

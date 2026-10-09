@@ -3,6 +3,13 @@
 import { confirmOrderNumberForPhone } from '@/lib/ecwid/client';
 import { createRepairCustomer } from '@/lib/neon/customer-queries';
 import {
+  decodeShipToAddress,
+  formatShipToOneLine,
+  isShipToBlank,
+  trimShipToAddress,
+  type ShipToAddress,
+} from '@/lib/customers/ship-to-address';
+import {
   missingRepairIntakeFields,
   RepairIntakeValidationError,
   submitRepairIntake,
@@ -21,6 +28,7 @@ import {
   type CounterTransactionResult,
   type CounterTransactionStatus,
 } from './counter-transaction-types';
+import { buildRepairTicket, formatRepairDueDate } from '@/lib/repair/repair-ticket-text';
 
 /** Thrown when the input cannot describe a transaction at all. Callers map → 400. */
 export class CounterTransactionValidationError extends Error {
@@ -76,10 +84,10 @@ export interface SubmitCounterTransactionDeps {
   findCustomerByPhoneDigits(orgId: OrgId, phoneDigits: string): Promise<ResolvedCustomer | null>;
   createCustomer(
     orgId: OrgId,
-    args: { name: string; phone: string; email?: string; address?: string },
+    args: { name: string; phone: string; email?: string },
   ): Promise<ResolvedCustomer>;
-  /** Callers: submitCounterTransaction after phone match. Schema: customers.shipping_address_1. User: "intake their information like name, email address, phone number, address" */
-  patchCustomerAddress?(orgId: OrgId, customerId: number, address: string): Promise<void>;
+  /** The visit's ship-to onto the customer's `shipping_*` columns (blank fields clear). Callers: submitCounterTransaction after match/create. */
+  patchCustomerShipTo?(orgId: OrgId, customerId: number, shipTo: ShipToAddress): Promise<void>;
 
   /** The header for this client_event_id, if this submit is a replay. */
   findHeaderByClientEvent(orgId: OrgId, clientEventId: string): Promise<HeaderRow | null>;
@@ -293,13 +301,18 @@ const defaultDeps: SubmitCounterTransactionDeps = {
         created.display_name?.trim() || created.customer_name?.trim() || args.name,
     };
   },
-  async patchCustomerAddress(orgId, customerId, address) {
+  async patchCustomerShipTo(orgId, customerId, shipTo) {
     await tenantQuery(
       orgId,
       `UPDATE customers
-          SET shipping_address_1 = $1, updated_at = NOW()
-        WHERE organization_id = $2 AND id = $3`,
-      [address, orgId, customerId],
+          SET shipping_address_1   = NULLIF($1, ''),
+              shipping_address_2   = NULLIF($2, ''),
+              shipping_city        = NULLIF($3, ''),
+              shipping_state       = NULLIF($4, ''),
+              shipping_postal_code = NULLIF($5, ''),
+              updated_at           = NOW()
+        WHERE organization_id = $6 AND id = $7`,
+      [shipTo.address1, shipTo.address2, shipTo.city, shipTo.state, shipTo.postalCode, orgId, customerId],
     );
   },
 
@@ -565,16 +578,11 @@ export async function submitCounterTransaction(
     if (!displayName) {
       throw new CounterTransactionValidationError(['Name (no customer matched that phone)']);
     }
-    customer = await deps.createCustomer(orgId, {
-      name: displayName,
-      phone,
-      email,
-      address: String(input.customer?.address ?? '').trim() || undefined,
-    });
+    customer = await deps.createCustomer(orgId, { name: displayName, phone, email });
   }
-  const address = String(input.customer?.address ?? '').trim();
-  if (address && deps.patchCustomerAddress) {
-    await deps.patchCustomerAddress(orgId, customer.id, address);
+  const shipTo = trimShipToAddress(decodeShipToAddress(input.customer?.address));
+  if (!isShipToBlank(shipTo) && deps.patchCustomerShipTo) {
+    await deps.patchCustomerShipTo(orgId, customer.id, shipTo);
   }
   // A typed name wins (the customer is standing there correcting it); otherwise
   // fall back to the name already on file.
@@ -753,9 +761,25 @@ export async function submitCounterTransaction(
     // `entity_id`, so N rows are naturally distinct rather than colliding.
     let allQueued = true;
     let firstOutboxId: number | null = null;
+    const ticketDevices = services.map((s) => ({
+      product: s.productModel,
+      serial: s.serialNumber,
+      issue: (s.repairReasons ?? []).map((r) => r.trim()).filter(Boolean).join(', '),
+      quote: s.price,
+      notes: s.notes ?? '',
+    }));
+    const dueDate = formatRepairDueDate();
 
     for (const [index, repair] of repairs.entries()) {
-      const service = services[index];
+      const ticket = buildRepairTicket({
+        channel: 'counter',
+        customer: { name: effectiveName, phone, email: email ?? '', shipTo: formatShipToOneLine(shipTo) },
+        devices: ticketDevices,
+        deviceIndex: index,
+        visitNotes: services[index]?.repairNotes ?? '',
+        dueDate,
+        priorOrderRef,
+      });
       const queued = await deps.enqueueTicket({
         orgId,
         workType: ticketRequest.mode === 'attach' ? 'ATTACH_TICKET' : 'CREATE_TICKET',
@@ -764,15 +788,8 @@ export async function submitCounterTransaction(
         counterTransactionId: header.id,
         providerTicketId: ticketRequest.mode === 'attach' ? ticketRequest.ticketId : null,
         payload: {
-          subject: `${repair.rsNumber} — ${service?.productModel ?? 'counter service'}`,
-          body: [
-            `Counter drop-off ${repair.rsNumber}.`,
-            service?.serialNumber ? `Serial: ${service.serialNumber}` : null,
-            services.length > 1 ? `Device ${index + 1} of ${services.length} this visit.` : null,
-            priorOrderRef ? `Prior order: ${priorOrderRef}` : null,
-          ]
-            .filter(Boolean)
-            .join('\n'),
+          subject: ticket.subject,
+          body: ticket.body,
           requesterName: effectiveName || null,
           requesterEmail: email ?? null,
           // PER DEVICE. This key is the provider-side dedupe; sharing the

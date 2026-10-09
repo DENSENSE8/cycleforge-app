@@ -2,12 +2,15 @@
 
 /**
  * Location labels — ONE tree for the phone (`/m/labels`) and the desk
- * (`/inventory/locations?tab=labels`, inside `MobileFirstFrame`).
+ * (`/inventory/locations?tab=labels&kind=location`, inside `MobileFirstFrame`).
  *
- *   How many  Single (live preview) · Bulk (per bay, odd / even, one axis, parts drawers)
+ *   How many  Single (live preview) · Bulk (bays and levels, each All · Odd · Even, optional positions)
  *   Address  scan a sticker (camera, wedge or typed) — or Zone › Aisle › Bay › Level › Position
  *   Printer   the remembered label station; a sheet changes it
  *   Print     the one primary in the dock; disabled, it names what is missing
+ *
+ * Bulk keeps every control in the left column under Zone › Aisle; the right
+ * column is the labels themselves, each with its tick.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,14 +20,14 @@ import { DetailNav } from '@/components/mobile/detail/DetailParts';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
-import type { ExpandedPrintRunRow } from '@/lib/locations/expand-print-run';
+import { RunLabelList } from './LabelRunParts';
 import { vibrateScan } from '@/lib/scan-feedback/play';
 import { LabelStationSheet, labelStationBlocked, labelStationName } from './LabelStationSheet';
-import { LocationLabelRun, type LabelRunFreeze } from './LocationLabelRun';
+import { LabelRunControls, useLabelRun } from './LocationLabelRun';
 import { NumberTiles } from './NumberTiles';
 import { RoomPicker } from './RoomPicker';
 import { StepPills } from './StepPills';
-import { labelFace, parseLabelCode, printVerb, type LabelKind } from './location-label-model';
+import { labelFace, parseLabelCode, printVerb } from './location-label-model';
 import { useLocationLabelBuilder } from './useLocationLabelBuilder';
 
 type QuantityMode = 'single' | 'bulk';
@@ -40,22 +43,19 @@ const TILE_COUNT = { aisle: 10, bay: 15, level: 5, position: 20 } as const;
 const SECTION_HEADING = 'px-mode-page pb-1 pt-4 text-role-caption font-semibold text-text-muted';
 
 export function LocationLabelBuilder({
-  initialKind,
   initialCode = null,
   armScan = false,
   dock,
 }: {
-  initialKind: LabelKind;
-  /** A location or bay code to start from (the record the operator came from). */
+  /** A location code to start from (the record the operator came from). */
   initialCode?: string | null;
   /** Mount the camera up — a phone with nothing prefilled scans first. */
   armScan?: boolean;
   /** `dock` on the phone (the shell's floor); `float` inside the desk frame. */
   dock: 'dock' | 'float';
 }) {
-  const c = useLocationLabelBuilder({ initialKind, initialCode });
+  const c = useLocationLabelBuilder({ initialCode });
   const [quantityMode, setQuantityMode] = useState<QuantityMode>('single');
-  const [runRows, setRunRows] = useState<ExpandedPrintRunRow[]>([]);
   const [stationOpen, setStationOpen] = useState(false);
 
   const { applyCode } = c;
@@ -80,25 +80,23 @@ export function LocationLabelBuilder({
   }, [onCode]);
 
   const bulk = quantityMode === 'bulk';
-  const { room, aisle, bay, level, position } = c.selection;
-  const rack = c.kind === 'rack';
-  // Stable per address: the bulk planner re-derives its rows from this object.
-  const freeze = useMemo<LabelRunFreeze | null>(
-    () =>
-      room && c.zoneLetter && aisle != null
-        ? { roomName: room, zoneLetter: c.zoneLetter, aisle, bay, level, position: rack ? undefined : position, rack }
-        : null,
-    [room, c.zoneLetter, aisle, bay, level, position, rack],
+  const { room, aisle } = c.selection;
+  // Stable per aisle: the run reseeds when the room or aisle changes.
+  const runAisle = useMemo(
+    () => (room && c.zoneLetter && aisle != null ? { roomName: room, zoneLetter: c.zoneLetter, aisle } : null),
+    [room, c.zoneLetter, aisle],
   );
+  const run = useLabelRun(runAisle);
+  // Bulk asks only for the room and the aisle; bays, levels and positions are the run's ranges.
+  const showRunControls = bulk && runAisle != null && c.step !== 'zone' && c.step !== 'aisle';
 
   const verb = printVerb({
-    kind: c.kind,
     run: bulk,
     printing: c.printing,
     selection: c.selection,
     missingLetter: c.missingLetter,
     single: c.single,
-    runCount: freeze ? runRows.length : 0,
+    runCount: run.ticked.length,
     printerBlocked: c.printerBlocked,
   });
 
@@ -109,9 +107,9 @@ export function LocationLabelBuilder({
       return;
     }
     if (!verb.ready) return;
-    const labels = bulk ? runRows.map((row) => row.segments) : single ? [single] : [];
+    const labels = bulk ? run.ticked.map((row) => row.segments) : single ? [single] : [];
     return print(labels);
-  }, [bulk, print, runRows, single, verb.needsPrinter, verb.ready]);
+  }, [bulk, print, run.ticked, single, verb.needsPrinter, verb.ready]);
 
   // ⌘/Ctrl+P prints what the dock would print.
   useEffect(() => {
@@ -128,7 +126,7 @@ export function LocationLabelBuilder({
   const stationMeta = station ? (labelStationBlocked(station) ?? (station.label.printer || 'Ready')) : 'No computer with CycleForge open';
 
   return (
-    <div className="flex min-h-full flex-col bg-mode-panel" data-testid="location-label-builder" data-kind={c.kind}>
+    <div className="flex min-h-full flex-col bg-mode-panel" data-testid="location-label-builder">
       {dock === 'dock' ? (
         <MobileCaptureWindow
           label="Location sticker camera"
@@ -145,7 +143,7 @@ export function LocationLabelBuilder({
         </p>
       ) : null}
 
-      <StepPills kind={c.kind} step={c.step} zoneLetter={c.zoneLetter} selection={c.selection} onOpen={c.openStep} />
+      <StepPills step={c.step} zoneLetter={c.zoneLetter} selection={c.selection} onOpen={c.openStep} bulk={bulk} />
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" data-testid="location-label-workspace">
         <section aria-label="Select location" className="min-w-0 lg:sticky lg:top-0 lg:self-start">
           <div className="px-mode-page pb-2 pt-2">
@@ -155,8 +153,10 @@ export function LocationLabelBuilder({
               onTabChange={(id) => setQuantityMode(id as QuantityMode)}
             />
           </div>
-          <div className="border-y border-mode-rule" data-testid={`label-step-body-${c.step}`}>
-            {c.step === 'zone' ? (
+          <div className="border-y border-mode-rule" data-testid={`label-step-body-${showRunControls ? 'run' : c.step}`}>
+            {showRunControls ? (
+              <LabelRunControls run={run} disabled={c.printing} />
+            ) : c.step === 'zone' ? (
               <RoomPicker rooms={c.rooms} zoneMap={c.zoneMap} loading={c.loading} selectedRoom={c.selection.room} onSelect={c.pickRoom} />
             ) : c.step === 'position' ? (
               <NumberTiles
@@ -184,11 +184,15 @@ export function LocationLabelBuilder({
 
         <section aria-label={bulk ? 'Bulk labels' : 'Selected label'} className="flex min-w-0 flex-col border-t border-mode-rule lg:min-h-full lg:border-l lg:border-t-0">
           {bulk ? (
-            freeze ? (
-              <LocationLabelRun freeze={freeze} gln={c.gln} disabled={c.printing} onRowsChange={setRunRows} />
-            ) : (
-              <p className="px-mode-page py-4 text-role-caption text-text-muted">Pick a room and an aisle to plan a bulk print.</p>
-            )
+            <RunLabelList
+              rows={run.rows}
+              excluded={run.excluded}
+              onToggle={run.toggle}
+              roomName={room ?? ''}
+              gln={c.gln}
+              emptyHint={run.emptyHint}
+              disabled={c.printing}
+            />
           ) : (
             <div className="px-mode-page pb-3 pt-3" data-testid="label-single-preview">
               <LocationLabelFacePreview segments={c.single} roomName={c.selection.room} gln={c.gln} fit="host" />

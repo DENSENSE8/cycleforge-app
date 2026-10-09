@@ -1,15 +1,15 @@
 import type { ComponentType } from 'react';
-import { Images, LayoutDashboard, Link2, Ticket } from '@/components/Icons';
+import { Images, LayoutDashboard, Link2, PackageCheck, Ticket } from '@/components/Icons';
 import type { HeaderCenterTask } from '@/contexts/HeaderContext';
 
-export type StationTask = 'work' | 'photos' | 'ticket' | 'pair' | 'displays';
+export type StationTask = 'work' | 'photos' | 'ticket' | 'pair' | 'fulfilled' | 'displays';
 
 /**
  * The station's header tabs (operator 2026-10-08). Each reads as icon + word
  * and the selected one wears the Scan Stations switcher's selected face
  * (`HeaderTaskTabs`). Every icon carries its own colour: the work tab the
  * station's Scan Stations tone (Unbox blue), Pair violet, Photos sky (with a
- * lighter word), Ticket orange, Displays emerald. Contextual tabs come and go
+ * lighter word), Ticket orange, Return order teal, Displays emerald. Contextual tabs come and go
  * with the record — `useStationTaskController` decides `visible`.
  */
 export function stationHeaderTasks({
@@ -29,6 +29,8 @@ export function stationHeaderTasks({
     { id: 'pair', label: 'Pair', icon: Link2, tone: 'text-violet-600' },
     { id: 'photos', label: 'Photos', icon: Images, tone: 'text-sky-600', labelTone: 'text-text-muted' },
     { id: 'ticket', label: 'Ticket', icon: Ticket, tone: 'text-orange-600' },
+    // A returned unit's previous outbound order (Unbox) — operator 2026-10-08: "Return order".
+    { id: 'fulfilled', label: 'Return order', icon: PackageCheck, tone: 'text-teal-600' },
     { id: 'displays', label: 'Displays', icon: LayoutDashboard, tone: 'text-emerald-600' },
   ];
   return all.filter((task) => visible.has(task.id));

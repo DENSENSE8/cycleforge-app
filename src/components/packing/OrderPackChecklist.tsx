@@ -40,6 +40,8 @@ function lineKey(line: PackChecklistLineDto): string {
 /**
  * Order-scoped pack checklist — one accordion row per order line (SKU).
  * Collapsed: checkmark + title; expanded: catalog photo + kit parts + QC steps.
+ * Desktop UI removed 2026-10-08; kept for the mobile port (tick state, kit
+ * readiness, insert print/persist orchestration).
  */
 export function OrderPackChecklist({
   lines,

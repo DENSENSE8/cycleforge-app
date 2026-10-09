@@ -232,11 +232,7 @@ export function useExceptionOrderNote() {
 }
 
 export function useResolveFbmException() {
-  return useResolveMutation<FbmResolveInput>((input) =>
-    input.action === 'update-order'
-      ? postJson(`/api/orders/${input.orderId}`, input.patch, 'PATCH')
-      : postJson(`/api/orders/${input.orderId}/buyer-note/ack`, {}),
-  );
+  return useResolveMutation<FbmResolveInput>((input) => postJson(`/api/orders/${input.orderId}`, input.patch, 'PATCH'));
 }
 
 export function useResolvePairsException() {

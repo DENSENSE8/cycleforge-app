@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, MapPin, Package, Plus, Printer, ScanBarcode } from '@/components/Icons';
+import { AlertTriangle, ChevronLeft, ChevronRight, MapPin, Package, Plus, Printer, ScanBarcode } from '@/components/Icons';
 import { LocationStockPositions } from '@/components/mobile/location/LocationStockPositions';
 import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { fetchLocationRecord, locationRecordQueryKey } from '@/components/mobile/scan/location-bind-api';
@@ -13,7 +13,7 @@ import { MobileV2RackRecord } from '@/components/mobile/v2/racks/MobileV2RackRec
 import { rackErrorSentence } from '@/components/mobile/v2/racks/rack-presentation';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button, IconButton, SearchField } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { PathChips } from '@/design-system/components/PathChips';
 import { motionTransitionMobile } from '@/design-system/foundations/motion-presets';
@@ -24,7 +24,6 @@ import { parseRackCode, rackLevel } from '@/lib/locations/rack-code';
 import { rackPlacementText } from '@/lib/locations/rack-display';
 import { editRackShelves, getRack, rackQueryKey } from '@/lib/locations/racks-client';
 import { handlingUnitQcFace } from '@/lib/handling-unit-presentation';
-import type { StockTote } from '@/lib/inventory/stock-places';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
@@ -37,36 +36,32 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLocationLabelPrint } from '@/hooks/useLocationLabelPrint';
 import { locationLabelPrintSummary } from '@/lib/print/printLocationRows';
 import { MobileV2LocationPicker, rememberLocationVisit } from './MobileV2LocationPicker';
+import { LocationToteSheet } from './LocationToteSheet';
 
 /*
- * The lateral walk: a horizontal drag moves the whole page with the finger,
- * the neighbour's code peeks in from that side, and a release past the
- * threshold (or a flick) commits to the neighbour; anything less springs back.
- * The visible way to a sibling is the title's ordinal picker — the swipe only
- * speeds it up (F9), so it never starts in the OS's edge gutters.
+ * The lateral walk: the page stays still under the finger — only the
+ * neighbour's bookmark slides in from the side being pulled, so this
+ * location's stock stays readable the whole time. Past the commit distance
+ * the bookmark arms; releasing armed (or a flick) swaps the page, anything
+ * less tucks the bookmark away. A swipe may start on an item row (the row's
+ * tap is withheld after a drag), never on a control or in the OS's edge
+ * gutters (F9). The visible way to a sibling is the title's ordinal picker.
  */
 /** px from either screen edge that belong to the OS back / system gestures (F9). */
 const WALK_EDGE_GUTTER = 24;
 /** px of travel before a touch is read as horizontal (walk) or vertical (scroll). */
 const WALK_AXIS_LOCK = 10;
-/** Fraction of the page width a slow drag must travel to commit. */
-const WALK_COMMIT_FRACTION = 0.28;
-/** px/s — a flick commits regardless of travel. */
-const WALK_FLICK_VELOCITY = 500;
-/** Drag damping toward a side with no neighbour (first / last of the room). */
-const WALK_EDGE_RESISTANCE = 0.25;
-/** Width of the neighbour peek card — must match its `w-40`. */
+/** Width of the neighbour bookmark — must match its `w-40`. */
 const WALK_PEEK_WIDTH = 160;
-/** Touches that start on a control, a horizontal strip, or a sheet are not walks. */
+/** px of pull that arms the bookmark: release past it commits. */
+const WALK_COMMIT_DISTANCE = 112;
+/** px/s — a flick toward a neighbour commits regardless of travel. */
+const WALK_FLICK_VELOCITY = 500;
+/** Pull damping toward a side with no neighbour (first / last of the room). */
+const WALK_EDGE_RESISTANCE = 0.25;
+/** Touches that start on a control, a horizontal strip, or a sheet are not walks — except a row's whole-row target. */
 const WALK_IGNORE = 'button, a, input, textarea, select, label, nav, [role="slider"], [role="dialog"]';
-
-/**
- * Set by a committed swipe, read by the arriving record so it slides in from
- * the side the finger pushed toward. Short-lived and keyed to the target, so a
- * later visit to the same code by another path does not replay it.
- */
-let walkArrival: { code: string; from: 1 | -1; at: number } | null = null;
-const WALK_ARRIVAL_TTL_MS = 4000;
+const WALK_THROUGH = '[data-walk-through]';
 
 type Filter = 'all' | 'lpn' | 'loose' | 'hold';
 
@@ -86,220 +81,29 @@ const TONE: Record<ReturnType<typeof handlingUnitQcFace>['tone'], string> = {
 
 function LpnRow({ unit, onOpen }: { unit: LocationHandlingUnit; onOpen: () => void }) {
   const face = handlingUnitQcFace(unit);
+  // A tote loaded from shelves holds stock, not serialized units: it has no QC stage to show.
+  const stockOnly = unit.totalUnits === 0 && unit.stockUnits > 0;
   return (
     <button
       type="button"
       onClick={onOpen}
       className="grid min-h-14 w-full grid-cols-[1.25rem_minmax(0,1fr)_auto_1rem] items-center gap-2 border-b border-mode-rule bg-mode-panel px-mode-page py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-accent"
       data-testid="location-lpn-row"
+      data-walk-through
     >
-      <span className={cn('h-2.5 w-2.5 justify-self-center rounded-full', TONE[face.tone])} aria-hidden />
+      <span className={cn('h-2.5 w-2.5 justify-self-center rounded-full', stockOnly ? TONE.info : TONE[face.tone])} aria-hidden />
       <span className="min-w-0">
         <span className="block truncate font-mono text-sm font-semibold text-mode-ink">{unit.code}</span>
-        <span className="block truncate text-[11px] leading-4 text-mode-muted">{face.label}</span>
+        <span className="block truncate text-[11px] leading-4 text-mode-muted">{stockOnly ? 'Stock tote' : face.label}</span>
       </span>
       <span className="text-right">
-        <span className="block text-sm font-bold tabular-nums text-mode-ink">{unit.totalUnits}</span>
-        <span className={cn('block text-[10px] font-semibold', face.tone === 'danger' ? 'text-rose-600' : 'text-mode-muted')}>
-          {unit.pairedOrderId ? 'Allocated' : face.next}
+        <span className="block text-sm font-bold tabular-nums text-mode-ink">{unit.totalUnits + unit.stockUnits}</span>
+        <span className={cn('block text-[10px] font-semibold', face.tone === 'danger' && !stockOnly ? 'text-rose-600' : 'text-mode-muted')}>
+          {unit.pairedOrderId ? 'Allocated' : stockOnly ? 'In tote' : face.next}
         </span>
       </span>
       <ChevronRight className="h-4 w-4 text-mode-muted" />
     </button>
-  );
-}
-
-function ParkToteSheet({
-  open,
-  onOpenChange,
-  record,
-  verificationToken,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  record: LocationRecord;
-  verificationToken: string | null;
-}) {
-  const queryClient = useQueryClient();
-  const [choice, setChoice] = useState<number | null>(null);
-  const [choosing, setChoosing] = useState(false);
-  const [query, setQuery] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const totes = useQuery<StockTote[]>({
-    queryKey: ['stock-places', 'totes'],
-    enabled: open,
-    staleTime: 30_000,
-    queryFn: async () => {
-      const response = await fetch('/api/stock-places', { credentials: 'include', cache: 'no-store' });
-      const body = (await response.json().catch(() => null)) as { totes?: StockTote[]; error?: string } | null;
-      if (!response.ok) throw new Error(body?.error || 'Could not load totes');
-      return body?.totes ?? [];
-    },
-  });
-  const selectedTote = (totes.data ?? []).find((tote) => tote.id === choice) ?? null;
-  const visibleTotes = (totes.data ?? []).filter((tote) => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return true;
-    return tote.code.toLowerCase().includes(needle)
-      || (tote.physicalLocationName?.toLowerCase().includes(needle) ?? false);
-  });
-  const totePlace = (tote: StockTote) => tote.physicalLocationId === record.id
-    ? 'Already here'
-    : tote.physicalLocationName
-      ? `At ${tote.physicalLocationName}`
-      : 'Not parked';
-  const changeOpen = (next: boolean) => {
-    if (!next) {
-      setChoosing(false);
-      setQuery('');
-    }
-    onOpenChange(next);
-  };
-
-  const park = async () => {
-    const id = Number(choice);
-    if (!Number.isSafeInteger(id) || id <= 0 || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const commandId = safeRandomUUID();
-      const response = await fetch(`/api/handling-units/${id}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandId },
-        body: JSON.stringify({
-          action: 'move',
-          locationCode: record.code,
-          locationVerificationToken: verificationToken,
-          placementMethod: verificationToken ? 'scan' : 'manual',
-          clientEventId: commandId,
-        }),
-      });
-      const body = (await response.json().catch(() => null)) as { success?: boolean; error?: string; unchanged?: boolean } | null;
-      if (!response.ok || !body?.success) throw new Error(body?.error || 'Could not park the tote');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: locationRecordQueryKey(record.code) }),
-        queryClient.invalidateQueries({ queryKey: ['stock-places', 'totes'] }),
-      ]);
-      toast.success(body.unchanged ? 'Tote is already here' : `Tote parked at ${record.face}`);
-      setChoice(null);
-      changeOpen(false);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not park the tote');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={(next) => { if (!busy) changeOpen(next); }}>
-      <SheetContent side="bottom">
-        {choosing ? (
-          <>
-            <div className="flex min-h-14 items-center gap-2 border-b border-border-soft px-2 pr-12">
-              <IconButton
-                size="touch"
-                radius="surface"
-                ariaLabel="Back to park tote"
-                icon={<ChevronLeft className="h-5 w-5" />}
-                onClick={() => { setChoosing(false); setQuery(''); }}
-              />
-              <div className="min-w-0">
-                <SheetTitle>Choose tote</SheetTitle>
-                <SheetDescription>{visibleTotes.length} open · destination {record.face}</SheetDescription>
-              </div>
-            </div>
-            <div className="border-b border-border-soft p-2">
-              <SearchField
-                value={query}
-                onChange={setQuery}
-                placeholder="Tote number or current location"
-                tone="neutral"
-                autoFocus
-                fillHost
-                inputProps={{ 'aria-label': 'Search open totes' }}
-              />
-            </div>
-            <SheetBody className="px-0 pt-0" role="listbox" aria-label="Open totes">
-              {totes.isLoading ? (
-                <p className="px-4 py-8 text-center text-sm font-semibold text-text-muted">Loading open totes…</p>
-              ) : visibleTotes.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm font-semibold text-text-muted">No open totes found</p>
-              ) : visibleTotes.map((tote) => {
-                const selected = tote.id === choice;
-                return (
-                  <button
-                    key={tote.id}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() => {
-                      setError(null);
-                      setChoice(tote.id);
-                      setChoosing(false);
-                      setQuery('');
-                    }}
-                    className="grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border-soft px-4 py-2 text-left active:bg-surface-selected"
-                    data-testid="location-park-tote-option"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-mono text-sm font-semibold text-text-default">{tote.code}</span>
-                      <span className="block truncate text-[11px] text-text-muted">{totePlace(tote)}</span>
-                    </span>
-                    {selected ? <Check className="h-5 w-5 text-emerald-600" /> : <ChevronRight className="h-4 w-4 text-text-faint" />}
-                  </button>
-                );
-              })}
-            </SheetBody>
-          </>
-        ) : (
-          <>
-            <SheetHeader className="border-b border-border-soft pr-12">
-              <SheetTitle>Park tote</SheetTitle>
-              <SheetDescription>Attach an open tote to {record.face}</SheetDescription>
-            </SheetHeader>
-            <SheetBody className="grid gap-3">
-              <button
-                type="button"
-                role="combobox"
-                aria-expanded="false"
-                aria-label={`Choose tote to park at ${record.face}`}
-                onClick={() => setChoosing(true)}
-                className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-emerald-200 bg-surface-card px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                data-testid="location-park-tote-picker"
-              >
-                <Package className="h-5 w-5 shrink-0 text-emerald-600" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-text-default">{selectedTote?.code ?? 'Choose tote'}</span>
-                  <span className="block truncate text-[11px] text-text-muted">{selectedTote ? totePlace(selectedTote) : 'Search by tote number or current location'}</span>
-                </span>
-                <ChevronRight className="h-5 w-5 shrink-0 text-text-faint" />
-              </button>
-              {error || totes.error ? (
-                <p role="alert" className="text-sm font-semibold text-text-danger">
-                  {error || (totes.error instanceof Error ? totes.error.message : 'Could not load totes')}
-                </p>
-              ) : null}
-              <Button
-                variant="primary"
-                size="lg"
-                radius="surface"
-                disabled={choice == null}
-                loading={busy}
-                onClick={() => void park()}
-                data-testid="location-park-tote-submit"
-              >
-                Park at {record.face}
-              </Button>
-              <p className="text-xs text-text-muted">
-                {verificationToken ? 'Placement is backed by this location scan.' : 'Manual placement is recorded in inventory history.'}
-              </p>
-            </SheetBody>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
   );
 }
 
@@ -421,7 +225,12 @@ function StockLocationRecord({
   };
 
   const reduceMotion = useReducedMotion();
-  const walkX = useMotionValue(0);
+  /** The finger's signed pull (px): negative pulls the next bookmark in from the right, positive the previous one from the left. */
+  const pullX = useMotionValue(0);
+  /** Which bookmark is past the commit distance (release opens it). */
+  const [armed, setArmed] = useState<'previous' | 'next' | null>(null);
+  /** A drag just ended: the row tap that may follow it is not a tap. */
+  const suppressClickUntil = useRef(0);
   const walkGesture = useRef<{
     startX: number;
     startY: number;
@@ -429,7 +238,6 @@ function StockLocationRecord({
     lastTime: number;
     velocityX: number;
     axis: 'none' | 'x' | 'y';
-    width: number;
     prefetched: string | null;
   } | null>(null);
   const neighbourFaces = useMemo(() => {
@@ -440,52 +248,46 @@ function StockLocationRecord({
     };
     return { previous: faceOf(walk?.previous ?? null), next: faceOf(walk?.next ?? null) };
   }, [walk?.previous, walk?.next]);
-  // The page moves by `walkX`; each peek card is drawn inside it, so its own
-  // offset cancels the page's and docks the card on its screen edge once revealed.
-  const nextPeekX = useTransform(walkX, (x) => Math.max(0, WALK_PEEK_WIDTH + Math.min(0, x)) - x);
-  const previousPeekX = useTransform(walkX, (x) => Math.min(0, Math.max(0, x) - WALK_PEEK_WIDTH) - x);
+  // Each bookmark rests just off its screen edge and slides in by the pull, docking once fully out.
+  const nextPeekX = useTransform(pullX, (x) => Math.max(0, WALK_PEEK_WIDTH + Math.min(0, x)));
+  const previousPeekX = useTransform(pullX, (x) => Math.min(0, Math.max(0, x) - WALK_PEEK_WIDTH));
 
   useEffect(() => {
     rememberLocationVisit(record.code, record.face);
   }, [record.code, record.face]);
 
-  // A committed swipe lands here: slide the arriving location in from the
-  // side the finger pushed toward; any other arrival starts at rest.
-  useLayoutEffect(() => {
-    const landing = walkArrival;
-    if (!landing || landing.code !== record.code || Date.now() - landing.at > WALK_ARRIVAL_TTL_MS || reduceMotion) {
-      walkArrival = null;
-      walkX.set(0);
-      return;
-    }
-    walkX.set(landing.from * window.innerWidth);
-    const controls = animate(walkX, 0, motionTransitionMobile.viewerPaging);
-    return () => controls.stop();
-  }, [record.code, reduceMotion, walkX]);
+  // The swapped-in location starts with both bookmarks tucked away.
+  useEffect(() => {
+    pullX.set(0);
+    setArmed(null);
+  }, [record.code, pullX]);
 
-  const settleWalk = (velocity: number) => {
-    if (reduceMotion) walkX.set(0);
-    else void animate(walkX, 0, { ...motionTransitionMobile.viewerPaging, velocity });
+  const tuckBookmarks = (velocity: number) => {
+    setArmed(null);
+    if (reduceMotion) pullX.set(0);
+    else void animate(pullX, 0, { ...motionTransitionMobile.viewerPaging, velocity });
   };
 
   const endWalk = (canCommit: boolean) => {
     const gesture = walkGesture.current;
     walkGesture.current = null;
     if (!gesture || gesture.axis !== 'x') return;
+    suppressClickUntil.current = Date.now() + 400;
     const travel = gesture.lastX - gesture.startX;
     const direction = travel < 0 ? -1 : 1;
     const target = direction < 0 ? walk?.next : walk?.previous;
     const flicked = Math.abs(gesture.velocityX) > WALK_FLICK_VELOCITY && Math.sign(gesture.velocityX) === direction;
-    if (!canCommit || !target || (Math.abs(travel) < gesture.width * WALK_COMMIT_FRACTION && !flicked)) {
-      settleWalk(gesture.velocityX);
+    if (!canCommit || !target || (Math.abs(travel) < WALK_COMMIT_DISTANCE && !flicked)) {
+      tuckBookmarks(gesture.velocityX);
       return;
     }
-    walkArrival = { code: target, from: direction < 0 ? 1 : -1, at: Date.now() };
+    // The bookmark docks fully, then the page swaps underneath it.
+    setArmed(direction < 0 ? 'next' : 'previous');
     if (reduceMotion) {
       openLocation(target);
       return;
     }
-    void animate(walkX, direction * gesture.width, { ...motionTransitionMobile.viewerPaging, velocity: gesture.velocityX })
+    void animate(pullX, direction * WALK_PEEK_WIDTH, { ...motionTransitionMobile.viewerPaging, velocity: gesture.velocityX })
       .then(() => openLocation(target));
   };
 
@@ -494,7 +296,7 @@ function StockLocationRecord({
   const showLpns = filter === 'all' || filter === 'lpn' || filter === 'hold';
   const showLoose = filter === 'all' || filter === 'loose';
   const unitCount = record.contents.reduce((sum, row) => sum + row.qty, 0)
-    + record.handlingUnits.reduce((sum, unit) => sum + unit.totalUnits, 0);
+    + record.handlingUnits.reduce((sum, unit) => sum + unit.totalUnits + unit.stockUnits, 0);
   const scanHref = `/m/scan?intent=location&returnTo=${encodeURIComponent(returnTo)}`;
   const pairParams = new URLSearchParams({ return: returnTo });
   if (verificationToken) pairParams.set('verified', verificationToken);
@@ -519,19 +321,27 @@ function StockLocationRecord({
   };
 
   return (
-    <motion.div
-      className="flex min-h-full flex-col bg-mode-panel"
+    <div
+      // pan-y: the browser keeps vertical scrolling; a horizontal drag is the walk's alone.
+      className="flex min-h-full touch-pan-y flex-col bg-mode-panel"
       data-testid="mobile-v2-location"
-      style={{ x: walkX }}
+      onClickCapture={(event) => {
+        // The finger that just walked lifts over a row: that is not a tap on it.
+        if (Date.now() < suppressClickUntil.current) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
       onTouchStart={(event) => {
         walkGesture.current = null;
         const touch = event.touches[0];
         if (!walk || event.touches.length !== 1 || !touch) return;
         const target = event.target as Element;
         // Sheets portal out of this DOM subtree but still bubble through React.
-        if (!event.currentTarget.contains(target) || target.closest(WALK_IGNORE)) return;
+        if (!event.currentTarget.contains(target)) return;
+        if (target.closest(WALK_IGNORE) && !target.closest(WALK_THROUGH)) return;
         if (touch.clientX < WALK_EDGE_GUTTER || touch.clientX > window.innerWidth - WALK_EDGE_GUTTER) return;
-        walkX.stop();
+        pullX.stop();
         walkGesture.current = {
           startX: touch.clientX,
           startY: touch.clientY,
@@ -539,7 +349,6 @@ function StockLocationRecord({
           lastTime: event.timeStamp,
           velocityX: 0,
           axis: 'none',
-          width: event.currentTarget.offsetWidth,
           prefetched: null,
         };
       }}
@@ -569,7 +378,10 @@ function StockLocationRecord({
             staleTime: 30_000,
           });
         }
-        walkX.set(toward ? dx : dx * WALK_EDGE_RESISTANCE);
+        const pull = toward ? dx : dx * WALK_EDGE_RESISTANCE;
+        pullX.set(pull);
+        const nextArmed = toward && Math.abs(pull) >= WALK_COMMIT_DISTANCE ? (dx < 0 ? 'next' : 'previous') : null;
+        if (nextArmed !== armed) setArmed(nextArmed);
       }}
       onTouchEnd={() => endWalk(true)}
       onTouchCancel={() => endWalk(false)}
@@ -578,25 +390,31 @@ function StockLocationRecord({
         {neighbourFaces.previous ? (
           <motion.div
             style={{ x: previousPeekX, y: '-50%' }}
-            className="absolute left-0 flex w-40 items-center justify-end gap-2 rounded-r-2xl border border-l-0 border-mode-rule bg-mode-panel py-3 pl-2 pr-3 text-right"
+            className={cn(
+              'absolute left-0 flex w-40 items-center justify-end gap-2 rounded-r-2xl border border-l-0 py-3 pl-2 pr-3 text-right shadow-lg transition-colors duration-150',
+              armed === 'previous' ? 'border-emerald-600 bg-emerald-600' : 'border-mode-rule bg-mode-panel',
+            )}
           >
-            <ChevronLeft className="h-5 w-5 shrink-0 text-emerald-600" />
+            <ChevronLeft className={cn('h-5 w-5 shrink-0', armed === 'previous' ? 'text-white' : 'text-emerald-600')} />
             <span className="min-w-0">
-              <span className="block text-role-micro font-semibold text-text-muted">Previous</span>
-              <span className="block truncate font-mono text-sm font-semibold text-mode-ink">{neighbourFaces.previous}</span>
+              <span className={cn('block text-role-micro font-semibold', armed === 'previous' ? 'text-white/80' : 'text-text-muted')}>Previous</span>
+              <span className={cn('block truncate font-mono text-sm font-semibold', armed === 'previous' ? 'text-white' : 'text-mode-ink')}>{neighbourFaces.previous}</span>
             </span>
           </motion.div>
         ) : null}
         {neighbourFaces.next ? (
           <motion.div
             style={{ x: nextPeekX, y: '-50%' }}
-            className="absolute right-0 flex w-40 items-center gap-2 rounded-l-2xl border border-r-0 border-mode-rule bg-mode-panel py-3 pl-3 pr-2"
+            className={cn(
+              'absolute right-0 flex w-40 items-center gap-2 rounded-l-2xl border border-r-0 py-3 pl-3 pr-2 shadow-lg transition-colors duration-150',
+              armed === 'next' ? 'border-emerald-600 bg-emerald-600' : 'border-mode-rule bg-mode-panel',
+            )}
           >
             <span className="min-w-0">
-              <span className="block text-role-micro font-semibold text-text-muted">Next</span>
-              <span className="block truncate font-mono text-sm font-semibold text-mode-ink">{neighbourFaces.next}</span>
+              <span className={cn('block text-role-micro font-semibold', armed === 'next' ? 'text-white/80' : 'text-text-muted')}>Next</span>
+              <span className={cn('block truncate font-mono text-sm font-semibold', armed === 'next' ? 'text-white' : 'text-mode-ink')}>{neighbourFaces.next}</span>
             </span>
-            <ChevronRight className="h-5 w-5 shrink-0 text-emerald-600" />
+            <ChevronRight className={cn('h-5 w-5 shrink-0', armed === 'next' ? 'text-white' : 'text-emerald-600')} />
           </motion.div>
         ) : null}
       </div>
@@ -710,7 +528,7 @@ function StockLocationRecord({
         label="Location actions"
         verbs={[
           { id: 'pair', label: 'Pair SKU', icon: <Plus />, primary: true, testId: 'location-pair-sku' },
-          { id: 'tote', label: 'Park tote', icon: <Package />, testId: 'location-park-tote' },
+          { id: 'tote', label: record.contents.some((row) => row.qty > 0) ? 'Load tote' : 'Park tote', icon: <Package />, testId: 'location-park-tote' },
           { id: 'print', label: 'Print label', icon: <Printer />, testId: 'location-print-label' },
         ] as const}
         onVerb={(verb) => {
@@ -729,7 +547,9 @@ function StockLocationRecord({
               <>
                 <SheetHeader className="border-b border-border-soft pr-12">
                   <SheetTitle className="font-mono">{selected.code}</SheetTitle>
-                  <SheetDescription>{face.label} · {selected.totalUnits} units · {record.face}</SheetDescription>
+                  <SheetDescription>
+                    {selected.totalUnits === 0 && selected.stockUnits > 0 ? 'Stock tote' : face.label} · {selected.totalUnits + selected.stockUnits} units · {record.face}
+                  </SheetDescription>
                 </SheetHeader>
                 <SheetBody className="grid gap-3">
                   {selected.holdUnits > 0 ? (
@@ -738,9 +558,22 @@ function StockLocationRecord({
                       {selected.holdUnits} unit{selected.holdUnits === 1 ? '' : 's'} must be resolved
                     </div>
                   ) : null}
-                  <Button variant="primary" size="lg" radius="surface" onClick={() => router.push(`/m/qc/lpn/${selected.id}`)}>
-                    {face.next}
-                  </Button>
+                  {selected.stockUnits > 0 ? (
+                    <Button
+                      variant={selected.totalUnits === 0 ? 'primary' : 'secondary'}
+                      size="lg"
+                      radius="surface"
+                      icon={<Package />}
+                      onClick={() => router.push(withJobReturn(locationHubPath(selected.code), returnTo))}
+                    >
+                      Open tote stock · {selected.stockUnits}
+                    </Button>
+                  ) : null}
+                  {selected.totalUnits > 0 || selected.stockUnits === 0 ? (
+                    <Button variant="primary" size="lg" radius="surface" onClick={() => router.push(`/m/qc/lpn/${selected.id}`)}>
+                      {face.next}
+                    </Button>
+                  ) : null}
                   <Button variant="secondary" size="lg" radius="surface" icon={<ScanBarcode />} onClick={() => router.push(moveHref)}>
                     Move · scan destination
                   </Button>
@@ -757,11 +590,13 @@ function StockLocationRecord({
         </SheetContent>
       </Sheet>
 
-      <ParkToteSheet
+      <LocationToteSheet
         open={parkingTote}
         onOpenChange={setParkingTote}
         record={record}
         verificationToken={verificationToken}
+        next={nextCode && neighbourFaces.next ? { face: neighbourFaces.next, open: openNext } : null}
+        onScanNext={inScanLoop ? returnToScan : () => router.push(scanHref)}
       />
 
       <ConfirmSheet
@@ -790,6 +625,6 @@ function StockLocationRecord({
           }}
         />
       ) : null}
-    </motion.div>
+    </div>
   );
 }

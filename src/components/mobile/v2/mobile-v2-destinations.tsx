@@ -22,7 +22,7 @@ import {
   type DomainGroupId,
 } from '@/lib/nav/lanes';
 import { SHIPPING_NAV_ICONS, STATION_PAGE_ICONS, TECH_NAV_ICONS } from '@/lib/nav/station-nav-icons';
-import { CUSTOMER_PATHS, FULFILLED_PATHS, PREPACK_PATHS, QUALITY_CONTROL_PATHS, SUPPORT_PATHS, WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
+import { CUSTOMER_PATHS, FULFILLED_PATHS, PACKING_PATHS, PREPACK_PATHS, QUALITY_CONTROL_PATHS, SUPPORT_PATHS, WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
 import { FBM_DESTINATIONS } from '@/lib/nav/fbm-destinations';
 import { spineParentTone } from '@/lib/nav/spine-parent-tone';
 import {
@@ -138,6 +138,15 @@ export const MOBILE_V2_DESTINATIONS: readonly MobileV2Destination[] = [
     href: '/m/pick',
     icon: TECH_NAV_ICONS.shipping,
     tone: 'text-emerald-600',
+  },
+  {
+    id: 'packing',
+    label: 'Packing',
+    description: 'Packed orders and their photos, live from the pack station scan',
+    href: PACKING_PATHS.mobile,
+    icon: STATION_PAGE_ICONS.outbound,
+    tone: 'text-teal-600',
+    requires: 'packing.view',
   },
   {
     id: 'receiving',
@@ -297,7 +306,7 @@ const MOBILE_DESTINATION_BY_ID = new Map(
 );
 
 const GROUP_DESCRIPTION: Readonly<Record<MobileV2NavigationGroupId, string>> = {
-  floor: 'Quality control and picking stations',
+  floor: 'Quality control, prepack, picking and packing stations',
   sales: 'Customers and sales history',
   inbound: 'Purchase orders and arrivals',
   fulfillment: 'Allocate, pick, pack and ship',
@@ -307,7 +316,7 @@ const GROUP_DESCRIPTION: Readonly<Record<MobileV2NavigationGroupId, string>> = {
 };
 
 const GROUP_DESTINATION_IDS: Readonly<Record<MobileV2NavigationGroupId, readonly string[]>> = {
-  floor: ['qc', 'prepack', 'pick'],
+  floor: ['qc', 'prepack', 'pick', 'packing'],
   sales: ['customers'],
   inbound: ['receiving', 'inbound-new'],
   fulfillment: [],

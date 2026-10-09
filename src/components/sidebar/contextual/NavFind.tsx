@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { NavLocateEntry, NavLocateScope, NavSearch } from '@/lib/nav/context/schema';
+import type { NavLocateEntry, NavLocateResponse, NavLocateScope, NavSearch } from '@/lib/nav/context/schema';
 import {
   FindField,
   FindLead,
@@ -20,10 +20,8 @@ import {
   findHintTone,
   findHints,
   findWellClass,
-  findWellGrowClass,
   focusStaysIn,
   useHintActivity,
-  useHoverIntent,
 } from '@/design-system/components/FindField';
 import { Search } from '@/components/Icons';
 import { COMMAND_BAR_OPEN_CHANGE_EVENT, openCommandBar } from '@/lib/app-events';
@@ -99,13 +97,15 @@ const searchEverywhere = (query: string) => openCommandBar({ query: query || und
  *
  * - PAGE — the page declares a list (`search.source` desk-store / url-param):
  *   typing narrows ONLY the list on screen, live. `F` focuses it outside a
- *   text field. While focused the well grows right over the header, so the
- *   words and the panel under it are readable (`FindField overflowRight`).
+ *   text field. The well keeps the sidebar's width — it never grows over the
+ *   page; the sidebar's resize sash is how it gets wider.
  * - CONTEXTUAL — the page declares `search.locate`: the panel under the field
  *   shows where the text lives in the section (one pill per bucket with
  *   matches; a click opens that view with the text kept). A locator whose
  *   records open on their own (Support) also lists the matching records
  *   under the pills (NavLocateMatches): ↑↓ light one, ↵ / click opens it.
+ *   Nowhere in the section → the ⌘K palette opens at once, searching
+ *   everywhere for the text.
  * - GLOBAL — "Search everywhere" / ⌘↵ hands the text to the ⌘K palette.
  *   A page without a list (identify, the page map, the header) shows the
  *   palette's face instead.
@@ -364,12 +364,38 @@ function exactMatch(entries: readonly NavLocateEntry[], typed: string): NavLocat
 }
 
 /**
+ * Nowhere in this section → search everywhere, right away (operator
+ * 2026-10-08): once the FRESH answer for the text in the field (not the
+ * previous one still painted) has no bucket and no record, the ⌘K palette
+ * opens already searching it. Only while the field has focus — the operator
+ * is typing there — and once per text, so closing the palette never loops.
+ */
+function useEscalateWhenNowhere(
+  /** The locate answer and whether it is the previous text's, still painted. */
+  answer: NavLocateResponse | undefined,
+  stale: boolean,
+  asked: string,
+  text: string,
+  inputRef: RefObject<HTMLInputElement>,
+): void {
+  const handed = useRef('');
+  const fresh = !stale && asked === text && asked.length >= NAV_LOCATE_MIN_QUERY;
+  const nowhere = fresh && answer != null && answer.entries.length === 0 && !answer.buckets.some((bucket) => bucket.count > 0);
+  useEffect(() => {
+    if (!nowhere || handed.current === asked || document.activeElement !== inputRef.current) return;
+    handed.current = asked;
+    searchEverywhere(asked);
+  }, [nowhere, asked, inputRef]);
+}
+
+/**
  * A page's Find well: its text narrows the list on screen; a held list rides
  * it as a token + panel. With a `locator`, the panel under the typed text
  * holds the locate pills and the matching records (NavLocateMatches): ↑↓
  * light a match, ↵ opens the lit one — or, with none lit, the single /
  * exact match of the fresh answer; a click opens it; Esc clears the text,
- * which closes the panel.
+ * which closes the panel. When the section holds nothing for the text, the
+ * palette takes it over at once, searching everywhere (operator 2026-10-08).
  */
 function PageFace({
   search,
@@ -392,6 +418,7 @@ function PageFace({
   const answer = text.length >= NAV_LOCATE_MIN_QUERY ? located.data : undefined;
   const matches = answer?.entries ?? [];
   const current = currentBucketId(answer?.buckets ?? [], pathname, params);
+  useEscalateWhenNowhere(located.data, located.isPlaceholderData, asked, text, inputRef);
   // The lit match belongs to one answer; a new text starts unlit.
   const [cursor, setCursor] = useState({ asked: '', index: -1 });
   const lit = cursor.asked === asked ? Math.min(cursor.index, matches.length - 1) : -1;
@@ -408,7 +435,6 @@ function PageFace({
         interceptPaste={face.take}
         debounceMs={debounceMs}
         escalate={searchEverywhere}
-        overflowRight
         lead={face.token}
         drop={face.drop(find)}
         // Holding no list, the panel is the recent lists — it steps aside once the field is typed in.
@@ -442,6 +468,11 @@ function PageFace({
           }
           const plain = !event.metaKey && !event.ctrlKey && !event.altKey;
           if (plain && matches.length > 0 && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+            // ↓ off the last match goes on to "Search everywhere" (FindField lights it).
+            if (event.key === 'ArrowDown' && lit === matches.length - 1) {
+              setCursor({ asked, index: -1 });
+              return;
+            }
             event.preventDefault();
             const step = event.key === 'ArrowDown' ? 1 : -1;
             setCursor({ asked, index: Math.max(-1, Math.min(matches.length - 1, lit + step)) });
@@ -482,9 +513,6 @@ function EverywhereFace() {
   const wellRef = useRef<HTMLDivElement>(null);
   const face = useSearchFace(list, null, () => buttonRef.current?.focus());
   const look = useHintActivity(face.panelRef);
-  const hover = useHoverIntent();
-  // Grown like the page field: hover intent, focus, or an open list.
-  const expanded = look.focused || hover.intent || face.open;
   const [paletteOpen, setPaletteOpen] = useState(false);
   useEffect(() => {
     const onChange = (event: Event) => {
@@ -515,22 +543,15 @@ function EverywhereFace() {
       <div
         ref={wellRef}
         data-nav-search-well
-        data-find-expanded={expanded ? '' : undefined}
-        onPointerEnter={(event) => {
-          look.bind.onPointerEnter();
-          hover.bind.onPointerEnter(event);
-        }}
-        onPointerLeave={() => {
-          look.bind.onPointerLeave();
-          hover.bind.onPointerLeave();
-        }}
+        onPointerEnter={look.bind.onPointerEnter}
+        onPointerLeave={look.bind.onPointerLeave}
         onFocusCapture={look.bind.onFocusCapture}
         onBlurCapture={look.bind.onBlurCapture}
         onPaste={(event: ClipboardEvent<HTMLDivElement>) => {
           event.preventDefault();
           take(event.clipboardData.getData('text'));
         }}
-        className={cn(findWellClass('sidebar'), findWellGrowClass(expanded))}
+        className={findWellClass('sidebar')}
       >
         <Search aria-hidden className="size-3.5 shrink-0 text-text-muted" />
         <FindLead>{face.token}</FindLead>

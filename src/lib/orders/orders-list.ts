@@ -271,9 +271,8 @@ export function buildOrdersListSql(
       ${shortageLinkSelect}
       o.status,
       o.notes,
-      -- Marketplace buyer note (migration 2026-07-03p): an active fulfillment
-      -- exception the record paints as its NOTE badge; the pack/label routes
-      -- hold on it until acknowledged (src/lib/orders/buyer-note-interlock.ts).
+      -- Marketplace buyer note (migration 2026-07-03p): painted inline on the
+      -- record as its NOTE badge.
       o.buyer_note,
       /*
        * Row flag + ops-note count. THIRD copy of this projection, because the
@@ -954,6 +953,23 @@ export function buildOrdersListSql(
             )
         )
       )
+      -- A serial on the order (operator 2026-10-08: serials found nothing).
+      -- Uncorrelated one-shot arrays: lower(serial_number) LIKE rides the
+      -- trigram index, never a per-order subquery. Linked by order id, or by
+      -- the order's shipment when the serial row carries no order.
+      OR o.id = ANY (ARRAY(
+        SELECT tsn_q.order_id FROM tech_serial_numbers tsn_q
+         WHERE tsn_q.organization_id = $1
+           AND tsn_q.order_id IS NOT NULL
+           AND lower(tsn_q.serial_number) LIKE lower($${likeParam})
+      ))
+      OR o.shipment_id = ANY (ARRAY(
+        SELECT tsn_q.shipment_id FROM tech_serial_numbers tsn_q
+         WHERE tsn_q.organization_id = $1
+           AND tsn_q.order_id IS NULL
+           AND tsn_q.shipment_id IS NOT NULL
+           AND lower(tsn_q.serial_number) LIKE lower($${likeParam})
+      ))
     )`;
     // `= ANY(ARRAY(...))` is a one-shot InitPlan feeding a pk index scan; an
     // IN semi-join is placed above the laterals (the OR-of-ILIKE estimate is

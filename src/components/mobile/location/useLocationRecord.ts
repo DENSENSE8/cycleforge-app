@@ -3,10 +3,11 @@
 import { useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { locationCode, parseLocationCodeFlat, unwrapScannedLocation } from '@/lib/barcode-routing';
+import { locationCode, parseLocationCodeFlat, printedLocationCode, unwrapScannedLocation } from '@/lib/barcode-routing';
 import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
 import { locationHubPath } from '@/lib/mobile/location-hub-href';
 import { fetchLocationRecord, locationRecordQueryKey } from '@/components/mobile/scan/location-bind-api';
+import { locationMissSuggestions } from '@/lib/locations/location-miss';
 
 const LOCATION_ADDRESS_ERROR = 'No location code in this link.';
 
@@ -18,7 +19,8 @@ const LOCATION_ADDRESS_ERROR = 'No location code in this link.';
 export function useLocationRecord() {
   const params = useParams<{ code: string }>();
   const searchParams = useSearchParams();
-  const code = unwrapScannedLocation(decodeURIComponent(params?.code ?? ''));
+  const rawCode = decodeURIComponent(params?.code ?? '');
+  const code = unwrapScannedLocation(rawCode);
   const segs = useMemo(() => parseLocationCodeFlat(code), [code]);
   const face = segs ? locationCode(segs) : code;
   const back = mobileJobReturn(searchParams.get('back'));
@@ -34,7 +36,8 @@ export function useLocationRecord() {
 
   const query = useQuery({
     queryKey: locationRecordQueryKey(code),
-    queryFn: () => fetchLocationRecord(code, segs),
+    // Only a printed label's code may register a new address; a typed link never mints one.
+    queryFn: () => fetchLocationRecord(code, segs, { register: printedLocationCode(rawCode) != null }),
     enabled: code.length > 0,
   });
 
@@ -48,6 +51,8 @@ export function useLocationRecord() {
     record: query.data,
     loading: code.length > 0 && query.isPending,
     error: code.length === 0 ? LOCATION_ADDRESS_ERROR : query.error?.message ?? null,
+    /** Real locations near a code that matched none, to offer as taps. */
+    suggestions: locationMissSuggestions(query.error),
     reload: () => void query.refetch(),
   };
 }

@@ -156,8 +156,8 @@ export interface PrintStations {
    * otherwise the operator-facing failure.
    */
   sendStockLabels: (stationId: string, labels: readonly StaffPrintStockLabelFace[]) => Promise<string | null>;
-  /** Location (`bin`) or bay (`rack`) stickers at a named station — it registers and prints them; true when it acked. */
-  sendLocationLabels: (stationId: string, grain: 'bin' | 'rack', location: StaffPrintLocationPayload) => Promise<boolean>;
+  /** Location stickers at a named station — it registers and prints them; true when it acked. */
+  sendLocationLabels: (stationId: string, location: StaffPrintLocationPayload) => Promise<boolean>;
 }
 
 /** @param active poll the org registry and the staff roster while true. */
@@ -432,9 +432,7 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
                 ? (body.stockLabel?.labels.length ?? 0) > 1 ? 'Stock labels' : 'Stock label'
                 : body.grain === 'bin'
                   ? 'Location labels'
-                  : body.grain === 'rack'
-                    ? 'Bay labels'
-                    : 'Print job';
+                  : 'Print job';
       // Product labels also report their terminal ledger result; only multi-item
       // document/FNSKU runs expose pause and cancel controls.
       const reportsProgress =
@@ -630,8 +628,8 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
   );
 
   const sendLocationLabels = useCallback(
-    (stationId: string, grain: 'bin' | 'rack', location: StaffPrintLocationPayload): Promise<boolean> =>
-      sendStationJob(stationId, { grain, role: 'label', location }).then((outcome) => outcome.acked),
+    (stationId: string, location: StaffPrintLocationPayload): Promise<boolean> =>
+      sendStationJob(stationId, { grain: 'bin', role: 'label', location }).then((outcome) => outcome.acked),
     [sendStationJob],
   );
 

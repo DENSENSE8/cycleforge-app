@@ -38,6 +38,8 @@ function row(
     product_title: sku,
     image_url: null,
     cover_photo_url: null,
+    latest_photo_url: null,
+    latest_photo_at: null,
     is_provisional: false,
     source: 'bin',
     qty,

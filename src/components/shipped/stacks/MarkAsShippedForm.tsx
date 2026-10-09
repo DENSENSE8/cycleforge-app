@@ -9,7 +9,6 @@ import { StaffAvatar } from '@/components/identity';
 import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
 import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
 
 interface MarkAsShippedFormProps {
   shippingTrackingNumber: string;
@@ -40,24 +39,21 @@ export function MarkAsShippedForm({
 
     setIsMarkingShipped(true);
     try {
-      // Same pack write as the station scan, so the same buyer-note hold.
-      const response = await sendWithBuyerNoteAck(() => {
-        const idempotencyKey = safeRandomUUID();
-        return fetch('/api/packing-logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': idempotencyKey,
-          },
-          body: JSON.stringify({
-            trackingNumber,
-            photos: [],
-            packerId: selectedPackerId,
-            timestamp: packedDate.toISOString(),
-            packerName: getStaffName(selectedPackerId),
-            idempotencyKey,
-          }),
-        });
+      const idempotencyKey = safeRandomUUID();
+      const response = await fetch('/api/packing-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          trackingNumber,
+          photos: [],
+          packerId: selectedPackerId,
+          timestamp: packedDate.toISOString(),
+          packerName: getStaffName(selectedPackerId),
+          idempotencyKey,
+        }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.success) throw new Error(data?.error || 'Failed to mark order as shipped.');

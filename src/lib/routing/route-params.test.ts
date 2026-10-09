@@ -226,19 +226,6 @@ test('Locations ?tab=racks hygiene rewrites to bays', () => {
   }
 });
 
-test('special-bin print page keeps barcode + count', () => {
-  const spec = routeParamsFor('/inventory/locations/print/special-bin');
-  assert.ok(spec);
-  assert.equal(spec.route, '/inventory/locations/print/special-bin');
-  const kept = parseRouteParams(
-    spec,
-    new URLSearchParams('barcode=RETURNS-TEST&count=12&tab=bins'),
-  );
-  assert.equal(kept.get('barcode'), 'RETURNS-TEST');
-  assert.equal(kept.get('count'), '12');
-  assert.equal(kept.get('tab'), null);
-});
-
 test('closed outbound vocabularies survive hygiene (fbaMode / rtab)', () => {
   const fba = routeParamsFor('/shipping/fba');
   assert.ok(fba);

@@ -6,19 +6,13 @@
  */
 
 import { toast } from '@/lib/toast';
-import type { RackSegments } from '@/lib/barcode-routing';
 import { beginWork } from '@/lib/background-work/store';
 import type { StaffPrintJob } from '@/lib/print/staff-print-bridge';
 import { readPrintStation } from '@/lib/print/print-station';
-import {
-  printLocationLabelRun,
-  printHandlingUnitLabelRun,
-  printRackLabelRun,
-} from '@/lib/print/printLabelRun';
+import { printLocationLabelRun, printHandlingUnitLabelRun } from '@/lib/print/printLabelRun';
 import { mintTotesForPrint, toteReprintFromTyped } from '@/lib/print/tote-mint-api';
 import { platesPerTote } from '@/lib/print/labelCopies';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
-import { registerRackLocations } from '@/components/barcode/rack-printer/rack-printer-api';
 import { triggerPackPrintBundle } from '@/lib/print/pack-print-bundle-client';
 import { printRepairStationJob } from '@/lib/print/printRepairStationJob';
 import { printFnskuStationJob } from '@/lib/print/printFnskuStationJob';
@@ -32,8 +26,8 @@ export async function executeStationPrintJob(
   job: StaffPrintJob,
   { workId, onProgress }: { workId: string; onProgress: (done: number, total: number) => void },
 ): Promise<void> {
-  // documents · tote · rack · bin · fnsku · stock label run through a print
-  // choke point that reports to the header itself; papers and repair report here.
+  // documents · tote · bin · fnsku · stock label run through a print choke
+  // point that reports to the header itself; papers and repair report here.
   if (job.grain === 'documents' && job.documents) {
     // The one desk pipeline: rebuilt from ids, routed and logged HERE, as this station.
     const docs = deskDocumentsFromStation(job.documents);
@@ -129,24 +123,6 @@ export async function executeStationPrintJob(
 
   const loc = job.location;
   if (!loc) return;
-
-  if (job.grain === 'rack') {
-    const racks: RackSegments[] = loc.segments.map((s) => ({
-      zone: String(s.zone),
-      aisle: Number(s.aisle),
-      bay: Number(s.bay),
-      level: Number(s.level),
-    }));
-    await printRackLabelRun({
-      roomName: loc.roomName,
-      racks,
-      gln: loc.gln,
-      orgSlug: loc.orgSlug,
-      register: registerRackLocations,
-      onProgress,
-    });
-    return;
-  }
 
   await printLocationLabelRun({
     roomName: loc.roomName,

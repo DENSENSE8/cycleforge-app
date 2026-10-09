@@ -10,7 +10,7 @@ import {
   type EnqueueTicketWorkArgs,
 } from '@/lib/support/ticket-outbox';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { addBusinessDays } from '@/lib/zendesk';
+import { buildRepairTicket, formatRepairDueDate } from '@/lib/repair/repair-ticket-text';
 
 /** Default `'create'`; counter passes `'skip'` to avoid a second ticket. */
 export type RepairIntakeTicketWork = 'create' | 'skip';
@@ -18,12 +18,10 @@ export type RepairIntakeTicketWork = 'create' | 'skip';
 export interface CreateRepairIntakeTicketInput {
   orgId: OrgId;
   repairServiceId: number;
-  repairServiceNumber: string;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
   productTitle: string;
-  contactInfo: string;
   issue: string;
   serialNumber: string;
   price: string;
@@ -69,39 +67,6 @@ const defaultDeps: CreateRepairIntakeTicketDeps = {
   enqueue: enqueueTicketWork,
 };
 
-/** MM/DD/YYYY due date — same display format as the legacy createZendeskTicket body. */
-export function formatRepairDueDate(startDate: Date = new Date()): string {
-  const date = addBusinessDays(startDate, 5);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${month}/${day}/${date.getFullYear()}`;
-}
-
-export function buildRepairIntakeTicketPayload(
-  input: Omit<CreateRepairIntakeTicketInput, 'orgId' | 'ticketWork' | 'idempotencyKey'>,
-  dueDate: string = formatRepairDueDate(),
-): { subject: string; body: string; tags: string[] } {
-  const descriptionLines = [
-    `Repair Service ${input.repairServiceNumber} (ID ${input.repairServiceId})`,
-    '',
-    `Product: ${input.productTitle}`,
-    `Serial Number: ${input.serialNumber}`,
-    `Reported Issue: ${input.issue}`,
-    '',
-    `Customer Contact: ${input.contactInfo}`,
-    `Estimated Due Date: ${dueDate}`,
-  ];
-  if (input.notes) {
-    descriptionLines.push('', 'Additional Notes:', input.notes);
-  }
-
-  return {
-    subject: `Repair RS ${input.repairServiceId}: Walk-in ${input.customerName} - ${input.customerPhone} - Due Date: ${dueDate}`,
-    body: descriptionLines.join('\n'),
-    tags: ['repair_service', 'walk_in'],
-  };
-}
-
 export async function createRepairIntakeTicket(
   input: CreateRepairIntakeTicketInput,
   deps: CreateRepairIntakeTicketDeps = defaultDeps,
@@ -110,7 +75,29 @@ export async function createRepairIntakeTicket(
     return { zendeskTicketNumber: null, ticketWarning: null };
   }
 
-  const { subject, body, tags } = buildRepairIntakeTicketPayload(input);
+  const { subject, body } = buildRepairTicket({
+    channel: 'desk',
+    customer: {
+      name: input.customerName,
+      phone: input.customerPhone,
+      email: input.customerEmail,
+      shipTo: null,
+    },
+    devices: [
+      {
+        product: input.productTitle,
+        serial: input.serialNumber,
+        issue: input.issue,
+        quote: input.price,
+        notes: input.notes,
+      },
+    ],
+    deviceIndex: 0,
+    visitNotes: '',
+    dueDate: formatRepairDueDate(),
+    priorOrderRef: null,
+  });
+  const tags = ['repair_service', 'walk_in'];
   const email = input.customerEmail.trim();
 
   try {

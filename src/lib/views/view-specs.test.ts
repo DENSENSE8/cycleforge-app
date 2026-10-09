@@ -30,9 +30,20 @@ test('every list view names only field-catalog facts, and its lead paints at eve
 test('every view names only registered verbs, with one primary not repeated as secondary', () => {
   const known = new Set<string>(ORDER_VERB_IDS);
   for (const key of ALL_KEYS) {
-    const { primary, secondary, bulk } = VIEW_SPECS[key].verbs;
+    const { verbs } = VIEW_SPECS[key];
+    if (!verbs) continue;
+    const { primary, secondary, bulk } = verbs;
     for (const verb of [primary, ...secondary, ...bulk]) assert.ok(known.has(verb), `${key}: unknown verb ${verb}`);
     assert.ok(!secondary.includes(primary), `${key}: primary ${primary} repeated as secondary`);
+  }
+});
+
+test('the Unbox fulfilled order is read only — no verbs, no editing sections', () => {
+  const spec = VIEW_SPECS['unbox.fulfilled-order'];
+  assert.equal(spec.verbs, null);
+  for (const verb of ORDER_VERB_IDS) assert.equal(viewOffersVerb('unbox.fulfilled-order', verb), false, verb);
+  for (const section of ['assign', 'facts', 'note', 'resolve']) {
+    assert.equal((spec.record as readonly string[]).includes(section), false, section);
   }
 });
 

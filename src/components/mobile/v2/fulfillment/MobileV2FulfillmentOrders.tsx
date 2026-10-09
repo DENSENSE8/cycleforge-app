@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Fragment,
   useEffect,
@@ -84,7 +84,7 @@ const SWIPE_REVEAL_PX = 48;
 const PAGE_SIZE = 50;
 const ALLOCATE_STATE_KEY = 'cycleforge:mobile-v2:allocate-state';
 
-type AllocateTemporalEvent = 'order_arrived' | 'remote_changed' | 'deadline_escalated' | 'scan_matched';
+type AllocateTemporalEvent = 'order_arrived' | 'remote_changed' | 'deadline_escalated';
 
 interface StoredAllocateState {
   view?: string;
@@ -157,7 +157,6 @@ function temporalEventClass(event: AllocateTemporalEvent | undefined): string | 
   if (event === 'deadline_escalated') return 'ring-2 ring-inset ring-border-danger';
   if (event === 'order_arrived') return 'ring-2 ring-inset ring-border-success';
   if (event === 'remote_changed') return 'ring-2 ring-inset ring-border-warning';
-  if (event === 'scan_matched') return 'ring-2 ring-inset ring-border-accent';
   return false;
 }
 
@@ -632,10 +631,8 @@ function AllocateDetailSheet({
 
 export function MobileV2FulfillmentOrders() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const pressHaptic = usePressHaptic();
   const { query } = useMobileV2Search();
-  const scanQuery = searchParams.get('scan')?.trim() ?? '';
   const [initialState] = useState(readStoredAllocateState);
   const [view, setView] = useState<VisibleOrderView>(() => parseOrderView(initialState.view));
   const [sort, setSort] = useState<AllocateSort>(() => parseAllocateSort(initialState.sort));
@@ -653,10 +650,9 @@ export function MobileV2FulfillmentOrders() {
   const previousCountsRef = useRef(new Map<VisibleOrderView, number>());
   const previousDeadlineBandsRef = useRef(new Map<string, string>());
   const interactionOrderRef = useRef<string[]>([]);
-  const handledScanRef = useRef('');
   const { rows, isPending, isError } = useMobileV2FulfillmentOrders({
     enabled: true,
-    searchQuery: scanQuery || query,
+    searchQuery: query,
   });
   const filteredRows = useMemo(() => filterToShipByOrderView(rows, view), [rows, view]);
   const sortedRows = useMemo(() => sortAllocateRows(filteredRows, sort), [filteredRows, sort]);
@@ -728,25 +724,6 @@ export function MobileV2FulfillmentOrders() {
     }
     previousDeadlineBandsRef.current = next;
   }, [nowMs, rows]);
-
-  useEffect(() => {
-    if (!scanQuery || isPending || handledScanRef.current === scanQuery) return;
-    handledScanRef.current = scanQuery;
-    const match = rows[0];
-    if (!match) return;
-    const matchingView = ORDER_VIEWS.find(
-      (option) => filterToShipByOrderView([match], option.id).length > 0,
-    );
-    setView(matchingView?.id ?? 'to-pick');
-    setPage(0);
-    setTemporalEvents((current) => new Map(current).set(match.id, 'scan_matched'));
-    const frame = window.requestAnimationFrame(() => {
-      sectionRef.current
-        ?.querySelector<HTMLElement>(`[data-order-row-id="${CSS.escape(match.id)}"]`)
-        ?.scrollIntoView({ block: 'center' });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [isPending, rows, scanQuery]);
 
   useEffect(() => {
     const previous = previousCountsRef.current;
@@ -840,20 +817,6 @@ export function MobileV2FulfillmentOrders() {
   return (
     <section ref={sectionRef} className="flex min-h-full w-full flex-col bg-surface-canvas md:max-w-[36rem] md:border-r md:border-border-soft" aria-label="Fulfillment orders">
       <div className={MOBILE_V2_ALLOCATE_FILTER_BAR_CLASS}>
-        {scanQuery ? (
-          <div className="pointer-events-auto flex min-h-9 items-center justify-between gap-2 border-b border-border-accent bg-surface-accent px-3 py-1.5 text-xs text-text-accent">
-            <span className="min-w-0 truncate font-bold">
-              {isPending ? 'Finding scan…' : rows.length > 0 ? `Scan match · ${scanQuery}` : `No Allocate match · ${scanQuery}`}
-            </span>
-            <button
-              type="button"
-              onClick={() => router.replace('/m/orders')}
-              className="shrink-0 rounded-full border border-border-accent px-2 py-1 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-accent"
-            >
-              Clear
-            </button>
-          </div>
-        ) : null}
         {incomingCount > 0 ? (
           <button
             type="button"

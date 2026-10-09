@@ -1,8 +1,7 @@
 /** Confirmed print-run dispatch for warehouse stickers. */
 
-import type { LocationSegments, RackSegments } from '@/lib/barcode-routing';
+import type { LocationSegments } from '@/lib/barcode-routing';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
-import { rackToLocation } from '@/lib/barcode-routing';
 import { locationLabelToFace, printLocationLabelsJob } from '@/lib/print/printLocationLabel';
 import {
   handlingUnitLabelToFace,
@@ -83,7 +82,6 @@ async function recordLocationPrintJobs(input: {
   roomName: string;
   gln: string;
   orgSlug?: string | null;
-  templateId: 'location_bin' | 'location_rack';
 }): Promise<void> {
   const batchId = safeRandomUUID();
   const jobs = input.segments.map((segments) => {
@@ -98,7 +96,7 @@ async function recordLocationPrintJobs(input: {
       jobType: 'LOCATION' as const,
       qrPayload: face.matrix.value,
       symbology: face.matrix.symbology,
-      templateId: input.templateId,
+      templateId: 'location_bin',
       unitUid: code,
       copies: 1,
       clientEventId: `location-print:${batchId}:${code}`,
@@ -160,59 +158,6 @@ export async function printLocationLabelRun(input: {
         roomName: input.roomName,
         gln: input.gln,
         orgSlug: input.orgSlug,
-        templateId: 'location_bin',
-      });
-    }
-
-    return { status: stoppedAt === null ? 'printed' : 'cancelled', channel, count: printedSegments.length };
-  });
-}
-
-/** Rack print run — position=0 segments. */
-export async function printRackLabelRun(input: {
-  roomName: string;
-  racks: readonly RackSegments[];
-  gln: string;
-  orgSlug?: string | null;
-  register: (room: string, racks: RackSegments[]) => Promise<unknown>;
-  onProgress?: PrintLabelRunProgress;
-}): Promise<PrintLabelRunResult> {
-  if (input.racks.length === 0) {
-    return { status: 'skipped', count: 0 };
-  }
-  return asPrintWork('Rack labels', input.racks.length, input.onProgress, async (print) => {
-    try {
-      await input.register(input.roomName, [...input.racks]);
-    } catch (err) {
-      return {
-        status: 'register_failed',
-        count: 0,
-        error: err instanceof Error ? err.message : 'Could not register rack for printing',
-      };
-    }
-
-    const segments = input.racks.map(rackToLocation);
-    const channel = await printLocationLabelsJob({
-      segments,
-      roomName: input.roomName,
-      gln: input.gln,
-      orgSlug: input.orgSlug,
-      onProgress: print.onProgress,
-      checkpoint: print.checkpoint,
-    });
-    if (channel === 'skipped') {
-      return { status: 'skipped', count: 0 };
-    }
-
-    const stoppedAt = print.cancelledAfter();
-    const printedSegments = stoppedAt === null ? segments : segments.slice(0, stoppedAt);
-    if (printedSegments.length > 0) {
-      void recordLocationPrintJobs({
-        segments: printedSegments,
-        roomName: input.roomName,
-        gln: input.gln,
-        orgSlug: input.orgSlug,
-        templateId: 'location_rack',
       });
     }
 

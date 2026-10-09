@@ -5,6 +5,7 @@ import { Button } from '@/design-system/primitives/Button';
 import { cn } from '@/utils/_cn';
 import { useSkuChildren, useSkuParents } from './useSkuGraph';
 import type { SkuRelationshipEdgeView, SkuTier } from './types';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
 
 export interface DetailNode {
   sku_id: number;
@@ -93,7 +94,7 @@ export function SkuGraphDetailPanel({ node, onSelectRelated, onEditConnections }
 
       <div className="rounded-xl bg-surface-canvas p-3">
         <div className="text-role-caption text-text-faint">In stock</div>
-        <div className="text-2xl font-semibold tabular-nums text-text-default">{node.stock}</div>
+        <div className={cn('text-2xl font-semibold tabular-nums', stockQtyToneClass(node.stock))}>{node.stock}</div>
       </div>
 
       <RelationList title="Parents" items={parents} onSelect={onSelectRelated} />

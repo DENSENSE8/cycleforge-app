@@ -9,9 +9,9 @@
  *
  * A reference that exactly names an order number binds the purchase to that
  * order and finishes it the order path's way (`finishLabelPurchase`: tracking,
- * documents, the Labels-desk ingestion paired to the order) — behind the same
- * buyer-note interlock. Otherwise the label lands on the Labels desk unpaired
- * (a "No order" card) through `recordPurchaseLabelIngestion`.
+ * documents, the Labels-desk ingestion paired to the order). Otherwise the
+ * label lands on the Labels desk unpaired (a "No order" card) through
+ * `recordPurchaseLabelIngestion`.
  *
  * Everything after the charge is best-effort and surfaces as `warning`.
  */
@@ -21,7 +21,6 @@ import type { NextResponse } from 'next/server';
 import { v1Error } from '@/lib/api/v1-route';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { readBuyerNoteHold, type BuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 import { itemKeySql, positiveOrNull, rememberParcelDims, skuKeySql } from '@/lib/orders/parcel-dims';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { intakeParcelFrom, rateReferenceLabel, referenceShipmentSpec } from '@/lib/shipping/label-intake';
@@ -85,8 +84,7 @@ export type LabelBuyOutcome =
       isFirstLabel: boolean;
     }
   | { kind: 'in_flight' }
-  | { kind: 'voided' }
-  | { kind: 'buyer_note_hold'; hold: BuyerNoteHold };
+  | { kind: 'voided' };
 
 /** The order whose number the reference names exactly (lowest row id), else null. */
 async function findOrderByNumber(orgId: OrgId, ref: string): Promise<LabelOrderRow | null> {
@@ -219,12 +217,6 @@ export async function buyLabelOutright(orgId: OrgId, input: LabelBuyInput, staff
   const parcel = toParcel(input.parcel);
 
   const order = reference ? await findOrderByNumber(orgId, reference) : null;
-  // Buyer-note interlock — before the IRREVERSIBLE purchase, as on the order path.
-  if (order) {
-    const hold = await readBuyerNoteHold({ query: (text, params) => tenantQuery(orgId, text, params) }, orgId, order.id);
-    if (hold) return { kind: 'buyer_note_hold', hold };
-  }
-
   const v2 = await getShipStationV2(orgId);
   const buy =
     input.purpose === 'return'

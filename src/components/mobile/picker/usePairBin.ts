@@ -1,51 +1,46 @@
 'use client';
 
 /**
- * Pair bin / Update location on the `/m/pick` order screen (owner 2026-09-29):
- * the scan card's own camera, lifted to name the bin — the directed walk's
- * pairing, on the one camera. The scanned (or typed — the camera's own Type
- * entry) code must be a real location (`GET /api/locations/:barcode`); it
- * becomes the SKU's home bin (`POST /api/update-sku-location`, `bin.set` —
- * the desk's write, the list's set-bin sheet's write). Then the location's
- * existing ± count (`/m/pair/:code/:sku`, `putaway.adjust`) opens so the
- * picker confirms how many sit there, and returns here.
+ * Pair / Update on the `/m/pick` order screen (owner 2026-09-29; 2026-10-08): the scan card's own camera,
+ * lifted alone (no dock) to name the bin. A scanned bin label or tote — or, keyed by hand, a tote number
+ * on the pad — pairs through {@link pairSkuToLocation}; a location chosen by hand opens the stock
+ * drill-down ({@link stockPairHref}). Pairing is only pairing (owner 2026-10-08): no take / put-away count
+ * follows — the pick screen stays, and the card repaints with the bin.
  */
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { unwrapScannedLocation } from '@/lib/barcode-routing';
+import { useQueryClient } from '@tanstack/react-query';
+import { toShipQueueQuery } from '@/lib/orders/to-ship-queue';
+import { pairSkuToLocation, stockPairHref } from '@/lib/picking/pair-sku-location';
+import { refreshDomain } from '@/lib/refresh/bus';
+import { toast } from '@/lib/toast';
 import { feedback } from './usePickOrder';
 
 export function usePairBin({ sku, returnHref }: { sku: string; returnHref: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [pairing, setPairing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Bumped to lift the camera (`MobileCaptureWindow armRequest`). */
   const [armRequest, setArmRequest] = useState(0);
+  /** Bumped once paired: the camera goes away and the pick screen's dock returns. */
+  const [disarmRequest, setDisarmRequest] = useState(0);
 
   const pair = useCallback(
-    async (raw: string) => {
-      const code = unwrapScannedLocation(raw);
-      if (!code || !sku || busy) return;
+    async (raw: string, as: 'auto' | 'tote' = 'auto') => {
+      if (!raw.trim() || !sku || busy) return;
       setBusy(true);
       setError(null);
       try {
-        const lookup = await fetch(`/api/locations/${encodeURIComponent(code)}`, { credentials: 'include', cache: 'no-store' });
-        if (lookup.status === 404) throw new Error(`"${code}" is not a location — scan a bin label`);
-        const found = (await lookup.json().catch(() => null)) as { location?: { barcode?: string | null } } | null;
-        if (!lookup.ok || !found?.location) throw new Error(`Couldn't read that location (${lookup.status})`);
-        const barcode = found.location.barcode?.trim() || code;
-        const res = await fetch('/api/update-sku-location', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sku, location: barcode }),
-        });
-        const body = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null;
-        if (!res.ok || !body?.success) throw new Error(body?.error || `Pairing failed (${res.status})`);
+        const barcode = await pairSkuToLocation(sku, raw, { as });
         feedback('success');
         setPairing(false);
-        router.push(`/m/pair/${encodeURIComponent(barcode)}/${encodeURIComponent(sku)}?return=${encodeURIComponent(returnHref)}`);
+        setDisarmRequest((n) => n + 1);
+        toast.success(`${sku} paired to ${barcode}`);
+        await queryClient.invalidateQueries({ queryKey: toShipQueueQuery().queryKey });
+        refreshDomain('orders.outbound');
       } catch (err) {
         feedback('reject');
         setError(err instanceof Error ? err.message : 'Pairing failed — scan the bin again');
@@ -53,7 +48,7 @@ export function usePairBin({ sku, returnHref }: { sku: string; returnHref: strin
         setBusy(false);
       }
     },
-    [sku, busy, returnHref, router],
+    [sku, busy, queryClient],
   );
 
   return {
@@ -61,6 +56,7 @@ export function usePairBin({ sku, returnHref }: { sku: string; returnHref: strin
     busy,
     error,
     armRequest,
+    disarmRequest,
     dismissError: () => setError(null),
     start: () => {
       setError(null);
@@ -69,5 +65,7 @@ export function usePairBin({ sku, returnHref }: { sku: string; returnHref: strin
     },
     cancel: () => setPairing(false),
     pair,
+    /** Choose the location by hand in the stock drill-down; it returns here once paired. */
+    chooseLocation: () => router.push(stockPairHref(sku, returnHref)),
   };
 }

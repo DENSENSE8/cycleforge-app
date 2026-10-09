@@ -21,16 +21,7 @@ export const STAFF_PRINT_OPTIONS_PATCH_EVENT = 'staff_print_options_patch';
 /** Sender → station: pause, resume or cancel a job it sent, by request id. */
 export const STAFF_PRINT_CONTROL_EVENT = 'staff_print_control';
 
-export type StaffPrintGrain =
-  | 'rack'
-  | 'bin'
-  | 'papers'
-  | 'tote'
-  | 'repair'
-  | 'fnsku'
-  | 'documents'
-  | 'qc_label'
-  | 'stock_label';
+export type StaffPrintGrain = 'bin' | 'papers' | 'tote' | 'repair' | 'fnsku' | 'documents' | 'qc_label' | 'stock_label';
 export type StaffPrintRole = 'label' | 'paper';
 
 export type StaffPrintLocationPayload = {
@@ -140,10 +131,12 @@ export function qcLabelWireKey(unit: {
 export type StaffPrintStockLabelFace = {
   sku: string;
   title: string;
-  /** The operator's free text, line breaks kept; '' prints no Notes block. */
+  /** The operator's free text, line breaks kept; '' prints blank write-in lines under Notes. */
   notes: string;
   /** `/api/photos/<id>/content` or `/api/zoho/items/<id>/image`, or null for no photo. */
   image: string | null;
+  /** A `TMP-` placeholder (on hold): its SKU is not printed — it cannot be sold by that name. */
+  onHold: boolean;
 };
 
 /** A run of stock labels for one station: one page each, in order. */
@@ -184,6 +177,7 @@ function parseStockLabelFace(raw: unknown): StaffPrintStockLabelFace | null {
     title: wireText(rec.title, STOCK_LABEL_TITLE_MAX) || sku,
     notes: wireText(rec.notes, STOCK_LABEL_NOTES_MAX, true),
     image,
+    onHold: rec.onHold === true,
   };
 }
 
@@ -402,7 +396,6 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
   if (!targetStationId) return null;
   const grain = rec.grain;
   if (
-    grain !== 'rack' &&
     grain !== 'bin' &&
     grain !== 'papers' &&
     grain !== 'tote' &&

@@ -46,10 +46,9 @@ Built, NOT yet linted/typechecked as a whole, NOT yet seen on :3050:
 - Error codes the page must handle (`V1RequestError.code`, thrown by `v1Request`):
   `SHIPSTATION_NOT_CONNECTED` 400, `SHIP_FROM_NOT_CONFIGURED` 400 (link Settings → Organization →
   Ship-from), `SHIPSTATION_ERROR` 502, `LABEL_TEST_MODE_BLOCKED` 409, `LABEL_PURCHASE_IN_FLIGHT` 409,
-  **`LABEL_PURCHASE_VOIDED` 409 → page must mint a new clientEventId and re-rate (not done yet)**,
-  **`BUYER_NOTE_UNACKNOWLEDGED` 409 (extra: orderRowId, buyerNote) → show the note, require an ack,
-  resend (not done yet — see `src/lib/orders/buyer-note-ack-client.ts` `sendWithBuyerNoteAck`)**.
-  Today the page just prints `error.message`.
+  **`LABEL_PURCHASE_VOIDED` 409 → page must mint a new clientEventId and re-rate (not done yet)**.
+  Today the page just prints `error.message`. (The buyer-note hold, `BUYER_NOTE_UNACKNOWLEDGED`,
+  was removed 2026-10-08 — the note is shown inline, never gates a buy.)
 
 ## 3. What else landed this pass (all verified on :3050 unless noted)
 
@@ -107,9 +106,8 @@ src/lib/triage/views/*.test.ts src/lib/nav/context/*.test.ts`, then `pnpm verify
 
 - Buy page: lint + tsc clean. `V1RequestError` now carries `details` (the extra fields `v1Error`
   puts beside `code`/`message`). `LABEL_PURCHASE_VOIDED` → new clientEventId, rate id cleared,
-  warning line, automatic re-rate. `BUYER_NOTE_UNACKNOWLEDGED` → `acknowledgeBuyerNote` (extracted
-  from `buyer-note-ack-client.ts`, shared with `sendWithBuyerNoteAck`) shows the note, records the
-  ack, resends with the SAME clientEventId; "Not yet" leaves the hold message.
+  warning line, automatic re-rate. (The `BUYER_NOTE_UNACKNOWLEDGED` ack-and-resend built here was
+  removed 2026-10-08 with the whole buyer-note interlock.)
 - Owner ruling: **focus route**. `DesktopRouteShell` `FOCUS_ROUTE_PATHS` (`/shipping/buy-label`)
   is chromeless: no nav column, no global header, so ✕ is the top-right-most control on screen.
 - Proved on :3050 (every write intercepted): Link a product → 18 / 10 / 8 / 4; rates sorted by
@@ -138,7 +136,7 @@ the box's L×W×H and weight from the product's remembered parcel; the Labels vi
 **Buy label** and opens that page. ✕ is always the top-right-most control.
 
 Finish §4's first bullet: lint + typecheck the page, handle `LABEL_PURCHASE_VOIDED` (new
-clientEventId, re-rate) and `BUYER_NOTE_UNACKNOWLEDGED` (show the note, ack, resend), and prove the
+clientEventId, re-rate), and prove the
 page on :3050 with every write intercepted (never buy a real label). Confirm there is no sidebar; if
 the global nav column still shows, ask the owner before inventing a new chromeless route class. Then
 present the §3.4 QoL list to the owner with one-line costs and build what they pick. Report what you

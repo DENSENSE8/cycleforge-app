@@ -34,7 +34,7 @@ their legacy bodies (`{"error":"UNAUTHENTICATED"}`).
 | `/m/work`, `/m/orders` | `GET /api/orders`, `GET /api/catalog/platforms`, `GET /api/catalog/platform-accounts` | `/api/orders/exceptions`, `/api/orders/{id}/flag`, `/api/orders/{id}/documents` (+ `/upload`) |
 | `/m/pick` | `GET /api/orders?inWarehouse=true&listShape=queue` (the To-ship desk's read), `GET /api/locations` (Set bin sheet, on open) | `/api/update-sku-location` (Set bin); Start picking / a tapped card → `?order=` below |
 | `/m/pick?order=<id>` | `GET /api/orders?orderId=…&inWarehouse=true`, `GET /api/orders/{id}/pick-tasks` | `/api/picking/desk/scan` (`type: 'ORDER'` anchors the pick on the order), `/api/picking/desk/serial`, `/api/picking/desk/sku`, `/api/picking/desk/unpick` |
-| `/m/pack` | `GET /api/packerlogs`, `GET /api/packing/policy` | `/api/packing/resolve-scan` (tote → pack job; serial → order sheet, which reads `GET /api/orders?inWarehouse=true&listShape=queue` then `GET /api/orders?orderId=…`; paired bin → bin sheet), `/api/product-manuals/search`; the sheets' actions open `/m/pack/start/{id}`, `/m/pick?order=`, `/m/pair/{code}/{sku}` |
+| `/m/packing` | `GET /api/packing/photo-feed`, `GET /api/packing-photos?packerLogId=` (in-place gallery) | Ably `scan_ready` on the packer's staff channel (desk `POST /api/packing-logs`) refetches the feed; rows open `/m/p/{packerLogId}/photos?back=/m/packing`; `DELETE /api/packing-photos?id=` from the gallery |
 | `/m/exceptions` | `GET /api/orders/exceptions` | — |
 | `/m/repair-scan` | — | `/api/counter/companion` |
 | `/m/settings` | shell only | — |

@@ -12,8 +12,6 @@ import { PHONE_CARD_FACE } from '@/design-system/tokens/phone-card';
 import { cn } from '@/utils/_cn';
 import { LABEL_PURPOSES, LABEL_PURPOSE_FACE, type LabelPurpose } from '@/lib/shipping/label-purpose';
 import { orderLabelPdfSrc, orderPriceBreakdownKey } from '@/components/outbound/orders/order-labels-client';
-import { sendWithBuyerNoteAck, acknowledgeBuyerNote } from '@/lib/orders/buyer-note-ack-client';
-import { BUYER_NOTE_HOLD_CODE } from '@/lib/orders/buyer-note-interlock';
 import { V1RequestError } from '@/lib/api/v1-client';
 import { buyLabel, fetchLabelBuyRates } from '@/lib/label-buys/http-client';
 import { outboundDocumentContentSrc } from '@/lib/documents/outbound-document-display';
@@ -75,12 +73,6 @@ function v1RatesError(error: unknown): { code: string | null; message: string } 
   return { code: null, message: error instanceof Error ? error.message : 'Could not fetch rates.' };
 }
 
-/** The buyer-note hold a MANUAL buy answered with, when its reference names an order with an unread note. */
-function labelBuyNoteHold(error: unknown): { orderRowId: number; buyerNote: string } | null {
-  if (!(error instanceof V1RequestError) || error.code !== BUYER_NOTE_HOLD_CODE) return null;
-  const { orderRowId, buyerNote } = error.details as { orderRowId?: unknown; buyerNote?: unknown };
-  return typeof orderRowId === 'number' && typeof buyerNote === 'string' && buyerNote ? { orderRowId, buyerNote } : null;
-}
 interface BuyLabelSectionProps {
   orderId: number;
   orderRef: string;
@@ -214,70 +206,54 @@ export function BuyLabelSection({
   const buyMutation = useMutation<BuyResponse, Error, ShippingRateOption>({
     mutationFn: async (rate) => {
       if (manual) {
-        // MANUAL: v1 label-buys — one idempotency key per intended purchase;
-        // a buyer-note hold on the reference is acknowledged and resent with
-        // the SAME key (nothing was charged), like the order path.
-        const send = async (): Promise<BuyResponse> => {
-          const r = await buyLabel({
-            purpose,
-            shipTo: manual.shipTo,
-            parcel: manual.parcel,
-            clientEventId: purchaseKey(),
-            rateId: rate.rateId,
-            carrierId: rate.carrierId,
-            serviceCode: rate.serviceCode,
-            reference: manual.reference ?? null,
-            product: manual.product ?? null,
-            rememberParcel: Boolean(manual.product) && Boolean(manual.rememberParcel),
-          });
-          return {
-            ok: true,
-            tracking: r.tracking ?? undefined,
-            carrier: r.carrier ?? undefined,
-            service: r.service ?? undefined,
-            cost: r.cost ?? undefined,
-            currency: r.currency ?? undefined,
-            warning: r.warning,
-            idempotent: r.replayed,
-            purpose,
-            purchaseId: r.purchaseId,
-            labelIngestionId: r.labelIngestionId,
-          };
+        // MANUAL: v1 label-buys — one idempotency key per intended purchase.
+        const r = await buyLabel({
+          purpose,
+          shipTo: manual.shipTo,
+          parcel: manual.parcel,
+          clientEventId: purchaseKey(),
+          rateId: rate.rateId,
+          carrierId: rate.carrierId,
+          serviceCode: rate.serviceCode,
+          reference: manual.reference ?? null,
+          product: manual.product ?? null,
+          rememberParcel: Boolean(manual.product) && Boolean(manual.rememberParcel),
+        });
+        return {
+          ok: true,
+          tracking: r.tracking ?? undefined,
+          carrier: r.carrier ?? undefined,
+          service: r.service ?? undefined,
+          cost: r.cost ?? undefined,
+          currency: r.currency ?? undefined,
+          warning: r.warning,
+          idempotent: r.replayed,
+          purpose,
+          purchaseId: r.purchaseId,
+          labelIngestionId: r.labelIngestionId,
         };
-        try {
-          return await send();
-        } catch (error) {
-          const hold = labelBuyNoteHold(error);
-          if (!hold || !(await acknowledgeBuyerNote(hold))) throw error;
-          return await send();
-        }
       }
-      // A held order (buyer note) opens the note before the irreversible
-      // purchase; the clientEventId is reused on retry — the route claims it
-      // before charging, so a retry replays instead of buying again.
-      const res = await sendWithBuyerNoteAck(() =>
-        fetch('/api/shipping/order-labels/purchase', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId,
-            rateId: rate.rateId,
-            clientEventId: purchaseKey(),
-            notifyCustomer: purpose !== 'return' && notifyCustomer,
-            purpose,
-            // A return is bought from its (swapped) shipment, not the rate id:
-            // the server re-rates nothing — it rebuilds the shipment it quoted.
-            ...(purpose === 'return'
-              ? {
-                  carrierId: rate.carrierId,
-                  serviceCode: rate.serviceCode,
-                  ...(weightOz != null && weightOz > 0 ? { weightOz } : {}),
-                  ...(dimensions ? { dimensions } : {}),
-                }
-              : {}),
-          }),
+      const res = await fetch('/api/shipping/order-labels/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          rateId: rate.rateId,
+          clientEventId: purchaseKey(),
+          notifyCustomer: purpose !== 'return' && notifyCustomer,
+          purpose,
+          // A return is bought from its (swapped) shipment, not the rate id:
+          // the server re-rates nothing — it rebuilds the shipment it quoted.
+          ...(purpose === 'return'
+            ? {
+                carrierId: rate.carrierId,
+                serviceCode: rate.serviceCode,
+                ...(weightOz != null && weightOz > 0 ? { weightOz } : {}),
+                ...(dimensions ? { dimensions } : {}),
+              }
+            : {}),
         }),
-      );
+      });
       const data = (await res.json()) as BuyResponse;
       if (!res.ok || !data.ok) throw new Error(data.error || 'Purchase failed.');
       return data;

@@ -26,6 +26,8 @@ export type LocationHandlingUnit = {
   totalUnits: number;
   testedUnits: number;
   holdUnits: number;
+  /** Loose stock loaded into the tote (its own stock place), apart from serialized units. */
+  stockUnits: number;
   pairedOrderId: number | null;
   createdAt: string;
 };

@@ -28,6 +28,13 @@ export type ViewSort =
   /** Ship-by soonest (the queue's `deadline` sort; the staffer may re-sort). */
   'ship-by';
 
+/** A view's verbs: ONE primary, then secondary and bulk; hotkeys come from the verb builder. */
+export interface ViewVerbs<VerbId extends string> {
+  primary: VerbId;
+  secondary: readonly VerbId[];
+  bulk: readonly VerbId[];
+}
+
 /** What a view that only opens records (no list of its own) declares. */
 export interface RecordViewSpec<SectionId extends string, VerbId extends string> {
   /** The one question this view answers — also the empty / all-clear copy source. */
@@ -36,13 +43,15 @@ export interface RecordViewSpec<SectionId extends string, VerbId extends string>
   recordPresentation: 'allocate' | 'standard';
   /** Record sections, in paint order. */
   record: readonly SectionId[];
-  /** ONE primary verb, then secondary verbs; hotkeys come from the verb builder. */
-  verbs: { primary: VerbId; secondary: readonly VerbId[]; bulk: readonly VerbId[] };
+  /** `null` = a read-only view: no Actions panel, no More actions, no record keys. */
+  verbs: ViewVerbs<VerbId> | null;
 }
 
 /** A list view: the record spec plus what its rows lead with, show and sort by. */
 export interface ViewSpec<FactId extends string, SectionId extends string, VerbId extends string>
   extends RecordViewSpec<SectionId, VerbId> {
+  /** A list always acts on its rows. */
+  verbs: ViewVerbs<VerbId>;
   /** The fact that orders the list and colours the row (field-catalog id). */
   lead: FactId;
   /** Row facts in priority order, each with the disclosure tier it first paints at. */
@@ -61,7 +70,7 @@ export const ORDER_LIST_VIEW_KEYS = ['shipping.to-ship', 'shipping.pending'] as 
 export type OrderListViewKey = (typeof ORDER_LIST_VIEW_KEYS)[number];
 
 /** Order views that only open one order's record. */
-export type OrderRecordViewKey = 'shipping.shipped' | 'search.orders';
+export type OrderRecordViewKey = 'shipping.shipped' | 'search.orders' | 'unbox.fulfilled-order';
 
 /** Every view an order record opens on. */
 export type OrderViewKey = OrderListViewKey | OrderRecordViewKey;
@@ -76,6 +85,8 @@ interface OrderRecordForbiddenSections {
   'shipping.pending': 'label-entries' | 'resolve';
   'shipping.shipped': 'resolve' | 'assign';
   'search.orders': 'resolve';
+  // Read-only: the station reads the order a returned unit left on; it never works it.
+  'unbox.fulfilled-order': 'resolve' | 'assign' | 'facts' | 'note' | 'price' | 'label-entries' | 'conversation';
 }
 
 type SectionsFor<K extends OrderViewKey> = Exclude<OrderRecordSectionId, OrderRecordForbiddenSections[K]>;
@@ -195,6 +206,14 @@ export const VIEW_SPECS: OrderViewSpecs = {
       bulk: ['urgent', 'print'],
     },
   },
+  // Unbox: a scanned serial's previous outbound order — who packed and shipped
+  // the unit coming back. The same fulfillment-first record Search opens, read only.
+  'unbox.fulfilled-order': {
+    job: 'Who packed and shipped the order this returned unit left on?',
+    recordPresentation: 'allocate',
+    record: ['state', 'buyer-note', 'item', 'stages', 'shipment', 'customer'],
+    verbs: null,
+  },
 };
 
 /** Is `key` a view that paints a list of order lines? */
@@ -205,6 +224,7 @@ export function isOrderListView(key: OrderViewKey): key is OrderListViewKey {
 /** Does the view offer this verb at all (primary, secondary or bulk)? */
 export function viewOffersVerb(key: OrderViewKey, verb: OrderVerbId): boolean {
   const { verbs } = VIEW_SPECS[key];
+  if (!verbs) return false;
   return verbs.primary === verb || verbs.secondary.includes(verb) || verbs.bulk.includes(verb);
 }
 

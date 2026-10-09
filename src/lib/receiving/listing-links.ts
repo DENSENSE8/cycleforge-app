@@ -3,10 +3,7 @@
 import { normalizeListingHref } from '@/lib/receiving/listing-href';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import { parseListingLinksFromSyncNotes } from '@/lib/zoho-po-prefill';
-import {
-  getExternalUrlByItemNumber,
-  getExternalUrlByPlatform,
-} from '@/utils/external-item-url';
+import { getExternalUrlByPlatform } from '@/utils/external-item-url';
 
 export interface CartonListingLink {
   /** `receiving_listing_links.id` when this link is a DURABLE row — the handle an edit / delete / reorder needs. */
@@ -77,7 +74,8 @@ function sortKey(
 /**
  * Returns unique listing links for the carton context chip. The first entry is
  * the primary open target (explicit URL wins, then catalog row for the carton's
- * platform, then remaining catalog rows, then SKU-derived storefront search).
+ * platform, then remaining catalog rows). No item-number linkage → no link:
+ * the SKU never falls back to an Ecwid storefront search.
  */
 export function collectCartonListingLinks(args: {
   listingLink: string;
@@ -145,14 +143,6 @@ export function collectCartonListingLinks(args: {
     const href = catalogRowHref(p);
     if (href && !platformOrder.has(platformKey)) platformOrder.set(platformKey, href);
     push(href, platformRowLabel(p), 'catalog');
-  }
-
-  if (!args.isUnmatched && !suppressEcwid) {
-    const sku = (args.sku || '').trim();
-    if (sku) {
-      const derived = getExternalUrlByItemNumber(sku);
-      push(derived, 'Storefront', 'derived');
-    }
   }
 
   const sourcePlatform = (args.sourcePlatform || '').trim().toLowerCase();

@@ -3,6 +3,7 @@ import { describe, test } from 'node:test';
 import {
   fulfillmentCurrentStatus,
   hasExternalFulfillmentHandoff,
+  orderStatusTags,
   type FulfillmentSummaryLine,
 } from './order-fulfillment-summary';
 
@@ -75,5 +76,32 @@ describe('fulfillment summary', () => {
       ]),
       { label: 'Delivered', detail: undefined },
     );
+  });
+
+  test('an order wears several statuses at once: buyer cancel and urgent', () => {
+    const tags = orderStatusTags([line({ status: 'buyer_cancelled', is_urgent: true }), line()]);
+    assert.deepEqual(
+      tags.map((tag) => [tag.id, tag.label]),
+      [
+        ['current', 'Buyer cancel'],
+        ['urgent', 'Urgent'],
+      ],
+    );
+  });
+
+  test('urgent names the paid speed and drops once the carrier has the parcel', () => {
+    const urgent = line({ is_urgent: true, service_level: 'nextDay' });
+    assert.deepEqual(
+      orderStatusTags([urgent]).map((tag) => [tag.id, tag.label]),
+      [
+        ['current', 'Unfulfilled'],
+        ['urgent', 'Next day'],
+      ],
+    );
+    assert.deepEqual(
+      orderStatusTags([{ ...urgent, ship_confirmed_at: '2026-09-29T08:00:00.000Z' }]).map((tag) => tag.id),
+      ['current'],
+    );
+    assert.deepEqual(orderStatusTags([line()]).map((tag) => tag.id), ['current']);
   });
 });

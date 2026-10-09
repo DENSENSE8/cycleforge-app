@@ -26,18 +26,6 @@ export function pickOwnerTier(lines: readonly ShippedOrder[], staffId: number | 
   return assigned ? 'other' : 'unowned';
 }
 
-/** My list: my orders, then unowned; another picker's orders dropped. Stable within a tier. */
-export function myPickList<T extends readonly ShippedOrder[]>(orders: readonly T[], staffId: number | null): T[] {
-  const mine: T[] = [];
-  const unowned: T[] = [];
-  for (const lines of orders) {
-    const tier = pickOwnerTier(lines, staffId);
-    if (tier === 'mine') mine.push(lines);
-    else if (tier === 'unowned') unowned.push(lines);
-  }
-  return [...mine, ...unowned];
-}
-
 /**
  * The walk's next order after `current`: the first id after it in `walk`
  * that is still `open` and not `skipped`. `current` missing from `walk`

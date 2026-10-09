@@ -1,9 +1,11 @@
 'use client';
 
 /**
- * The replacement parcel on ONE row (operator 2026-10-08): weight in ounces
- * with a live pound readout | hairline | length × width × height. Each field
- * wears its glyph; the host owns the strings and decides when they are complete.
+ * The label-buy parcel (operator 2026-10-08): weight in ounces with a live
+ * pound readout | hairline | length × width × height — one row when its
+ * container is wide (`@lg`), else weight over the three dimensions (the desk's
+ * left column, a phone). Each field wears its glyph; the host owns the strings
+ * and decides when they are complete.
  */
 
 import type { ReactNode } from 'react';
@@ -40,38 +42,40 @@ export function ReplacementParcelRow({
   onChange: (field: ParcelField, value: string) => void;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3" data-testid="send-replacement-parcel">
-      <div className="flex shrink-0 items-center gap-2">
-        <TextField
-          label="Weight (oz)"
-          value={draft.weight}
-          onChange={(next) => onChange('weight', next.replace(/[^0-9.]/g, ''))}
-          inputMode="decimal"
-          className="w-36"
-          trailing={<FieldGlyph><Weight className="h-4 w-4" /></FieldGlyph>}
-          data-testid="send-replacement-weight"
-        />
-        <span
-          className="w-16 pt-2 text-role-caption tabular-nums text-text-muted"
-          aria-live="polite"
-          data-testid="send-replacement-weight-lb"
-        >
-          {weightOz != null ? `= ${ozToLbText(weightOz)}` : null}
-        </span>
-      </div>
-      <span aria-hidden className="mt-2 h-10 w-px shrink-0 bg-border-soft" />
-      <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
-        {DIMENSIONS.map(({ field, label, icon }) => (
+    <div className="@container min-w-0">
+      <div className="flex min-w-0 flex-col gap-3 @lg:flex-row @lg:items-center" data-testid="send-replacement-parcel">
+        <div className="flex shrink-0 items-center gap-2">
           <TextField
-            key={field}
-            label={label}
-            value={draft[field]}
-            onChange={(next) => onChange(field, next.replace(/[^0-9.]/g, ''))}
+            label="Weight (oz)"
+            value={draft.weight}
+            onChange={(next) => onChange('weight', next.replace(/[^0-9.]/g, ''))}
             inputMode="decimal"
-            trailing={<FieldGlyph>{icon}</FieldGlyph>}
-            data-testid={`send-replacement-${field}`}
+            className="w-36"
+            trailing={<FieldGlyph><Weight className="h-4 w-4" /></FieldGlyph>}
+            data-testid="send-replacement-weight"
           />
-        ))}
+          <span
+            className="w-16 pt-2 text-role-caption tabular-nums text-text-muted"
+            aria-live="polite"
+            data-testid="send-replacement-weight-lb"
+          >
+            {weightOz != null ? `= ${ozToLbText(weightOz)}` : null}
+          </span>
+        </div>
+        <span aria-hidden className="mt-2 hidden h-10 w-px shrink-0 bg-border-soft @lg:block" />
+        <div className="grid min-w-0 grid-cols-3 gap-2 @lg:flex-1">
+          {DIMENSIONS.map(({ field, label, icon }) => (
+            <TextField
+              key={field}
+              label={label}
+              value={draft[field]}
+              onChange={(next) => onChange(field, next.replace(/[^0-9.]/g, ''))}
+              inputMode="decimal"
+              trailing={<FieldGlyph>{icon}</FieldGlyph>}
+              data-testid={`send-replacement-${field}`}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

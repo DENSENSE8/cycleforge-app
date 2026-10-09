@@ -11,7 +11,7 @@
 import { useMemo, type RefObject } from 'react';
 import { Popover } from '@/design-system/primitives/Popover';
 import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
-import { stockRecordTitle } from '@/lib/inventory/stock-record';
+import { stockRecordState, stockRecordTitle } from '@/lib/inventory/stock-record';
 import type { StockLabelFace } from '@/lib/print/stockLabel';
 import { StockLabelPrintAt, StockLabelPrintButtons } from './StockLabelSteps';
 import { recordLabelImage, useStockLabelPrint } from './useStockLabelPrint';
@@ -32,7 +32,7 @@ export function StockBulkLabelPopover({
     (): StockLabelFace[] =>
       rows
         .filter((row) => row.source !== 'empty' && row.sku.trim() !== '')
-        .map((row) => ({ sku: row.sku, title: stockRecordTitle(row), notes: '', image: recordLabelImage(row) })),
+        .map((row) => ({ sku: row.sku, title: stockRecordTitle(row), notes: '', image: recordLabelImage(row), onHold: stockRecordState(row) === 'onHold' })),
     [rows],
   );
   const skipped = rows.length - faces.length;

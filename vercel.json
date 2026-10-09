@@ -109,6 +109,10 @@
       "schedule": "30 1 * * *"
     },
     {
+      "path": "/api/cron/returns/sync",
+      "schedule": "40 * * * *"
+    },
+    {
       "path": "/api/cron/staff-goals/history",
       "schedule": "30 0 * * *"
     },

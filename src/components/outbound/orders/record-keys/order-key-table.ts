@@ -27,8 +27,10 @@ export const ORDER_VERB_HOTKEYS = {
   notes: 'n',
   /** ⌘/Ctrl+C, never bare C: C is create app-wide. */
   copy: COPY_HOTKEY,
-  print: 'p',
-  /** P is Print (product labels). */
+  /**
+   * Print (product labels) is keyless on the order strip: P views the order's
+   * photos (operator 2026-10-08, {@link ORDER_RECORD_PHOTOS_KEY}).
+   */
   'print-slip': 'm',
   /** "Home" — back to the warehouse. */
   'return-label': 'h',
@@ -42,7 +44,10 @@ export const ORDER_VERB_HOTKEYS = {
   delete: DELETE_HOTKEY,
 } as const satisfies Record<string, Hotkey>;
 
-export type OrderRecordKeyHandler = 'onReplaceTracking' | 'onFocusNote' | 'onPrintSlip';
+export type OrderRecordKeyHandler = 'onReplaceTracking' | 'onFocusNote' | 'onPrintSlip' | 'onViewPhotos';
+
+/** P for photos: the open order's evidence photos in the viewer (`OrderEvidencePhotosButton`). */
+export const ORDER_RECORD_PHOTOS_KEY = 'p';
 
 /**
  * The open record's own letters (`useOrderRecordKeys`). `slot` names the strip
@@ -53,13 +58,14 @@ export const ORDER_RECORD_KEYS: readonly {
   key: string;
   handler: OrderRecordKeyHandler;
   label: string;
-  slot: keyof typeof ORDER_VERB_HOTKEYS | 'replace-tracking';
+  slot: keyof typeof ORDER_VERB_HOTKEYS | 'replace-tracking' | 'photos';
 }[] = [
   // W for waybill — the carrier's tracking number; T is the customer ticket.
   { key: 'w', handler: 'onReplaceTracking', label: 'Replace tracking', slot: 'replace-tracking' },
   { key: ORDER_VERB_HOTKEYS.notes, handler: 'onFocusNote', label: 'Write a note', slot: 'notes' },
   // E is the label buy's alone (operator 2026-10-08): edit the ship-to from its pencil, or inside the label form.
   { key: ORDER_VERB_HOTKEYS['print-slip'], handler: 'onPrintSlip', label: 'Print packing slip', slot: 'print-slip' },
+  { key: ORDER_RECORD_PHOTOS_KEY, handler: 'onViewPhotos', label: 'View photos', slot: 'photos' },
 ];
 
 /**

@@ -2,7 +2,8 @@
 
 /**
  * Picks — `/m/pick`, a PICK LIST only (owner 2026-09-28, BRIEF §14):
- * - the walk's progress at the very top ({@link JobProgress});
+ * - an X close at the top left — the list itself carries no progress bar
+ *   (owner 2026-10-08); the walk's bar lives on the scan card;
  * - my list: the To-pick orders whose PICK assignee is me, then the unowned
  *   ones; another picker's orders are never listed (`@/lib/picking/pick-walk`).
  *   No status chips, no filters — the picker triages the list itself;
@@ -23,14 +24,13 @@ import type { RecordCardLine, RecordCardMobileModel } from '@/design-system/comp
 import { useHiddenRecords } from '@/design-system/components/triage-card-list/dismiss';
 import { Button } from '@/design-system/primitives';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
-import { ITEM_RECORD_MOBILE_ROW } from '@/design-system/tokens/item-record-mobile';
-import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
+import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { resolveOrderBin } from '@/lib/shipping/outbound-storage-path';
 import { orderCardModel, orderRecordLine, type OrderCardModel } from '@/lib/orders/order-card-model';
 import { queueOrderStatuses, toShipQueueOrders, toShipQueueQuery } from '@/lib/orders/to-ship-queue';
-import { myPickList, nextInWalk, pickWalkProgress } from '@/lib/picking/pick-walk';
+import { nextInWalk, pickOwnerTier, pickWalkProgress } from '@/lib/picking/pick-walk';
 import { platformDisplayName, type OrderChannelResolver } from '@/lib/platform-display';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { platformMetaBrandDot } from '@/lib/source-platform';
@@ -38,7 +38,7 @@ import { OUTBOUND_TRIAGE_VIEW } from '@/lib/triage/views';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { PickOrderScreen, type PickOrderDetails } from './PickOrderScreen';
-import { JobProgress } from '@/components/mobile/JobProgress';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { SetBinSheet } from './SetBinSheet';
 
 /** `?order=` — the order open on the scan card. */
@@ -85,15 +85,24 @@ export function PickScreen() {
       orderCardModel(`${lines[0]?.order_id ?? ''}#${lines[0]?.id ?? ''}`, lines, todayKey, getStaffName),
     [todayKey, getStaffName],
   );
-  /** My pick list — and Start picking's walk, in list order: my To-pick orders, then the unowned ones. */
+  /**
+   * The pick list (owner 2026-10-08): EVERY order from To pick through Picked, whoever it is assigned
+   * to, in the queue's ship-by / late order — each card names its picker ("To pick · Sang", "Picked ·
+   * Thuc"). It stays until the packer's scan packs it. `yours` = assigned to me, or open (no one's).
+   */
   const cards = useMemo(
     () =>
-      myPickList(orders, staffId)
-        .filter((lines) => queueOrderStatuses(lines).has('toPick'))
-        .map(toModel),
+      orders.flatMap((lines) => {
+        const statuses = queueOrderStatuses(lines);
+        if (!statuses.has('toPick') && !statuses.has('picked')) return [];
+        return [{ model: toModel(lines), toPick: statuses.has('toPick'), yours: pickOwnerTier(lines, staffId) !== 'other' }];
+      }),
     [orders, staffId, toModel],
   );
-  const walk = useMemo(() => cards.map((model) => model.lead.id), [cards]);
+  /** Pick all: every To-pick order, whoever it is assigned to, by ship-by / late date. */
+  const walk = useMemo(() => cards.filter((card) => card.toPick).map((card) => card.model.lead.id), [cards]);
+  /** Your picks: the To-pick orders assigned to me, plus the open ones. */
+  const myWalk = useMemo(() => cards.filter((card) => card.toPick && card.yours).map((card) => card.model.lead.id), [cards]);
   const progress = useMemo(() => pickWalkProgress(orders, staffId, todayKey, walk.length), [orders, staffId, todayKey, walk.length]);
   const channelOf = useOrderChannel();
   /** The open order as the walk screen shows it: the list card's lines (lead first), its bin and its order facts. */
@@ -101,6 +110,9 @@ export function PickScreen() {
     const group = openOrderId == null ? null : orders.find((lines) => lines.some((line) => Number(line.id) === openOrderId));
     if (!group) return { lines: [], bin: null, details: null };
     const model = toModel(group);
+    // The listing resolves from the shown line's ITEM NUMBER on the order's own platform — a SKU-only
+    // search or another store is no listing, and the pick screen offers Pair item number instead.
+    const itemNumber = String(model.lines[0]?.record.item_number ?? '').trim() || null;
     return {
       lines: model.lines.map(orderRecordLine),
       bin: resolveOrderBin(model.lead.storage_locations, model.lead.sku_home_location).path,
@@ -110,8 +122,8 @@ export function PickScreen() {
         shipBy: model.sla,
         buyerNote: model.buyerNote,
         staffNote: model.staffNote,
-        listingHref: model.listingHref,
-        listingMatchesOrder: model.listingMatchesOrder,
+        listingHref: itemNumber && model.listingMatchesOrder ? model.listingHref : null,
+        itemNumber,
       },
     };
   }, [orders, openOrderId, toModel, channelOf]);
@@ -131,9 +143,9 @@ export function PickScreen() {
       push,
     );
 
-  /** Open an order on the scan card; the walk is mine, with a tapped order outside it walked first. */
-  const openOrder = (orderId: number) => {
-    setWalkIds(walk.includes(orderId) ? walk : [orderId, ...walk]);
+  /** Open an order on the scan card, walking `ids` (Pick all by default); a tapped order outside it is walked first. */
+  const openOrder = (orderId: number, ids: readonly number[] = walk) => {
+    setWalkIds(ids.includes(orderId) ? [...ids] : [orderId, ...ids]);
     setSkipped(new Set());
     setWalkDone(false);
     showOrder(orderId, true);
@@ -186,7 +198,8 @@ export function PickScreen() {
 
   return (
     <div className={cn('flex h-full min-h-full flex-col', appMobilePageGroundClass)}>
-      <JobProgress done={progress.picked} total={progress.total} doneWord="picked" />
+      {/* The list's own header: X close top left, the Scan seat top right, no progress bar (owner 2026-10-08). */}
+      <MobileV2DetailTopBar title="Picks" close backHref="/m/home" />
 
       <div className="flex flex-1 flex-col overflow-y-auto" data-testid="pick-queue">
         {walkDone ? (
@@ -210,30 +223,40 @@ export function PickScreen() {
         ) : cards.length === 0 ? (
           <p className="px-mode-page py-10 text-center text-role-body text-text-muted">Nothing to pick.</p>
         ) : (
-          <ul aria-label="My pick list" className={cn(ITEM_RECORD_MOBILE_ROW.list, 'pt-3')}>
-            {cards.map((model) => (
-              <PickListCard key={model.key} model={model} onOpen={() => openOrder(model.lead.id)} onSetBin={setBinSku} />
+          // Density (owner 2026-10-08): rows edge to edge, no gap between them, one horizontal hairline between rows, no side lines.
+          <ul aria-label="My pick list" className="divide-y divide-border-hairline border-b border-border-hairline">
+            {cards.map(({ model, toPick }) => (
+              <PickListCard key={model.key} model={model} toPick={toPick} onOpen={() => openOrder(model.lead.id)} onSetBin={setBinSku} />
             ))}
           </ul>
         )}
 
         {/* The job CTA floats over the list; its own height is the list's bottom clearance. */}
-        <DetailDock
+        <DetailDock<'all' | 'mine'>
           label="Pick"
           placement="float"
           verbs={[
+            // Split start (owner 2026-10-08): everything on my list, or only what is assigned to me.
             {
-              id: 'start',
-              label: walk.length === 0 ? 'Nothing to pick' : `Start picking · ${walk.length}`,
+              id: 'all',
+              label: walk.length === 0 ? 'Nothing to pick' : `Pick all · ${walk.length}`,
               icon: null,
               primary: true,
               disabled: walk.length === 0,
-              testId: 'start-picking',
+              testId: 'pick-all',
+            },
+            {
+              id: 'mine',
+              label: `Your picks · ${myWalk.length}`,
+              icon: null,
+              disabled: myWalk.length === 0,
+              testId: 'pick-mine',
             },
           ]}
-          onVerb={() => {
-            const first = walk[0];
-            if (first != null) openOrder(first);
+          onVerb={(id) => {
+            const ids = id === 'mine' ? myWalk : walk;
+            const first = ids[0];
+            if (first != null) openOrder(first, ids);
           }}
         />
       </div>
@@ -256,31 +279,44 @@ function orderChannelFace(channelOf: OrderChannelResolver, model: OrderCardModel
     : null;
 }
 
-/** The orders adapter over the phone card: bin top-left ('No bin' sets the SKU's home bin), channel + order ref, SLA. */
+/** The orders adapter over the phone card: bin top-left ('No bin' sets the SKU's home bin), pick status, channel + order ref, SLA. */
 function PickListCard({
   model,
+  toPick,
   onOpen,
   onSetBin,
 }: {
   model: OrderCardModel;
+  /** Any line still to pick → "To pick"; else the order is "Picked" and waits for the packer. */
+  toPick: boolean;
   onOpen: () => void;
   onSetBin: (sku: string) => void;
 }) {
+  const pickState = lifecycleRecordState(toPick ? 'toPick' : 'picked');
   const channelOf = useOrderChannel();
   const sku = String(model.lead.sku ?? '').trim();
   const bin = resolveOrderBin(model.lead.storage_locations, model.lead.sku_home_location).path;
   const title = model.lines[0]?.title ?? '';
+  /**
+   * Whose pick it is — first name in the chip (owner 2026-10-08): "Picked · Ana" by who picked it,
+   * "To pick · Ana" by who it is assigned to.
+   */
+  const pickerName = toPick
+    ? (model.lines.find((line) => line.record.picker_name)?.record.picker_name?.trim() || null)
+    : (model.lines.find((line) => line.record.picked_at)?.record.picked_by_name?.trim() || null);
   return (
     <li data-pick-queue-order={model.lead.id}>
       <RecordCardMobile
         model={{
           key: model.key,
           leadId: model.lead.id,
+          // The card's top-level pick status, one chip like No bin and To pick (owner 2026-10-08).
+          code: { ...pickState, code: pickerName ? `${pickState.label} · ${pickerName.split(/\s+/)[0]}` : pickState.label },
           channel: orderChannelFace(channelOf, model),
           deadline: model.sla,
           lines: model.lines.map(orderRecordLine),
           aria: {
-            card: `${title}, ${LIFECYCLE[model.state].label}${bin ? `, bin ${bin}` : ''}`,
+            card: `${title}, ${pickState.label}${pickerName ? `${toPick ? ', assigned to' : ' by'} ${pickerName}` : ''}${bin ? `, bin ${bin}` : ''}`,
             open: `Pick ${title}`,
           },
         }}
@@ -288,6 +324,7 @@ function PickListCard({
         location={{ path: bin, onPress: bin == null && sku ? () => onSetBin(sku) : undefined }}
         onOpen={onOpen}
         testIdPrefix="pick-card"
+        density="row"
       />
     </li>
   );

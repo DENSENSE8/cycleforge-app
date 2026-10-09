@@ -35,6 +35,7 @@ export function getMobileAppTitle(
   if (pathname === '/m/live-feed') return 'Live feed';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
   if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';
+  if (pathname === '/m/packing') return 'Packing';
   if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';
   if (pathname === '/m/id/pick' || pathname.startsWith('/m/id/pick/')) return 'Picks';
   if (pathname === '/m/id' || pathname.startsWith('/m/id/')) return 'Scan out';

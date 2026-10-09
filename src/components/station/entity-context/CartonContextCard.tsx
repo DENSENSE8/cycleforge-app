@@ -102,6 +102,7 @@ export function CartonContextCard({
   photoStage,
   listingLink,
   showListing = true,
+  onEditListing,
   listingOpenHref,
   listingLinks = [],
   poOpenHref,
@@ -177,6 +178,8 @@ export function CartonContextCard({
   listingLink: string;
   /** Hide the listing slot for stations whose active entity has no storefront listing. */
   showListing?: boolean;
+  /** Listing chip "Edit listing" — the caller's listing editor (Unbox: Displays › Listings). */
+  onEditListing?: () => void;
   listingOpenHref: string | null | undefined;
   /** All resolvable listing URLs (inventory catalog + manual + derived). */
   listingLinks?: CartonListingLink[];
@@ -544,6 +547,8 @@ export function CartonContextCard({
       openHref={listingOpenHref}
       copyValue={listingLink || listingOpenHref || ''}
       links={formatListingLinkMenuOptions(listingLinks) ?? listingLinks}
+      onEdit={onEditListing}
+      editLabel="Edit listing"
     />
   ) : null;
 

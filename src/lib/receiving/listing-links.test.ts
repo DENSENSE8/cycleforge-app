@@ -10,15 +10,13 @@ import {
 } from './listing-links';
 import { getExternalUrlByPlatform } from '@/utils/external-item-url';
 
-
-test('getExternalUrlByPlatform: zoho is inventory — never invents usavshop URL', () => {
+test('getExternalUrlByPlatform: zoho is inventory; a real ecwid platform row still links', () => {
   assert.equal(getExternalUrlByPlatform('zoho', '1018'), null);
   assert.equal(
     getExternalUrlByPlatform('ecwid', '01018'),
     'https://usavshop.com/products/search?keyword=01018',
   );
 });
-
 
 test('manual listing URL wins as primary', () => {
   const links = collectCartonListingLinks({
@@ -36,7 +34,7 @@ test('manual listing URL wins as primary', () => {
   });
   assert.equal(links[0]?.href, 'https://www.ebay.com/itm/123456789012');
   assert.equal(links[0]?.source, 'manual');
-  assert.equal(links.length, 3);
+  assert.equal(links.length, 2);
 });
 
 test('catalog platform for carton source_platform sorts before other catalog rows', () => {
@@ -52,29 +50,6 @@ test('catalog platform for carton source_platform sorts before other catalog row
   });
   assert.equal(links[0]?.href, 'https://www.amazon.com/dp/B012345678');
   assert.equal(links[0]?.source, 'catalog');
-});
-
-test('unmatched cartons skip SKU-derived storefront link', () => {
-  const links = collectCartonListingLinks({
-    listingLink: '',
-    sku: 'WIDGET-01',
-    sourcePlatform: '',
-    isUnmatched: true,
-    platforms: [],
-  });
-  assert.equal(links.length, 0);
-});
-
-test('Zoho PO suppress: empty platforms yields no derived usavshop link', () => {
-  const links = collectCartonListingLinks({
-    listingLink: '',
-    sku: '1018',
-    sourcePlatform: '',
-    isUnmatched: false,
-    suppressEcwidStorefront: true,
-    platforms: [],
-  });
-  assert.equal(links.length, 0);
 });
 
 test('Zoho PO suppress: skips catalog ecwid rows', () => {
@@ -125,37 +100,6 @@ test('Zoho PO suppress: keeps non-Ecwid catalog marketplace rows', () => {
   assert.equal(links.length, 1);
   assert.equal(links[0]?.source, 'catalog');
   assert.equal(links[0]?.href, 'https://www.amazon.com/dp/B012345678');
-});
-
-test('non-Zoho matched carton still gets derived storefront from SKU', () => {
-  const links = collectCartonListingLinks({
-    listingLink: '',
-    sku: 'WIDGET-01',
-    sourcePlatform: '',
-    isUnmatched: false,
-    suppressEcwidStorefront: false,
-    platforms: [],
-  });
-  assert.equal(links.length, 1);
-  assert.equal(links[0]?.source, 'derived');
-  assert.equal(
-    links[0]?.href,
-    'https://usavshop.com/products/search?keyword=WIDGET-01',
-  );
-});
-
-test('dedupes identical hrefs from catalog and derived paths', () => {
-  const links = collectCartonListingLinks({
-    listingLink: '',
-    sku: '123456789012',
-    sourcePlatform: 'ebay',
-    isUnmatched: false,
-    platforms: [
-      { platform: 'ebay', platformItemId: '123456789012', listingUrl: 'https://www.ebay.com/itm/123456789012' },
-    ],
-  });
-  assert.equal(links.length, 1);
-  assert.equal(links[0]?.href, 'https://www.ebay.com/itm/123456789012');
 });
 
 test('sync notes links suppress catalog and derived fallbacks', () => {
@@ -241,7 +185,7 @@ test('manual listing URL stays first when sync notes are present', () => {
   assert.equal(links.length, 2);
 });
 
-test('when sync notes are empty, catalog and derived fallbacks still apply', () => {
+test('when sync notes are empty, catalog rows still apply (no SKU storefront fallback)', () => {
   const links = collectCartonListingLinks({
     listingLink: '',
     syncNotes: '',
@@ -253,7 +197,7 @@ test('when sync notes are empty, catalog and derived fallbacks still apply', () 
     ],
   });
   assert.equal(links[0]?.source, 'catalog');
-  assert.equal(links.length, 2);
+  assert.equal(links.length, 1);
 });
 
 test('formatListingLinkMenuOptions returns undefined for a single link', () => {
@@ -283,11 +227,10 @@ test('formatListingLinkMenuOptions numbers links 1-indexed with href tooltips', 
     ],
   });
   const menu = formatListingLinkMenuOptions(links);
-  assert.equal(menu?.length, 3);
-  assert.deepEqual(menu?.map((o) => o.label), ['Listing 1/3', 'Listing 2/3', 'Listing 3/3']);
+  assert.equal(menu?.length, 2);
+  assert.deepEqual(menu?.map((o) => o.label), ['Listing 1/2', 'Listing 2/2']);
   assert.equal(menu?.[0]?.title, menu?.[0]?.href);
   assert.equal(menu?.[1]?.title, menu?.[1]?.href);
-  assert.equal(menu?.[2]?.title, menu?.[2]?.href);
 });
 
 test('listingUrlIdentityKey extracts marketplace item ids for last-8 chips', () => {

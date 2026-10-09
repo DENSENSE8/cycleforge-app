@@ -24,6 +24,7 @@ const tote: LocationHandlingUnit = {
   totalUnits: 3,
   testedUnits: 0,
   holdUnits: 0,
+  stockUnits: 0,
   pairedOrderId: null,
   createdAt: '2026-10-05T00:00:00.000Z',
 };

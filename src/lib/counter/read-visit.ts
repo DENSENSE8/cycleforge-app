@@ -5,6 +5,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { normalizePSTTimestamp } from '@/utils/date';
+import { postalLines } from '@/lib/customers/customer-display';
 import type { KioskCartLine, KioskLinePayload } from '@/lib/kiosk/cart-line';
 import {
   PRICE_ADJUST_KINDS,
@@ -25,7 +26,7 @@ export interface CounterVisitCustomer {
   name: string | null;
   phone: string | null;
   email: string | null;
-  /** Callers: visit-receipt toCustomer. Schema: customers.shipping_address_1. User: "intake their information like name, email address, phone number, address" */
+  /** The ship-to on one line (`customers.shipping_*`, `postalLines`). Callers: visit-receipt toCustomer. */
   address: string | null;
 }
 
@@ -264,7 +265,8 @@ const defaultDeps: ReadVisitDeps = {
               ) AS name,
               COALESCE(phone, mobile) AS phone,
               email,
-              NULLIF(shipping_address_1, '') AS address
+              shipping_address_1, shipping_address_2, shipping_city,
+              shipping_state, shipping_postal_code, shipping_country
          FROM customers
         WHERE organization_id = $1 AND id = $2
         LIMIT 1`,
@@ -277,7 +279,15 @@ const defaultDeps: ReadVisitDeps = {
       name: (row.name as string | null) ?? null,
       phone: (row.phone as string | null) ?? null,
       email: (row.email as string | null) ?? null,
-      address: (row.address as string | null) ?? null,
+      address:
+        postalLines({
+          line1: row.shipping_address_1 as string | null,
+          line2: row.shipping_address_2 as string | null,
+          city: row.shipping_city as string | null,
+          state: row.shipping_state as string | null,
+          postal: row.shipping_postal_code as string | null,
+          country: row.shipping_country as string | null,
+        }).join(', ') || null,
     };
   },
 

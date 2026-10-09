@@ -4,62 +4,62 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
-import { Loader2, Printer } from '@/components/Icons';
+import { Camera, Loader2, Printer } from '@/components/Icons';
 import { MobileV2OrderPaperworkSheet } from '@/components/mobile/v2/orders/MobileV2OrderPaperworkSheet';
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
+import { MobileContinuousPhotoCamera } from '@/components/mobile/photos/MobileContinuousPhotoCamera';
 import {
-  MobileNativePhotoCapture,
-  type CapturedShot,
-} from '@/components/mobile/photos/MobileNativePhotoCapture';
+  MobileSwipePhotoViewer,
+  type SwipePhotoSlide,
+} from '@/components/mobile/station/MobileSwipePhotoViewer';
+import { compressPhotoForUpload } from '@/lib/image/compress-for-upload';
+import { shutterCaptureTime } from '@/lib/photos/capture-time';
+import { canUseContinuousWebCamera, captureFileName } from '@/lib/photos/capture-session';
 import {
   packerPhotoUploadQueue,
   useClearPackerDoneOnUnmount,
-  type PackerPhotoScope,
+  usePackerUploadQueue,
 } from '@/components/mobile/packer/PackerPhotoUploadQueue';
 import { useScopedPackerPhotos } from '@/hooks/useScopedPackerPhotos';
-import { PACK_SLIP_PHOTO_TYPE, PACK_BOX_PHOTO_TYPE } from '@/lib/photos/types';
-import { submitPackVerification, extractTrackingCandidate } from '@/lib/packing/pack-verify-flow';
+import { submitPackVerification } from '@/lib/packing/pack-verify-flow';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-
-
-
-type GuidedCaptureStep = 'slip' | 'box';
 
 interface MobilePackerPhotoStudioProps {
   packerLogId: number;
   orderId: string;
   orderRowId?: number | null;
+  /** `Order 123` / `Pack PL-7` — painted under the title, top-left of the camera. */
   headerLabel: string;
+  /** Product title from the opener (`?title=`); null paints only the order line. */
+  productTitle?: string | null;
   returnHref: string;
-  maxPhotos?: number;
-  /**
-   * When set, run the guided Packer Review flow (plan §2b): slip → box →
-   * confirm, threading pack_slip/pack_box photo types and firing the
-   * tracking-verify submit on finish. Omit for unclassified native capture.
-   */
+  /** ✓ opens Verify & finish (tracking cross-check). Off = ✓ returns straight to `returnHref`. */
   guided?: boolean;
-  /** Guided entry step (from `?step=`); defaults to slip. */
-  initialStep?: GuidedCaptureStep;
   /** Complete a phone-started CAPTURING pack after evidence + verification. */
   completePacking?: boolean;
   scanClientEventId?: string | null;
   mobileScanEventId?: number | null;
 }
 
-/** Immersive pack photo capture — legacy spam mirror + the guided Review flow. */
+/**
+ * Immersive pack photo capture (owner 2026-10-08): one camera step, title +
+ * order id top-left. Every shutter press is queued for upload IMMEDIATELY
+ * (`packerPhotoUploadQueue` → `POST /api/photos/upload`, PACKER_LOG link), so a
+ * shot survives a reload, a close or a crash — nothing waits for ✓.
+ */
 export function MobilePackerPhotoStudio({
   packerLogId,
   orderId,
   orderRowId = null,
   headerLabel,
+  productTitle = null,
   returnHref,
-  maxPhotos = 10,
   guided = false,
-  initialStep = 'slip',
   completePacking = false,
   scanClientEventId = null,
   mobileScanEventId = null,
@@ -70,22 +70,9 @@ export function MobilePackerPhotoStudio({
   const { execute: executeWmsCommand } = useWmsRealtime();
   useClearPackerDoneOnUnmount();
 
-  const scope = useMemo<PackerPhotoScope>(
-    () => ({ packerLogId, orderId }),
-    [packerLogId, orderId],
-  );
-
   const { priorPhotos, deletePrior, queryKey, query } = useScopedPackerPhotos(packerLogId);
+  const queueEntries = usePackerUploadQueue(packerLogId);
   const [paperworkOpen, setPaperworkOpen] = useState(false);
-  const paperwork = orderRowId ? (
-    <MobileV2OrderPaperworkSheet
-      open={paperworkOpen}
-      onClose={() => setPaperworkOpen(false)}
-      orderId={orderRowId}
-      orderRef={orderId}
-      pack={{ packerLogId }}
-    />
-  ) : null;
 
   const returnToPack = useCallback(() => {
     router.replace(returnHref);
@@ -96,11 +83,31 @@ export function MobilePackerPhotoStudio({
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: ['packer-photos', notice.packerLogId] });
       queryClient.invalidateQueries({ queryKey: ['packer-logs-mobile'] });
+      queryClient.invalidateQueries({ queryKey: ['packing-photo-feed'] });
     });
   }, [queryClient, queryKey]);
   useEffect(() => {
     if (query.isError) toast.error('Could not load saved packing photos.', { position: 'top-center' });
   }, [query.isError]);
+
+  // A failed upload must never be silent: one toast per failed shot, with Retry.
+  const toastedFailuresRef = useRef(new Set<string>());
+  useEffect(() => {
+    for (const entry of queueEntries) {
+      if (entry.state !== 'failed' || toastedFailuresRef.current.has(entry.id)) continue;
+      toastedFailuresRef.current.add(entry.id);
+      toast.error(`Photo did not upload: ${entry.error || 'network error'}`, {
+        position: 'top-center',
+        action: {
+          label: 'Retry',
+          onClick: () => {
+            toastedFailuresRef.current.delete(entry.id);
+            packerPhotoUploadQueue.retry(entry.id);
+          },
+        },
+      });
+    }
+  }, [queueEntries]);
 
   const handleDeletePrior = useCallback(
     async (photoId: number) => {
@@ -113,100 +120,86 @@ export function MobilePackerPhotoStudio({
     [deletePrior],
   );
 
-  const enqueueShots = useCallback(
-    (shots: CapturedShot[], photoType?: string) => {
-      const existingCount = query.data?.photos?.length ?? 0;
-      shots.forEach((s, index) => {
+  // ── Camera (the shared `MobileContinuousPhotoCamera`, no packing fork) ─────
+  const [shotCount, setShotCount] = useState(0);
+  const [processing, setProcessing] = useState(false);
+  // Decided on the client: `navigator.mediaDevices` is absent on the server and on insecure origins.
+  const [cameraState, setCameraState] = useState<'pending' | 'live' | 'unsupported'>('pending');
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraKey, setCameraKey] = useState(0);
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setCameraState(canUseContinuousWebCamera() ? 'live' : 'unsupported');
+  }, []);
+
+  const retryCamera = useCallback(() => {
+    setCameraError(null);
+    setCameraKey((key) => key + 1);
+  }, []);
+
+  // Back from the lock screen / another app: reopen the lens without a tap.
+  useEffect(() => {
+    if (!cameraError) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') retryCamera();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [cameraError, retryCamera]);
+
+  // Every shutter press is queued for upload at once — nothing waits for ✓.
+  const onCapture = useCallback(
+    async (blob: Blob) => {
+      setProcessing(true);
+      try {
+        const capturedAtMs = shutterCaptureTime();
+        const compressed = await compressPhotoForUpload(
+          new File([blob], captureFileName(capturedAtMs), { type: blob.type || 'image/jpeg', lastModified: capturedAtMs }),
+          { quality: 0.85, source: 'mobile-web-camera' },
+        );
+        const next = shotCount + 1;
         packerPhotoUploadQueue.enqueue(
           {
-            ...scope,
-            photoType: photoType ?? null,
-            fileIndex: existingCount + index + 1,
-            capturedAtMs: s.capturedAtMs,
+            packerLogId,
+            orderId,
+            fileIndex: (query.data?.photos?.length ?? 0) + next,
+            capturedAtMs,
           },
-          s.blob,
-          s.previewUrl,
+          compressed.blob,
+          URL.createObjectURL(compressed.blob),
         );
-      });
-    },
-    [query.data?.photos?.length, scope],
-  );
-
-  // ── Unclassified native-capture path ──────────────────────────────────────
-  const handleDone = useCallback(
-    (shots: CapturedShot[]) => {
-      if (shots.length === 0) {
-        returnToPack();
-        return;
+        setShotCount(next);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Could not prepare the photo.', { position: 'top-center' });
+      } finally {
+        setProcessing(false);
       }
-      enqueueShots(shots);
-      toast.message(`Uploading ${shots.length} photo${shots.length === 1 ? '' : 's'}…`, {
-        description: 'Saving to storage in the background.',
-        position: 'top-center',
-        duration: 5000,
-      });
-      returnToPack();
     },
-    [enqueueShots, returnToPack],
+    [orderId, packerLogId, query.data?.photos?.length, shotCount],
   );
 
-  // ── Guided slip → box → confirm flow (plan §2b/§2d) ────────────────────────
-  const [step, setStep] = useState<GuidedCaptureStep | 'confirm'>(initialStep);
+  // Review = saved photos (deletable) + shots still uploading (not yet deletable).
+  const slides = useMemo<Array<SwipePhotoSlide & { photoId?: number }>>(
+    () => [
+      ...priorPhotos.map((photo) => ({
+        id: photo.id,
+        previewUrl: photo.fullUrl ?? photo.previewUrl,
+        photoId: photo.photoId,
+        deletable: photo.photoId != null,
+      })),
+      ...queueEntries
+        .filter((entry) => entry.state !== 'done')
+        .map((entry) => ({ id: `queue-${entry.id}`, previewUrl: entry.previewUrl, deletable: false })),
+    ],
+    [priorPhotos, queueEntries],
+  );
+
+  // ── Verify & finish (guided) ──────────────────────────────────────────────
+  const [confirming, setConfirming] = useState(false);
   const [tracking, setTracking] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [slipBlob, setSlipBlob] = useState<Blob | null>(null);
-  const [ocrBusy, setOcrBusy] = useState(false);
   const verificationCommandIdRef = useRef<string | null>(scanClientEventId);
-
-  const onSlipDone = useCallback(
-    (shots: CapturedShot[]) => {
-      if (shots.length > 0) enqueueShots(shots, PACK_SLIP_PHOTO_TYPE);
-      // Retain the first slip shot for the optional OCR pre-fill on confirm.
-      if (shots[0]) setSlipBlob(shots[0].blob);
-      setStep('box');
-    },
-    [enqueueShots],
-  );
-
-  // §2c OCR assist — read the tracking off the retained slip shot on the LAN
-  // vision box and PRE-FILL it (never auto-submit). The vision client is a
-  // dynamic import so it never rides the station bundle (build-gotchas altitude).
-  const scanFromSlip = useCallback(async () => {
-    if (!slipBlob) return;
-    setOcrBusy(true);
-    try {
-      const { identifyLabelFromVisionBox } = await import('@/lib/vision-identify');
-      const res = await identifyLabelFromVisionBox(slipBlob, false);
-      const candidate = res.ok ? extractTrackingCandidate(res.raw_text) : null;
-      if (candidate) {
-        setTracking(candidate);
-        toast.success('Tracking read from slip — confirm it', { position: 'top-center' });
-      } else {
-        toast.message('No tracking read — enter it manually', { position: 'top-center' });
-      }
-    } catch {
-      toast.error('OCR unavailable — enter tracking manually', { position: 'top-center' });
-    } finally {
-      setOcrBusy(false);
-    }
-  }, [slipBlob]);
-
-  // Auto-kick OCR once when the confirm sheet opens with a retained slip shot —
-  // operator still confirms; this is the assist, not an auto-submit.
-  const ocrAutoRanRef = useRef(false);
-  useEffect(() => {
-    if (step !== 'confirm' || !slipBlob || ocrAutoRanRef.current) return;
-    ocrAutoRanRef.current = true;
-    void scanFromSlip();
-  }, [step, slipBlob, scanFromSlip]);
-
-  const onBoxDone = useCallback(
-    (shots: CapturedShot[]) => {
-      if (shots.length > 0) enqueueShots(shots, PACK_BOX_PHOTO_TYPE);
-      setStep('confirm');
-    },
-    [enqueueShots],
-  );
 
   const onConfirm = useCallback(async () => {
     if (!user) {
@@ -268,26 +261,17 @@ export function MobilePackerPhotoStudio({
     }
   }, [completePacking, executeWmsCommand, mobileScanEventId, orderId, packerLogId, returnToPack, tracking, user]);
 
-  const openPaperwork = orderRowId ? () => setPaperworkOpen(true) : undefined;
+  const paperwork = orderRowId ? (
+    <MobileV2OrderPaperworkSheet
+      open={paperworkOpen}
+      onClose={() => setPaperworkOpen(false)}
+      orderId={orderRowId}
+      orderRef={orderId}
+      pack={{ packerLogId }}
+    />
+  ) : null;
 
-  if (!guided) {
-    return (
-      <>
-        <MobileNativePhotoCapture
-          embedded
-          onDone={handleDone}
-          onCancel={returnToPack}
-          maxPhotos={maxPhotos}
-          priorPhotos={priorPhotos}
-          onDeletePrior={handleDeletePrior}
-          header={<StudioHeader eyebrow="Add pack photos" label={headerLabel} onPaperwork={openPaperwork} />}
-        />
-        {paperwork}
-      </>
-    );
-  }
-
-  if (step === 'confirm') {
+  if (confirming) {
     return (
       <>
         <PackVerifyConfirm
@@ -296,64 +280,85 @@ export function MobilePackerPhotoStudio({
           onTrackingChange={setTracking}
           submitting={submitting}
           onConfirm={onConfirm}
-          onBack={() => setStep('box')}
-          canScan={!!slipBlob}
-          ocrBusy={ocrBusy}
-          onScanFromSlip={scanFromSlip}
-          onPaperwork={openPaperwork}
+          onBack={() => setConfirming(false)}
+          onPaperwork={orderRowId ? () => setPaperworkOpen(true) : undefined}
         />
         {paperwork}
       </>
     );
   }
 
-  const isSlip = step === 'slip';
+  const latest = slides.at(-1);
+  const blockedMessage =
+    cameraState === 'unsupported'
+      ? 'This browser cannot open the camera. Open CycleForge over https in Safari or Chrome.'
+      : cameraError;
+
   return (
-    <>
-      <MobileNativePhotoCapture
-        key={step}
-        embedded
-        onDone={isSlip ? onSlipDone : onBoxDone}
-        onCancel={isSlip ? returnToPack : () => setStep('slip')}
-        maxPhotos={maxPhotos}
-        priorPhotos={priorPhotos}
-        onDeletePrior={handleDeletePrior}
-        gateCapture={isSlip}
-        header={
-          <StudioHeader
-            eyebrow={isSlip ? 'Step 1 of 2 · Packing slip' : 'Step 2 of 2 · Box'}
-            label={isSlip ? 'Capture the packing slip flat' : `Capture the box · ${headerLabel}`}
-            onPaperwork={openPaperwork}
-          />
-        }
+    <div className="relative min-h-[100dvh] w-full overflow-hidden bg-black text-white" data-testid="mobile-packer-camera">
+      {cameraState === 'live' && !cameraError ? (
+        <MobileContinuousPhotoCamera
+          key={cameraKey}
+          count={shotCount}
+          processing={processing}
+          onCapture={onCapture}
+          onClose={returnToPack}
+          onDone={guided ? () => setConfirming(true) : returnToPack}
+          onUnavailable={setCameraError}
+          bottomLeft={
+            latest ? (
+              // ds-raw-button: a photo tile in the camera's bottom-left thumb slot (pinned camera chrome).
+              <button
+                type="button"
+                onClick={() => setReviewIndex(slides.length - 1)}
+                aria-label={`Review ${slides.length} photo${slides.length === 1 ? '' : 's'}`}
+                className="pointer-events-auto relative h-14 w-14 overflow-hidden rounded-mode border-2 border-white/80 bg-black/60 active:scale-95"
+                data-testid="mobile-packer-camera-review"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={latest.previewUrl} alt="" className="h-full w-full object-cover" />
+              </button>
+            ) : <span aria-hidden />
+          }
+          overlay={
+            <div className={cn('max-w-full bg-black/55 px-3 py-2 backdrop-blur-md', cornerClass('control'))}>
+              {productTitle ? <p className="text-sm font-semibold text-white">{productTitle}</p> : null}
+              <p className="font-mono text-role-caption text-white/80">{headerLabel}</p>
+            </div>
+          }
+        />
+      ) : null}
+
+      {blockedMessage ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center">
+          <Camera className="h-10 w-10 text-white/50" />
+          <p className="text-sm font-semibold text-white/85">{blockedMessage}</p>
+          {cameraState === 'live' ? (
+            <Button type="button" variant="secondary" size="lg" onClick={retryCamera} data-testid="mobile-packer-camera-retry">
+              Retry camera
+            </Button>
+          ) : null}
+          <Button type="button" variant="glass" size="lg" onClick={returnToPack} className="text-white">
+            Close
+          </Button>
+        </div>
+      ) : null}
+
+      <MobileSwipePhotoViewer
+        open={reviewIndex != null}
+        initialIndex={reviewIndex ?? 0}
+        slides={slides}
+        onClose={() => setReviewIndex(null)}
+        onDelete={(slide) => {
+          const photoId = slides.find((candidate) => candidate.id === slide.id)?.photoId;
+          if (photoId != null) void handleDeletePrior(photoId);
+        }}
       />
-      {paperwork}
-    </>
-  );
-}
-
-/** Paperwork stays one tap away on the dark photo stage (slip, box and verify). */
-function StagePaperworkButton({ onClick, className }: { onClick: () => void; className?: string }) {
-  return (
-    <Button variant="glass" size="sm" icon={<Printer />} onClick={onClick} className={cn('border border-white/20 text-white', className)}>
-      Paperwork + label
-    </Button>
-  );
-}
-
-function StudioHeader({ eyebrow, label, onPaperwork }: { eyebrow: string; label: string; onPaperwork?: () => void }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-role-micro text-white/60">{eyebrow}</p>
-      <p className="truncate text-sm font-semibold text-white">{label}</p>
-      {onPaperwork ? <StagePaperworkButton onClick={onPaperwork} className="mt-2" /> : null}
     </div>
   );
 }
 
-/** Final confirm sheet: cross-check tracking, then submit the verification. The
- *  manual field is the floor-reliability path (plan §2c) — OCR pre-fill layers on
- *  top of it. Gate-fail coaching copy is kept verbatim from the sketch. */
+/** Final confirm sheet: cross-check tracking, then submit the verification. */
 function PackVerifyConfirm({
   orderId,
   tracking,
@@ -361,9 +366,6 @@ function PackVerifyConfirm({
   submitting,
   onConfirm,
   onBack,
-  canScan,
-  ocrBusy,
-  onScanFromSlip,
   onPaperwork,
 }: {
   orderId: string;
@@ -372,9 +374,6 @@ function PackVerifyConfirm({
   submitting: boolean;
   onConfirm: () => void;
   onBack: () => void;
-  canScan: boolean;
-  ocrBusy: boolean;
-  onScanFromSlip: () => void;
   onPaperwork?: () => void;
 }) {
   return (
@@ -386,14 +385,17 @@ function PackVerifyConfirm({
             {orderId.startsWith('PL-') ? `Pack ${orderId}` : `Order ${orderId}`}
           </p>
         </div>
-        {onPaperwork ? <StagePaperworkButton onClick={onPaperwork} /> : null}
+        {onPaperwork ? (
+          <Button variant="glass" size="sm" icon={<Printer />} onClick={onPaperwork} className="border border-white/20 text-white">
+            Paperwork + label
+          </Button>
+        ) : null}
         <p className="text-role-caption text-white/70">
-          Ensure lighting is clear, avoid blur, and hold the slip flat. Enter the tracking
-          number from the slip to confirm it matches this order.
+          Enter the tracking number on the label to confirm it matches this order.
         </p>
         <label className="block space-y-1">
           <span className="text-role-micro text-white/60">
-            Tracking on slip
+            Tracking on label
           </span>
           <input
             value={tracking}
@@ -406,18 +408,6 @@ function PackVerifyConfirm({
             className={cn("w-full rounded-none border border-white/15 bg-white/5 px-3 py-3 font-mono text-role-field text-white placeholder:text-white/30", focusRing('field', 'accent'))} // ds-allow-raw-neutral: photo-stage overlay field
           />
         </label>
-        {canScan ? (
-          <Button
-            type="button"
-            variant="glass"
-            onClick={onScanFromSlip}
-            disabled={ocrBusy || submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-none border border-white/15 px-3 py-2.5 text-role-caption font-semibold text-white/80 disabled:opacity-60"
-          >
-            {ocrBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {ocrBusy ? 'Reading slip…' : 'Read tracking from slip'}
-          </Button>
-        ) : null}
       </div>
 
       <div className="space-y-2 pt-6">
@@ -438,7 +428,7 @@ function PackVerifyConfirm({
           disabled={submitting}
           className="w-full rounded-none border border-white/15 px-4 py-3 text-sm font-semibold text-white/80 disabled:opacity-60"
         >
-          Back to box photos
+          Back to photos
         </Button>
       </div>
     </div>

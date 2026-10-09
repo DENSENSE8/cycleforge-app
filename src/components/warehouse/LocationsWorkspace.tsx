@@ -15,10 +15,9 @@ import {
 import { BinsSelectionActions } from './BinsSelectionActions';
 import { BinDetailFlyout } from './BinDetailFlyout';
 import { RoomDetailForm } from './RoomDetailForm';
-import { LocationLabelBuilder } from '@/features/location-labels/LocationLabelBuilder';
-import { MobileFirstFrame } from '@/design-system/components/MobileFirstFrame';
+import { LabelCatalogDesk } from '@/features/location-labels/LabelCatalogDesk';
+import { legacyLabelTabTarget } from '@/features/location-labels/label-catalog';
 import { RackDetailView } from './RackDetailView';
-import { TotePlateWorkspace } from './TotePlateWorkspace';
 import { RacksDesk } from './racks/RacksDesk';
 import { WarehouseMap, type MapViewMode } from './WarehouseMap';
 import { WarehouseFloorPlan } from './WarehouseFloorPlan';
@@ -31,31 +30,23 @@ import { Trash2 } from '@/components/Icons';
 export function LocationsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab = parseLocationsTab(searchParams.get('tab'));
+  const rawTab = searchParams.get('tab');
+  const tab = parseLocationsTab(rawTab);
   const rackCodeParam = searchParams.get('code');
-  const locationSearch = searchParams.toString();
 
-  // Bay labels used to be a sibling view. Keep old plain bookmarks useful,
-  // but canonicalize them onto the one Labels workflow. A bay code still owns
-  // its rack detail route below.
+  // Totes and Bay labels were sibling tabs; both are tiles on the Labels grid
+  // now. A bay code still owns its rack detail route below.
+  const legacyTarget = legacyLabelTabTarget(rawTab, rackCodeParam);
   useEffect(() => {
-    if (tab !== 'bays' || rackCodeParam) return;
-    const params = new URLSearchParams(locationSearch);
-    params.set('tab', 'labels');
-    router.replace(`/inventory/locations?${params.toString()}`, { scroll: false });
-  }, [locationSearch, rackCodeParam, router, tab]);
+    if (legacyTarget) router.replace(legacyTarget, { scroll: false });
+  }, [legacyTarget, router]);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <DashboardScrollShell className="h-full bg-transparent">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {tab === 'rooms' ? <RoomDetailForm /> : null}
-          {tab === 'labels' || (tab === 'bays' && !rackCodeParam) ? (
-            <MobileFirstFrame testId="location-labels-frame" width="workspace">
-              <LocationLabelBuilder initialKind="bin" dock="float" />
-            </MobileFirstFrame>
-          ) : null}
-          {tab === 'totes' ? <TotePlateWorkspace /> : null}
+          {tab === 'labels' ? <LabelCatalogDesk /> : null}
           {tab === 'bays' && rackCodeParam ? <RackDetailView code={rackCodeParam} /> : null}
           {tab === 'map' ? <MapTabBody /> : null}
           {tab === 'movable' ? <RacksDesk /> : null}

@@ -1,6 +1,6 @@
 /** global-entity-search — per-entity exact/ILIKE searchers extracted from src/app/api/global-search/route.ts (AI search Phase 0) so the… */
 
-import { tenantQueryOneTrip } from '@/lib/tenancy/db';
+import { tenantQueriesOneTrip, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { placedElseImported } from '@/lib/orders/order-dates';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
@@ -253,16 +253,54 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
     if (phoneHits.length > 0) return phoneHits;
   }
   if (identifier) {
-    const byNumberPromise = tenantQueryOneTrip(
-      orgId,
-      `${ORDER_SEARCH_SELECT}
+    // Order / item number, and a serial typed or scanned whole (operator
+    // 2026-10-08: "123456" found nothing) — the order whose tech_serial_numbers
+    // row carries it, linked by order id or by a shipment that belongs to this
+    // order alone (the rule ORDER_SEARCH_SELECT's join uses). Both are
+    // index lookups, so they share ONE round trip and one pooled connection:
+    // the identifier fan-out already fills the pool.
+    const byNumberAndSerialPromise = tenantQueriesOneTrip(orgId, [
+      {
+        text: `${ORDER_SEARCH_SELECT}
      WHERE o.organization_id = $1
        AND (${orderNumberExact} OR ${itemNumberExact})
      GROUP BY o.id
      ORDER BY o.created_at DESC NULLS LAST
      LIMIT $3`,
-      [orgId, query, limit],
-    );
+        params: [orgId, query, limit],
+      },
+      {
+        text: `${ORDER_SEARCH_SELECT}
+     WHERE o.organization_id = $1
+       AND o.id IN (
+             SELECT s.order_id
+               FROM tech_serial_numbers s
+              WHERE s.organization_id = $1
+                AND s.order_id IS NOT NULL
+                AND lower(s.serial_number) = lower($2)
+             UNION
+             SELECT o3.id
+               FROM tech_serial_numbers s
+               JOIN orders o3
+                 ON o3.organization_id = s.organization_id
+                AND o3.shipment_id = s.shipment_id
+              WHERE s.organization_id = $1
+                AND s.order_id IS NULL
+                AND s.shipment_id IS NOT NULL
+                AND lower(s.serial_number) = lower($2)
+                AND NOT EXISTS (
+                      SELECT 1 FROM orders o4
+                       WHERE o4.organization_id = o3.organization_id
+                         AND o4.shipment_id = o3.shipment_id
+                         AND o4.id <> o3.id
+                    )
+           )
+     GROUP BY o.id
+     ORDER BY o.created_at DESC NULLS LAST
+     LIMIT $3`,
+        params: [orgId, query, limit],
+      },
+    ]);
 
     // STN-first: resolve matching shipment ids, then join to orders. Cheap for
     // carrier ids; never correlated from every order row. Independent of the
@@ -310,20 +348,21 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
     // must not surface as an unhandled rejection.
     byTrackingPromise?.catch(() => {});
 
-    const numberHits = mapOrderSearchRows((await byNumberPromise).rows);
-    if (numberHits.length >= limit || !byTrackingPromise) {
-      return numberHits.slice(0, limit);
-    }
-
-    const byTracking = await byTrackingPromise;
-    const seen = new Set(numberHits.map((h) => h.id));
-    const merged = [...numberHits];
-    for (const hit of mapOrderSearchRows(byTracking.rows)) {
-      if (seen.has(hit.id)) continue;
-      seen.add(hit.id);
-      merged.push(hit);
-      if (merged.length >= limit) break;
-    }
+    const seen = new Set<GlobalSearchResult['id']>();
+    const merged: GlobalSearchResult[] = [];
+    const take = (hits: readonly GlobalSearchResult[]) => {
+      for (const hit of hits) {
+        if (merged.length >= limit) return;
+        if (seen.has(hit.id)) continue;
+        seen.add(hit.id);
+        merged.push(hit);
+      }
+    };
+    // Order / item number first, then the serial, then tracking.
+    const [byNumber, bySerial] = await byNumberAndSerialPromise;
+    take(mapOrderSearchRows(byNumber?.rows ?? []));
+    take(mapOrderSearchRows(bySerial?.rows ?? []));
+    if (merged.length < limit && byTrackingPromise) take(mapOrderSearchRows((await byTrackingPromise).rows));
     return merged;
   }
 

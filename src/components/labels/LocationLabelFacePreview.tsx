@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Print-faithful 2×1 location sticker — same iframe as Unbox / special-bin.
+ * Print-faithful 2×1 location sticker — same iframe as Unbox.
  * Incomplete addresses show an empty paper slot instead of a second layout.
  */
 

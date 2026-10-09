@@ -19,6 +19,8 @@ function row(overrides: Partial<LocationStockTableRow> = {}): LocationStockTable
     product_title: 'Brake lever',
     image_url: null,
     cover_photo_url: null,
+    latest_photo_url: null,
+    latest_photo_at: null,
     is_provisional: false,
     source: 'bin',
     qty: 2,
@@ -50,6 +52,21 @@ test('unlocated exceptions stay visible but cannot masquerade as scannable locat
   assert.equal(summary?.routeCode, null);
   assert.equal(summary?.hasException, true);
   assert.equal(summary?.hasOnHold, true);
+});
+
+test('a level shows the photo of the item photographed last, never an emptied item, else a catalog image', () => {
+  const [newest] = summarizeStockLocations([
+    row({ image_url: '/catalog/a.jpg', latest_photo_url: '/p/1', latest_photo_at: '2026-10-01T09:00:00.000Z' }),
+    row({ sku: 'SKU-B', latest_photo_url: '/p/2', latest_photo_at: '2026-10-05T09:00:00.000Z' }),
+    row({ sku: 'SKU-C', qty: 0, latest_photo_url: '/p/3', latest_photo_at: '2026-10-08T09:00:00.000Z' }),
+  ]);
+  assert.equal(newest?.photoUrl, '/p/2');
+
+  const [catalogOnly] = summarizeStockLocations([row({ image_url: '/catalog/a.jpg' })]);
+  assert.equal(catalogOnly?.photoUrl, '/catalog/a.jpg');
+
+  const [bare] = summarizeStockLocations([row()]);
+  assert.equal(bare?.photoUrl, null);
 });
 
 test('contextual search finds faces without punctuation, SKU and title', () => {

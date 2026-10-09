@@ -18,6 +18,8 @@ import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { publishEntityMediaInsert } from '@/lib/photos/publish-entity-media';
 import { assertTaskInOrg } from '@/lib/tasks/task-links-db';
 import { isListingPhotoType } from '@/lib/receiving/photo-intent';
+import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
+import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,63 +93,80 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
-    const result = await uploadPhoto({
-      organizationId: ctx.organizationId,
-      staffId: ctx.staffId,
-      entityType,
-      entityId,
-      photoType,
-      linkRole,
-      poRef,
-      fileBuffer: buffer,
-      contentType,
-      clientCapturedAt,
-      photoAspect,
-      useStorageAdapter: true,
-    });
+    // `Idempotency-Key` (optional): an offline / reload retry of the SAME shot
+    // replays the first response instead of filing a duplicate photo.
+    const claimed = await withIdempotencyClaim(
+      pool,
+      {
+        orgId: ctx.organizationId,
+        idempotencyKey: readIdempotencyKey(req),
+        route: 'photos.upload',
+        staffId: ctx.staffId ?? null,
+      },
+      async () => {
+        const result = await uploadPhoto({
+          organizationId: ctx.organizationId,
+          staffId: ctx.staffId,
+          entityType,
+          entityId,
+          photoType,
+          linkRole,
+          poRef,
+          fileBuffer: buffer,
+          contentType,
+          clientCapturedAt,
+          photoAspect,
+          useStorageAdapter: true,
+        });
 
-    const displayUrl = await resolvePhotoAccessUrl(result.id, ctx.organizationId, 'full');
-    const thumbUrl = await resolvePhotoAccessUrl(result.id, ctx.organizationId, 'thumb');
+        const displayUrl = await resolvePhotoAccessUrl(result.id, ctx.organizationId, 'full');
+        const thumbUrl = await resolvePhotoAccessUrl(result.id, ctx.organizationId, 'thumb');
 
-    let claimTicketId: number | null = null;
-    // The seller's listing photos are not receiving evidence — never claim evidence either.
-    if ((entityType === 'RECEIVING' || entityType === 'RECEIVING_LINE') && !isListingPhotoType(photoType)) {
-      // Dual-link to the carton's claim (best-effort) when one exists, so a photo
-      // captured after the claim was filed still lands under the claim umbrella.
-      claimTicketId = await linkReceivingPhotoToClaim({
-        organizationId: ctx.organizationId,
-        photoId: result.id,
-        entityType,
-        entityId,
-      });
-    }
-    const { receivingId } = await publishEntityMediaInsert({
-      organizationId: ctx.organizationId,
-      entityType,
-      entityId,
-      orderId: poRef,
-      photoId: result.id,
-      source: 'photos.upload',
-    });
-    if (receivingId && claimTicketId) {
-      const ticketId = claimTicketId;
-      after(() =>
-        autoArchiveClaimPhotosAfterCapture({
-          orgId: ctx.organizationId,
-          receivingId,
-          ticketId,
-        }).catch((err) => {
-          console.warn('[photos.upload] auto NAS archive failed', err);
-        }),
-      );
-    }
+        let claimTicketId: number | null = null;
+        // The seller's listing photos are not receiving evidence — never claim evidence either.
+        if ((entityType === 'RECEIVING' || entityType === 'RECEIVING_LINE') && !isListingPhotoType(photoType)) {
+          // Dual-link to the carton's claim (best-effort) when one exists, so a photo
+          // captured after the claim was filed still lands under the claim umbrella.
+          claimTicketId = await linkReceivingPhotoToClaim({
+            organizationId: ctx.organizationId,
+            photoId: result.id,
+            entityType,
+            entityId,
+          });
+        }
+        const { receivingId } = await publishEntityMediaInsert({
+          organizationId: ctx.organizationId,
+          entityType,
+          entityId,
+          orderId: poRef,
+          photoId: result.id,
+          source: 'photos.upload',
+        });
+        if (receivingId && claimTicketId) {
+          const ticketId = claimTicketId;
+          after(() =>
+            autoArchiveClaimPhotosAfterCapture({
+              orgId: ctx.organizationId,
+              receivingId,
+              ticketId,
+            }).catch((err) => {
+              console.warn('[photos.upload] auto NAS archive failed', err);
+            }),
+          );
+        }
 
-    return NextResponse.json({
-      ...result,
-      url: displayUrl,
-      thumbUrl,
-      claimTicketId,
-    });
+        return {
+          status: 200,
+          body: {
+            ...result,
+            url: displayUrl,
+            thumbUrl,
+            claimTicketId,
+          } as Record<string, unknown>,
+        };
+      },
+    );
+    return NextResponse.json(claimed.body, { status: claimed.status });
   } catch (error) {
     return errorResponse(error, 'POST /api/photos/upload');
   }

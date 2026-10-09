@@ -23,6 +23,7 @@ import {
   mergeSkuSerialGroups,
   rebuildSkuSerialGroups,
 } from '@/lib/tech/sku-serial-groups';
+import { parseSerialCsvField } from '@/lib/tech/serialFields';
 
 type Failure = { ok: false; error: string };
 
@@ -162,6 +163,7 @@ export function deskOrderFromQueueRow(row: ShippedOrder): ActiveStationOrder {
   // The queue projection carries the primary tracking as `tracking_number`.
   const wire = row as ShippedOrder & { tracking_number?: string | null };
   const sku = String(row.sku ?? '').trim() || '—';
+  const saved = parseSerialCsvField(row.serial_number);
   return {
     id: Number(row.id),
     orderId: String(row.order_id ?? '').trim() || '—',
@@ -172,9 +174,10 @@ export function deskOrderFromQueueRow(row: ShippedOrder): ActiveStationOrder {
     condition: String(row.condition ?? '').trim() || '—',
     notes: String(row.notes ?? ''),
     tracking: String(row.shipping_tracking_number || wire.tracking_number || row.tracking_numbers?.[0] || '').trim(),
-    serialNumbers: [],
+    // The serials already saved on the order (any visit, any device) — the card starts with them.
+    serialNumbers: saved,
     scannedSkuCodes: [],
-    skuSerialGroups: initSkuSerialGroups(sku, []),
+    skuSerialGroups: initSkuSerialGroups(sku, saved),
     testDateTime: null,
     testedBy: null,
     quantity: parseInt(String(row.quantity || 1), 10) || 1,
@@ -520,55 +523,32 @@ export async function undoLastDeskStep(opts: {
   }
 }
 
-export type DeskRemoveSerialsResult =
-  | Failure
-  | {
-      ok: true;
-      order: ActiveStationOrder;
-      removed: string[];
-      /** Picked units the dropped serials put back to ALLOCATED. */
-      unpickedUnits: number;
-      message: string;
-    };
+export type OrderSerialRemoveResult = Failure | { ok: true; serialNumbers: string[]; unpickedUnits: number };
 
 /**
- * Drop chosen serials off the card (`desk/serial update` with the set that
- * stays): each dropped serial's picked unit goes back to ALLOCATED, same as
- * Undo. Needs the card's desk anchor (`salId`).
+ * Drop serials off the ORDER, whichever scan session added them (`DELETE /api/orders/:id/serials`) —
+ * the phone pick's inline Undo / Replace; no desk anchor needed. Answers the order's remaining serials.
  */
-export async function removeDeskSerials(opts: {
-  order: ActiveStationOrder;
-  serials: readonly string[];
-  idempotencyKey: string;
-}): Promise<DeskRemoveSerialsResult> {
-  const { order } = opts;
-  if (!order.salId) return { ok: false, error: 'Scan a serial or SKU first — this pick has no desk session yet' };
-  const drop = new Set(opts.serials.map((s) => s.trim().toUpperCase()).filter(Boolean));
-  const removed = order.serialNumbers.filter((s) => drop.has(s.toUpperCase()));
-  if (removed.length === 0) return { ok: false, error: 'That serial is not on this pick' };
+export async function removeOrderSerials(orderId: number, serials: readonly string[]): Promise<OrderSerialRemoveResult> {
+  let serialNumbers: string[] = [];
+  let unpickedUnits = 0;
   try {
-    const { data } = await postDesk('/api/picking/desk/serial', {
-      action: 'update',
-      salId: order.salId,
-      serials: order.serialNumbers.filter((s) => !drop.has(s.toUpperCase())),
-      idempotencyKey: opts.idempotencyKey,
-    });
-    if (!data?.success) return { ok: false, error: data?.error || 'Could not remove the serial' };
-    const serialNumbers: string[] = Array.isArray(data.serialNumbers) ? data.serialNumbers : [];
-    const unpickedUnits = Array.isArray(data.unpickedUnits) ? data.unpickedUnits.length : 0;
-    return {
-      ok: true,
-      order: {
-        ...order,
-        serialNumbers,
-        skuSerialGroups: rebuildSkuSerialGroups(order.skuSerialGroups, serialNumbers, order.sku),
-      },
-      removed,
-      unpickedUnits,
-      message: `Removed ${removed.join(', ')}${unpickedUnits > 0 ? ` · ${unpickedUnits} unit${unpickedUnits === 1 ? '' : 's'} back to allocated` : ''}`,
-    };
+    for (const serial of serials) {
+      const res = await fetch(`/api/orders/${orderId}/serials`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serial }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { success?: boolean; error?: string; serialNumbers?: string[]; unpickedUnits?: number }
+        | null;
+      if (!res.ok || !data?.success) return { ok: false, error: data?.error || `Could not remove ${serial} (${res.status})` };
+      serialNumbers = Array.isArray(data.serialNumbers) ? data.serialNumbers : [];
+      unpickedUnits += Number(data.unpickedUnits) || 0;
+    }
+    return { ok: true, serialNumbers, unpickedUnits };
   } catch (err) {
-    console.error('Desk remove serial error:', err);
+    console.error('Order serial remove error:', err);
     return { ok: false, error: 'Network error occurred' };
   }
 }

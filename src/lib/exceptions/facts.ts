@@ -159,14 +159,12 @@ export interface ExceptionRecordResponse {
 
 // ─── Resolve inputs (one per kind) ──────────────────────────────────────────
 
-/** FBM: `PATCH /api/orders/[id]` (out-of-stock / identity fields) or `POST /api/orders/[id]/buyer-note/ack`. */
-export type FbmResolveInput =
-  | {
-      action: 'update-order';
-      orderId: number;
-      patch: { isOutOfStock?: boolean; itemNumber?: string | null; sku?: string | null; productTitle?: string };
-    }
-  | { action: 'ack-buyer-note'; orderId: number };
+/** FBM: `PATCH /api/orders/[id]` (out-of-stock / identity fields). */
+export type FbmResolveInput = {
+  action: 'update-order';
+  orderId: number;
+  patch: { isOutOfStock?: boolean; itemNumber?: string | null; sku?: string | null; productTitle?: string };
+};
 
 /**
  * Missing pairs. Order: optional identity fix (`PATCH /api/orders/[id]`),

@@ -1,7 +1,8 @@
 /**
- * Pure model of the one location / bay label builder (`LocationLabelBuilder`):
- * which steps a label kind walks, how a scanned or typed sticker becomes a
- * selection, the face a single label prints, and what the one Print verb says.
+ * Pure model of the one location label builder (`LocationLabelBuilder`): the
+ * steps an address walks, how a scanned or typed sticker becomes a selection,
+ * the face a single label prints, and what the one Print verb says. A label
+ * with no position reads `C-03-10-3` — there is no separate bay label.
  */
 
 import {
@@ -13,9 +14,6 @@ import {
   type LocationSegments,
 } from '@/lib/barcode-routing';
 
-/** `bin` = a location sticker (position optional); `rack` = a bay / level sticker (position 0). */
-export type LabelKind = 'bin' | 'rack';
-
 export type LabelStep = 'zone' | 'aisle' | 'bay' | 'level' | 'position';
 
 const STEP_LABEL: Record<LabelStep, string> = {
@@ -26,10 +24,9 @@ const STEP_LABEL: Record<LabelStep, string> = {
   position: 'Position',
 };
 
-export function labelSteps(kind: LabelKind): readonly { id: LabelStep; label: string }[] {
-  const ids: LabelStep[] = kind === 'rack' ? ['zone', 'aisle', 'bay', 'level'] : ['zone', 'aisle', 'bay', 'level', 'position'];
-  return ids.map((id) => ({ id, label: STEP_LABEL[id] }));
-}
+export const LABEL_STEPS: readonly { id: LabelStep; label: string }[] = (
+  ['zone', 'aisle', 'bay', 'level', 'position'] as const
+).map((id) => ({ id, label: STEP_LABEL[id] }));
 
 /** The address picked so far; `room` is the room name (its zone letter comes from the room). */
 export interface LabelSelection {
@@ -41,18 +38,18 @@ export interface LabelSelection {
 }
 
 /** The first step still open — the step the builder shows when the operator has not jumped back. */
-export function nextLabelStep(kind: LabelKind, s: LabelSelection): LabelStep {
+export function nextLabelStep(s: LabelSelection): LabelStep {
   if (!s.room) return 'zone';
   if (s.aisle == null) return 'aisle';
   if (s.bay == null) return 'bay';
   if (s.level == null) return 'level';
-  return kind === 'rack' ? 'level' : 'position';
+  return 'position';
 }
 
-/** One label's segments, or null until zone + aisle + bay + level are known. A bay label is always position 0. */
-export function labelSegments(kind: LabelKind, zoneLetter: string | undefined, s: LabelSelection): LocationSegments | null {
+/** One label's segments, or null until zone + aisle + bay + level are known. No position = position 0. */
+export function labelSegments(zoneLetter: string | undefined, s: LabelSelection): LocationSegments | null {
   if (!zoneLetter || s.aisle == null || s.bay == null || s.level == null) return null;
-  return { zone: zoneLetter, aisle: s.aisle, bay: s.bay, level: s.level, position: kind === 'rack' ? 0 : (s.position ?? 0) };
+  return { zone: zoneLetter, aisle: s.aisle, bay: s.bay, level: s.level, position: s.position ?? 0 };
 }
 
 /** The code a sticker reads: `C-03-10-3-05`, or `C-03-10-3` with no position. */
@@ -84,7 +81,6 @@ export function roomsForZone(rooms: readonly string[], zoneMap: Readonly<Record<
 }
 
 export type PrintVerbState = {
-  kind: LabelKind;
   run: boolean;
   printing: boolean;
   selection: LabelSelection;

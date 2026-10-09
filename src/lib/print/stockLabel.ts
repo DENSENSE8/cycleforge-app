@@ -1,17 +1,20 @@
 /**
- * The Inventory › Stock 4×6 product label (operator 2026-10-08, simplified):
- * top-aligned — the primary photo as a full-width square, the title, the
- * SKU in a small face, then a Notes heading and the notes when there are any.
- * ONE canvas is the preview, the station's print and the browser dialog's
- * page, and every print goes through the 4×6 choke point (`printDocuments`),
- * so these labels take whatever route a shipping label takes on that
- * computer: silent thermal, the desktop app, or the dialog.
+ * The Inventory › Stock 4×6 product label (operator 2026-10-08, restructured),
+ * top to bottom: the title (stepping smaller as it wraps to 2 or 3 lines),
+ * the primary photo centred in the middle, a SKU row — "SKU" on the left, the
+ * value on the right, or a short write-in underline at the right end for an on-hold `TMP-` placeholder (a TMP SKU never prints: it cannot
+ * sell by that name) — then Notes: the operator's typed notes, or blank ruled
+ * lines to write on. ONE canvas is the preview, the station's print and the
+ * browser dialog's page, and every print goes through the 4×6 choke point
+ * (`printDocuments`), so these labels take whatever route a shipping label
+ * takes on that computer: silent thermal, the desktop app, or the dialog.
  */
 
 import { beginWork, isLiveWork, readWork } from '@/lib/background-work/store';
 import { currentPrintRoute } from '@/lib/label-prints/current-print-route';
 import { printDocuments, type DeskDocument } from '@/lib/label-prints/print-labels';
 import { SHIPPING_LABEL_PAPER, type LabelPrintRoute } from '@/lib/label-prints/print-route';
+import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import { createLabelCanvas, drawFittedText, LABEL_DPI } from '@/lib/print/labelFaceBitmap';
 import type { StaffPrintStockLabelFace, StaffPrintStockLabelPayload } from '@/lib/print/staff-print-bridge';
 
@@ -19,15 +22,42 @@ import type { StaffPrintStockLabelFace, StaffPrintStockLabelPayload } from '@/li
 export type StockLabelFace = StaffPrintStockLabelFace;
 
 // ── Geometry, in inches on the 4 × 6 portrait face, top to bottom ───────────
-const MARGIN_IN = 0.15;
+/** The hairline frame sits this far in from the stock's edge (a head never prints to the edge). */
+const FRAME_INSET_IN = 0.1;
+const FRAME_RADIUS_IN = 0.16;
+/** Content's distance inside the frame. */
+const PAD_IN = 0.14;
 const ROW_GAP_IN = 0.1;
-/** Read at arm's length on a shelf; a 203 dpi head paints solid stems. */
-const TITLE_TEXT_IN = 0.3;
-const TITLE_LINES = 3;
-/** The SKU, small under the title (owner 2026-10-08). */
-const SKU_TEXT_IN = 0.14;
-const NOTES_HEADING_IN = 0.16;
+/** Hairline on a 203 dpi thermal head: 2 dots — 1 dot drops out on worn heads. */
+const HAIRLINE_DOTS = 2;
+/**
+ * Title sizes by how many lines it takes: one line reads at arm's length on
+ * a shelf; a title that breaks steps down so two or three lines still fit
+ * whole and readable (owner 2026-10-08). Past three lines at the smallest
+ * size, the third line ends in `…`. A 203 dpi head paints solid stems at all three.
+ */
+const TITLE_STEPS: readonly { sizeIn: number; lines: number }[] = [
+  { sizeIn: 0.3, lines: 1 },
+  { sizeIn: 0.24, lines: 2 },
+  { sizeIn: 0.19, lines: 3 },
+];
+/** The SKU value, right of its "SKU" label (owner 2026-10-08). */
+const SKU_TEXT_IN = 0.16;
+/** The SKU row is tall enough to hand-write a SKU on its line. */
+const SKU_ROW_IN = 0.32;
+/** The row's baseline sits this far above its bottom, so descenders stay inside. */
+const SKU_BASELINE_LIFT_IN = 0.06;
+/** An on-hold SKU's write-in underline: the right 3/8 of the row (owner 2026-10-08), not the full row. */
+const SKU_LINE_FRACTION = 3 / 8;
+const NOTES_HEADING_IN = 0.13;
 const NOTES_TEXT_IN = 0.2;
+const NOTES_RADIUS_IN = 0.12;
+/** Notes bubble's own inner padding. */
+const NOTES_PAD_IN = 0.1;
+/** Room the Notes bubble always keeps under the photo: the heading and about four lines to write on. */
+const NOTES_RESERVE_IN = 1.4;
+/** Spacing of the blank write-in lines — a pen's handwriting height. */
+const WRITE_LINE_PITCH_IN = 0.3;
 /** Line pitch as a multiple of the text size. */
 const LINE_PITCH = 1.2;
 const FONT = 'Arial, Helvetica, sans-serif';
@@ -137,57 +167,125 @@ async function loadPhoto(path: string): Promise<ImageBitmap | null> {
   }
 }
 
-/** One face on a 4 × 6 canvas at the thermal head's resolution, every row hung from the top. */
+/**
+ * One face on a 4 × 6 canvas at the thermal head's resolution, pure black on
+ * white: a rounded hairline frame; the title centred on top over a hairline
+ * rule; the photo centred in the middle; the SKU row ("SKU" left, value
+ * right — a short write-in underline instead for an on-hold `TMP-` placeholder); then a
+ * rounded Notes bubble filling the rest — the typed notes, or ruled lines to
+ * write on. The photo takes what the title, SKU row and Notes bubble leave.
+ */
 export async function drawStockLabel(face: StockLabelFace): Promise<HTMLCanvasElement> {
   const { canvas, context, width, height } = createLabelCanvas(SHIPPING_LABEL_PAPER, LABEL_DPI);
   const at = (inches: number) => Math.round(inches * LABEL_DPI);
-  const margin = at(MARGIN_IN);
-  const inner = width - margin * 2;
+  const frame = at(FRAME_INSET_IN);
+  const left = frame + at(PAD_IN);
+  const inner = width - left * 2;
+  const center = width / 2;
+  const bottom = height - frame - at(PAD_IN);
   const gap = at(ROW_GAP_IN);
-  let y = margin;
-
-  // The primary photo — as big as the face is wide, inside a full-width square.
-  const photo = face.image ? await loadPhoto(face.image) : null;
-  if (photo) {
-    const scale = Math.min(inner / photo.width, inner / photo.height);
-    const w = Math.max(1, Math.round(photo.width * scale));
-    const h = Math.max(1, Math.round(photo.height * scale));
-    const x = margin + Math.round((inner - w) / 2);
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = 'high';
-    context.drawImage(photo, x, y, w, h);
-    photo.close();
-    ditherToInk(context, x, y, w, h);
-    y += h + gap;
-  }
-
-  // The title, then the SKU small under it.
+  // A TMP SKU never prints, whatever the sender flagged.
+  const onHold = face.onHold || isProvisionalSku(face.sku);
+  const skuRow = at(SKU_ROW_IN) + gap;
+  // Strokes centre on the path: a half-dot offset keeps a 2-dot line on whole dots.
+  const half = HAIRLINE_DOTS / 2;
   context.fillStyle = '#000';
-  const titleSize = at(TITLE_TEXT_IN);
+  context.strokeStyle = '#000';
+  context.lineWidth = HAIRLINE_DOTS;
+
+  // The frame.
+  context.beginPath();
+  context.roundRect(frame + half, frame + half, width - frame * 2 - HAIRLINE_DOTS, height - frame * 2 - HAIRLINE_DOTS, at(FRAME_RADIUS_IN));
+  context.stroke();
+  let y = frame + at(PAD_IN);
+
+  // The title, centred on top, then a hairline rule across the frame.
+  // The largest step whose line budget holds the whole title; the last step truncates.
+  context.textAlign = 'center';
+  let titleSize = 0;
+  let titleLines: string[] = [];
+  for (const [index, step] of TITLE_STEPS.entries()) {
+    titleSize = at(step.sizeIn);
+    context.font = `700 ${titleSize}px ${FONT}`;
+    const last = index === TITLE_STEPS.length - 1;
+    titleLines = wrapText(context, face.title, inner, last ? step.lines : step.lines + 1);
+    if (last || titleLines.length <= step.lines) break;
+  }
   const titleStep = Math.round(titleSize * LINE_PITCH);
-  context.font = `700 ${titleSize}px ${FONT}`;
-  for (const line of wrapText(context, face.title, inner, TITLE_LINES)) {
-    context.fillText(line, margin, y);
+  for (const line of titleLines) {
+    context.fillText(line, center, y);
     y += titleStep;
   }
-  const skuSize = at(SKU_TEXT_IN);
-  drawFittedText(context, face.sku, margin, y, inner, skuSize, 400);
-  y += skuSize + gap;
+  y += gap - Math.round(titleSize * (LINE_PITCH - 1));
+  context.fillRect(frame, y, width - frame * 2, HAIRLINE_DOTS);
+  y += HAIRLINE_DOTS + gap;
 
-  // Notes — a heading, then the operator's text in whatever room is left.
-  const notes = face.notes.trim();
+  // The primary photo in the middle, centred, as big as the room between rule and SKU / Notes allows.
+  const photo = face.image ? await loadPhoto(face.image) : null;
+  if (photo) {
+    const box = bottom - y - skuRow - at(NOTES_RESERVE_IN) - gap;
+    if (box > 0) {
+      const scale = Math.min(inner / photo.width, box / photo.height);
+      const w = Math.max(1, Math.round(photo.width * scale));
+      const h = Math.max(1, Math.round(photo.height * scale));
+      const x = left + Math.round((inner - w) / 2);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(photo, x, y, w, h);
+      ditherToInk(context, x, y, w, h);
+      y += h + gap;
+    }
+    photo.close();
+  }
+
+  // The SKU row: "SKU" on the left; the value on the right, or a short write-in underline at the right end when on hold.
+  context.textAlign = 'left';
+  context.textBaseline = 'alphabetic';
+  const baseline = y + at(SKU_ROW_IN) - at(SKU_BASELINE_LIFT_IN);
+  const labelSize = at(NOTES_HEADING_IN);
+  context.font = `700 ${labelSize}px ${FONT}`;
+  context.fillText('SKU', left, baseline);
+  const valueLeft = left + Math.ceil(context.measureText('SKU').width) + gap;
+  if (onHold) {
+    const lineWidth = Math.round(inner * SKU_LINE_FRACTION);
+    context.fillRect(left + inner - lineWidth, baseline + HAIRLINE_DOTS, lineWidth, HAIRLINE_DOTS);
+  } else {
+    context.textAlign = 'right';
+    drawFittedText(context, face.sku, left + inner, baseline, left + inner - valueLeft, at(SKU_TEXT_IN), 700);
+    context.textAlign = 'left';
+  }
+  context.textBaseline = 'top';
+  y += skuRow;
+
+  // The Notes bubble — a rounded hairline box to the bottom: heading, then typed notes or write-in lines.
   const headingSize = at(NOTES_HEADING_IN);
-  const notesSize = at(NOTES_TEXT_IN);
-  const notesStep = Math.round(notesSize * LINE_PITCH);
-  const room = Math.floor((height - margin - y - Math.round(headingSize * LINE_PITCH)) / notesStep);
-  if (notes && room > 0) {
-    context.font = `700 ${headingSize}px ${FONT}`;
-    context.fillText('Notes', margin, y);
-    y += Math.round(headingSize * LINE_PITCH);
+  const headingStep = Math.round(headingSize * LINE_PITCH);
+  const pad = at(NOTES_PAD_IN);
+  if (bottom - y < headingStep + pad * 2) return canvas;
+  context.beginPath();
+  context.roundRect(left + half, y + half, inner - HAIRLINE_DOTS, bottom - y - HAIRLINE_DOTS, at(NOTES_RADIUS_IN));
+  context.stroke();
+  const textLeft = left + pad;
+  const textWidth = inner - pad * 2;
+  const textBottom = bottom - pad;
+  y += pad;
+  context.font = `700 ${headingSize}px ${FONT}`;
+  context.fillText('NOTES', textLeft, y);
+  y += headingStep + Math.round(gap / 2);
+  const notes = face.notes.trim();
+  if (notes) {
+    const notesSize = at(NOTES_TEXT_IN);
+    const notesStep = Math.round(notesSize * LINE_PITCH);
+    const room = Math.floor((textBottom - y) / notesStep);
     context.font = `400 ${notesSize}px ${FONT}`;
-    for (const line of wrapText(context, notes, inner, room)) {
-      context.fillText(line, margin, y);
+    for (const line of room > 0 ? wrapText(context, notes, textWidth, room) : []) {
+      context.fillText(line, textLeft, y);
       y += notesStep;
+    }
+  } else {
+    const pitch = at(WRITE_LINE_PITCH_IN);
+    for (let rule = y + pitch; rule <= textBottom; rule += pitch) {
+      context.fillRect(textLeft, rule - HAIRLINE_DOTS, textWidth, HAIRLINE_DOTS);
     }
   }
   return canvas;

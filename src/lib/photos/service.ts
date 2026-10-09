@@ -1,10 +1,12 @@
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import {
+  findEntityRenditionTwin,
   findPhotoByEntityLegacyUrl,
   insertPhotoCatalog,
   photoDisplayUrls,
 } from './create-photo';
+import { marketplaceRenditionEdge } from './marketplace-thumb-url';
 import { createPhotoEntityLink } from './links';
 import { resolvePoRef } from './resolve-po-ref';
 import {
@@ -120,6 +122,39 @@ export async function attachPhotoWithLegacyUrlInTx(
       throw new Error('Photo already exists');
     }
     return { ...photoDisplayUrls(existingId), id: existingId, created: false };
+  }
+
+  // The same marketplace picture at another rendition (eBay `s-l140` beside
+  // `s-l1600`, Amazon `._SL200_` beside the original) is not a second photo:
+  // the entity keeps one copy, upgraded in place to the higher rendition.
+  const twin = await findEntityRenditionTwin(client, {
+    organizationId: input.organizationId,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    legacyUrl: input.legacyUrl,
+  });
+  if (twin) {
+    if (marketplaceRenditionEdge(input.legacyUrl) > marketplaceRenditionEdge(twin.legacyUrl)) {
+      // Unless another photo already owns the higher URL (one legacy URL per tenant).
+      await client.query(
+        `UPDATE photo_storage
+            SET legacy_url = $3, object_key = $3
+          WHERE organization_id = $1 AND photo_id = $2 AND provider = 'legacy_url' AND is_primary
+            AND NOT EXISTS (SELECT 1 FROM photo_storage taken
+                             WHERE taken.organization_id = $1 AND taken.legacy_url = $3 AND taken.is_primary)`,
+        [input.organizationId, twin.photoId, input.legacyUrl],
+      );
+    } else if (!input.idempotent) {
+      throw new Error('Photo already exists');
+    }
+    await createPhotoEntityLink(client, {
+      photoId: twin.photoId,
+      organizationId: input.organizationId,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      linkRole,
+    });
+    return { ...photoDisplayUrls(twin.photoId), id: twin.photoId, created: false };
   }
 
   // `photo_storage` intentionally de-duplicates one legacy URL per tenant. The

@@ -68,9 +68,7 @@ Each rule needs one pure test and one `:3050` probe row.
 - **Page map order** is Chat, top rows, lanes, Automations, then Scan Stations last. Hairlines
   separate the groups; there are no text headings.
 - **Account footer** appears only at the parent level (the page map and the `‹` peek).
-- **Width and overflow.** The search well grows right over the header while focused
-  (`SidebarNavColumn` has `has-[[data-find-expanded]]`). No other sidebar element may escape
-  the column.
+- **Width and overflow.** Nothing escapes the column, the search well included: fixed width (operator 2026-10-08): the well and its panel stay inside the sidebar's width — they never grow over the header or the page; the sidebar's resize sash is how they get wider.
 
 ## 3. Known rough edges (start here)
 

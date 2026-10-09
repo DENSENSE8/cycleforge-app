@@ -64,6 +64,20 @@ export function MobileCaptureWindow({
   collapsedFrame,
   /** The keyed fallback's field label — a station that takes a short form says so. */
   manualLabel = 'Label',
+  /**
+   * The keyed fallback's own form, replacing the generic label field — a station whose hand entry is
+   * not one typed code (pick Pair: a tote pad or the location drill-down). The host submits itself.
+   */
+  manualContent,
+  /** Micro copy under the keyed field — what a hand entry may be (pick: the serial's last 8). */
+  manualHint,
+  /** Put the panel away from outside (a job finished on the camera, e.g. pick Pair paired). A counter, like `armRequest`. */
+  disarmRequest,
+  /**
+   * A result the panel holds in place of the lens (pick: "Serial added" with Add more / Done) — the
+   * lens parks while it shows, so the next label is read only once the host lets it go.
+   */
+  resultContent,
 }: {
   /** `source` says whether the lens read it or the operator keyed it. */
   onDecode: (value: string, source: ScanInputSource) => void;
@@ -78,6 +92,10 @@ export function MobileCaptureWindow({
   dedupMs?: number;
   initiallyArmed?: boolean;
   manualLabel?: string;
+  manualContent?: React.ReactNode;
+  manualHint?: string;
+  disarmRequest?: number;
+  resultContent?: React.ReactNode;
   collapsedFrame?: (scan: React.ReactNode) => React.ReactNode;
 }) {
   // Warm: leaving the screen parks the lens (decoding stopped) for the next
@@ -95,6 +113,9 @@ export function MobileCaptureWindow({
   useEffect(() => {
     if (armRequest) setOpen(true);
   }, [armRequest]);
+  useEffect(() => {
+    if (disarmRequest) setOpen(false);
+  }, [disarmRequest]);
 
   const [manual, setManual] = useState('');
 
@@ -106,6 +127,8 @@ export function MobileCaptureWindow({
   const resetRef = useRef(resetLastScan);
   resetRef.current = resetLastScan;
 
+  /** A result holds the panel (`resultContent`): the lens parks until the host lets it go. */
+  const holding = resultContent != null;
   // Armed while the panel is up, stopped the moment it is put away — Done
   // turns the lens off, so it is never left running behind a collapsed bar (an
   // armed camera nobody is aiming still commits). Typing and leaving the
@@ -117,10 +140,10 @@ export function MobileCaptureWindow({
       void stopScanning();
       return;
     }
-    if (manualOpen) return;
+    if (manualOpen || holding) return;
     void startScanning();
     return parkScanning;
-  }, [open, manualOpen, startScanning, stopScanning, parkScanning]);
+  }, [open, manualOpen, holding, startScanning, stopScanning, parkScanning]);
 
   useEffect(() => {
     if (!lastScannedValue) return;
@@ -133,7 +156,7 @@ export function MobileCaptureWindow({
   const errored = scanner.scanStatus === 'error';
   // Between mount and the first frame. `isScanning` only flips once ZXing has a
   // stream, so this covers the permission prompt and the lens warm-up.
-  const starting = open && !manualOpen && !errored && !scanner.isScanning;
+  const starting = open && !manualOpen && !holding && !errored && !scanner.isScanning;
 
   const onErrorChangeRef = useRef(onErrorChange);
   onErrorChangeRef.current = onErrorChange;
@@ -199,12 +222,12 @@ export function MobileCaptureWindow({
         pending={pending}
         open={open}
         onOpenChange={setOpen}
-        fitContent={manualOpen}
-        stageClass={manualOpen ? 'bg-surface-card' : 'bg-stage'}
+        fitContent={manualOpen || holding}
+        stageClass={manualOpen || holding ? 'bg-surface-card' : 'bg-stage'}
         collapsedFrame={collapsedFrame}
         /* ONE slot, both modes — and it rides the bar, not the picture. */
         leading={
-          manualOpen ? (
+          holding ? null : manualOpen ? (
             <IconButton
               type="button"
               size="sm"
@@ -225,8 +248,9 @@ export function MobileCaptureWindow({
           )
         }
       >
-        {/* Unmounted while typing, not merely covered. */}
-        {!manualOpen && (
+        {holding ? resultContent : null}
+        {/* Unmounted while typing or holding a result, not merely covered. */}
+        {!manualOpen && !holding && (
           <video
             ref={scanner.videoRef as React.RefObject<HTMLVideoElement>}
             autoPlay
@@ -252,13 +276,14 @@ export function MobileCaptureWindow({
         )}
 
         {/* Keyed fallback — a MODE, not an overlay on the lens. */}
-        {manualOpen && (
+        {manualOpen && !holding && manualContent}
+        {manualOpen && !holding && !manualContent && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
               submitManual();
             }}
-            className="flex items-center gap-2 px-3 py-3"
+            className="flex flex-col gap-1 px-3 py-3"
             style={{
               paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
             }}
@@ -272,7 +297,7 @@ export function MobileCaptureWindow({
               mono
               inputMode="text"
               autoComplete="off"
-              className="min-w-0 flex-1"
+              className="min-w-0"
               trailing={
                 <IconButton
                   type="submit"
@@ -285,10 +310,11 @@ export function MobileCaptureWindow({
                 />
               }
             />
+            {manualHint ? <p className="px-1 text-role-micro text-text-muted">{manualHint}</p> : null}
           </form>
         )}
 
-        {errored && !manualOpen && (
+        {errored && !manualOpen && !holding && (
           <div
             role="alert"
             className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-scrim/85 px-8 pt-9 text-center"

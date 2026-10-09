@@ -47,7 +47,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const cacheTtl = isLiveScope ? 60 : 3600;
 
   try {
-    const cached = await getCachedJson<unknown[]>('api:desk-pick-logs-v3', cacheKey);
+    // v4: rows now resolve their order by the anchor's `order_row_id` (order-anchored picks had none).
+    const cached = await getCachedJson<unknown[]>('api:desk-pick-logs-v4', cacheKey);
     if (cached) {
       return NextResponse.json(cached, { headers: { 'x-cache': 'HIT' } });
     }
@@ -61,7 +62,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       offset,
     });
 
-    after(() => setCachedJson('api:desk-pick-logs-v3', cacheKey, rows, cacheTtl, ['desk-pick-logs']));
+    after(() => setCachedJson('api:desk-pick-logs-v4', cacheKey, rows, cacheTtl, ['desk-pick-logs']));
     return NextResponse.json(rows, { headers: { 'x-cache': 'MISS' } });
   } catch (error: any) {
     console.error('Error fetching tech logs:', error);

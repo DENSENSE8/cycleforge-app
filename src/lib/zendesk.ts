@@ -553,6 +553,29 @@ export async function addTicketComment(
     }, orgId);
 }
 
+/**
+ * Permanently replace `text` inside one comment with ▇ (Zendesk's redact
+ * endpoint). Used to strip internal ids from tickets written before the
+ * no-internal-ids rule (scripts/backfill-repair-ticket-text.ts). False on 404.
+ */
+export async function redactTicketCommentText(
+    ticketId: number,
+    commentId: number,
+    text: string,
+    orgId?: OrgId,
+): Promise<boolean> {
+    try {
+        await zendeskApiRequest<unknown>(`/api/v2/tickets/${ticketId}/comments/${commentId}/redact.json`, {
+            method: 'PUT',
+            body: { text },
+        }, orgId);
+        return true;
+    } catch (err) {
+        if (err instanceof ZendeskApiError && err.status === 404) return false;
+        throw err;
+    }
+}
+
 export interface ZendeskAgent {
     id: number;
     name: string;

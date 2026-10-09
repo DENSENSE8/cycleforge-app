@@ -33,9 +33,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     );
     const row = r.rows[0];
     if (!row) return NextResponse.json({ error: 'SKU row not found' }, { status: 404 });
-    const skuBase = String(row.static_sku || '').trim().split(':')[0].trim();
-    const product_url = skuBase ? `https://usavshop.com/products/search?keyword=${encodeURIComponent(skuBase)}` : null;
-    return NextResponse.json({ ...row, product_url });
+    return NextResponse.json(row);
   }
 
   let base = String(staticRaw).trim();
@@ -74,7 +72,5 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'SKU not found' }, { status: 404 });
   }
 
-  const skuBase = String(row.static_sku || '').trim().split(':')[0].trim();
-  const product_url = skuBase ? `https://usavshop.com/products/search?keyword=${encodeURIComponent(skuBase)}` : null;
-  return NextResponse.json({ ...row, product_url });
+  return NextResponse.json(row);
 }, { permission: 'sku_stock.view' });

@@ -50,7 +50,6 @@ import { useNavIntent } from '@/lib/nav/use-nav-intent';
 import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
 import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
 import { OrderCardList } from '@/components/outbound/orders/cards/OrderCardList';
-import { useToShipScanOpen } from '@/components/unshipped/useToShipScanOpen';
 
 /** Pre-pack fulfillment queue — Dashboard Pending / Picked tabs (and pack/shipping stations that embed the same table without a lane scope). */
 interface UnshippedTableProps extends DashboardSearchSectionProps {
@@ -731,9 +730,6 @@ export function UnshippedTable({
     disabled: nothingToWalk,
     onToggle: toggleLabelsWalk,
   });
-  // A wedge scan of an order # / tracking # opens its record in place (L3).
-  // The walk owns the screen while it runs.
-  useToShipScanOpen({ enabled: onToShipDesk && !walkOpen, records, onOpenRecord: handleOpenRecord });
 
   if (awaitingMessage && (isIdleEmpty || (query.isError && allRecords.length === 0))) {
     return (

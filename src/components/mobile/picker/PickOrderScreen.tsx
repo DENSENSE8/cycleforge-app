@@ -12,24 +12,33 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { ChevronDown, ExternalLink, MapPin, RotateCcw, X } from '@/components/Icons';
+import { ChevronDown, MapPin, Send, X } from '@/components/Icons';
+import { PickListingPill } from './PickListingPill';
+import { PickPairManual } from './PickPairManual';
+import { PickSerialAddedPanel } from './PickSerialAddedPanel';
+import { LocationBadge } from '@/design-system/components/LocationBadge';
+import { PairItemNumberSheet } from './PairItemNumberSheet';
+import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DetailFact, DetailFacts, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
 import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
-import { Button, IconButton } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RECORD_DEADLINE_TONE_CLASS } from '@/design-system/tokens/record-card';
 import { cn } from '@/utils/_cn';
 import { Badge } from '@/components/ui/badge';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { elevationClass } from '@/design-system/tokens/shadows';
 import { RecordSquarePhoto } from '@/design-system/components/record-card/RecordCardMobile';
+import { MobileSwipePhotoViewer } from '@/components/mobile/station/MobileSwipePhotoViewer';
+import { marketplaceFullUrl } from '@/lib/photos/marketplace-thumb-url';
 import { RecordLineFacts } from '@/design-system/components/record-card/record-fact';
 import type { RecordCardDeadline, RecordCardLine, RecordCardMobileModel } from '@/design-system/components/record-card/record-card-types';
 import { OUTBOUND_TRIAGE_VIEW } from '@/lib/triage/views';
 import { JobProgress } from '@/components/mobile/JobProgress';
+import { PassPickSheet } from './PassPickSheet';
+import { toast } from '@/lib/toast';
+import { PickedByFace } from './PickedByFace';
 import { PickSerialList } from './PickSerialList';
 import { usePairBin } from './usePairBin';
 import { usePickOrder, type PickOrderMessage } from './usePickOrder';
@@ -42,13 +51,16 @@ export interface PickOrderDetails {
   shipBy: RecordCardDeadline;
   buyerNote: string | null;
   staffNote: string | null;
-  /** The shown line's marketplace listing (`orderCardModel.listingHref`); null → no listing button. */
+  /**
+   * The shown line's listing, resolved from its ITEM NUMBER on the order's own platform; null when
+   * there is none (no item number, only a SKU search, or another platform's store) → Pair item number.
+   */
   listingHref: string | null;
-  /** False → the listing opens another platform's storefront than the order's: the button greys out. */
-  listingMatchesOrder: boolean;
+  /** The shown line's item number as it stands — the Pair sheet's starting value. */
+  itemNumber: string | null;
 }
 
-type PickVerb = 'undo' | 'bin';
+type PickVerb = 'pass' | 'bin';
 
 /** A label is scanned once; the same serial twice in a row is a real re-scan only after a beat. */
 const SCAN_DEDUP_MS = 1500;
@@ -80,15 +92,23 @@ export function PickOrderScreen({
   lines: readonly RecordCardLine[];
   /** The list card's order facts; null when the order was opened from outside the loaded queue. */
   details: PickOrderDetails | null;
-  /** The order's resolved bin (the list card's); null → the verb reads 'Pair bin'. */
+  /** The order's resolved bin (the list card's); null → the verb reads 'Pair', else 'Update'. */
   bin: string | null;
   onPicked: () => void;
   onSkip: () => void;
   onBack: () => void;
 }) {
   const c = usePickOrder({ orderId, onPicked });
-  /** The lens is up — the dock then stands alone under the panel instead of framing the Scan bar. */
-  const [cameraUp, setCameraUp] = useState(false);
+  /** Pass pick's bottom sheet of pickers. */
+  const [passOpen, setPassOpen] = useState(false);
+  /** Pair item number's bottom sheet. */
+  const [itemSheetOpen, setItemSheetOpen] = useState(false);
+  /** The product photo full screen (tap the photo); the url outlives `open` so the exit animates it. */
+  const [viewerPhoto, setViewerPhoto] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  /** Bumped by Done on "Serial added": the camera goes away. */
+  const [doneRequest, setDoneRequest] = useState(0);
+  const { user, has } = useAuth();
   const { card } = c;
   const sku = String(card?.sku ?? '').trim();
   const pairBin = usePairBin({ sku, returnHref: `/m/pick?order=${orderId}` });
@@ -96,34 +116,40 @@ export function PickOrderScreen({
   if (!c.isLoaded || !c.signedIn) return null;
 
   const qty = Math.max(1, Number(card?.quantity) || 1);
-  const toPick = c.serialRows.filter((r) => r.state === 'to-pick').length;
+  // The scan bar says one word (owner 2026-10-08): "Scan" — only pairing and saving change it.
   const scanLabel = pairBin.pairing
     ? pairBin.busy
       ? 'Pairing…'
       : 'Scan bin to pair'
     : c.busy
-    ? 'Saving…'
-    : c.preview
-      ? 'Scan serial or SKU'
-      : !c.live
-        ? 'Scan serial or SKU to re-pick'
-        : toPick > 0
-          ? `Scan serial · ${toPick} left`
-          : 'Scan serial or SKU';
+      ? 'Saving…'
+      : 'Scan';
 
   const verbs: DetailDockVerb<PickVerb>[] = [
-    { id: 'undo', label: 'Undo', icon: <RotateCcw className="h-5 w-5" aria-hidden />, disabled: !c.live || c.busy },
+    // Bottom left (owner 2026-10-08): hand this pick to another picker; each scanned serial carries its own Undo inline.
+    {
+      id: 'pass',
+      label: 'Pass pick',
+      icon: <Send className="h-5 w-5" aria-hidden />,
+      // The writer is `/api/orders/assign` (gated `orders.create`): without it the verb stays off rather than fail.
+      disabled: !card || c.busy || !has('orders.create'),
+      testId: 'pick-order-pass',
+      // Passing is a hand-off, painted as one (owner 2026-10-08): the yellow fill.
+      variant: 'yellow',
+    },
     // The SKU's bin, where Unpick used to sit (owner 2026-09-29): pair it when unknown, update it when known —
-    // on the camera; pressed again while the camera waits for the bin, it cancels.
+    // on the camera alone (owner 2026-10-08: no dock while pairing; the camera's check closes it).
     {
       id: 'bin',
-      label: pairBin.pairing ? 'Cancel pairing' : bin ? 'Update location' : 'Pair bin',
-      icon: pairBin.pairing ? <X className="h-5 w-5" aria-hidden /> : <MapPin className="h-5 w-5" aria-hidden />,
+      label: bin ? 'Update' : 'Pair',
+      icon: <MapPin className="h-5 w-5" aria-hidden />,
       disabled: !sku || c.busy || pairBin.busy,
       testId: 'pick-order-bin',
+      // Blue (owner 2026-10-08) — the same dock Button as Pass pick, only the fill differs.
+      variant: 'primary',
     },
   ];
-  const onVerb = (id: PickVerb) => (id === 'undo' ? c.undo() : pairBin.pairing ? pairBin.cancel() : pairBin.start());
+  const onVerb = (id: PickVerb) => (id === 'pass' ? setPassOpen(true) : pairBin.start());
   const message: PickOrderMessage | null = pairBin.error ? { tone: 'error', text: pairBin.error } : c.message;
 
   return (
@@ -138,7 +164,7 @@ export function PickOrderScreen({
         skipDisabled={c.busy}
       />
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className={cn('flex-1 overflow-y-auto', details?.listingHref && 'pb-20')}>
+        <div className={cn('flex-1 overflow-y-auto', card && 'pb-20')}>
           {!card ? (
             c.message ? null : (
               <p className="px-mode-page py-10 text-center text-role-body text-text-muted" aria-live="polite">
@@ -146,14 +172,37 @@ export function PickOrderScreen({
               </p>
             )
           ) : (
-            <div className={cn('mx-mode-page my-3 divide-y divide-mode-rule overflow-hidden border border-mode-rule', cornerClass('surface'))}>
+            // Edge to edge (owner 2026-10-08): horizontal hairlines between the blocks, no side lines.
+            <div className="divide-y divide-mode-rule border-b border-mode-rule">
+              {/* Where to go first (owner 2026-10-08): the full location above the photo and title, scrolling
+                  left ↔ right so the whole path and the bin or tote code are always readable. */}
+              <div
+                data-testid="pick-order-location"
+                className="flex items-center gap-2 overflow-x-auto overscroll-x-contain bg-surface-card px-mode-page py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <LocationBadge text={bin} fit="full" onPress={!bin && sku ? pairBin.start : undefined} className="shrink-0 text-role-caption" />
+              </div>
               {(lines.length > 0
                 ? lines
                 : [{ id: 0, title: card.productTitle, photoUrl: null, facts: { qty: { kind: 'qty' as const, value: qty } }, alert: false, alertNote: null }]
               ).map((line) => (
-                <section key={line.id} aria-label="Product" data-testid="pick-order-product" className="flex items-start gap-3 bg-surface-card px-mode-page py-2">
-                  <RecordSquarePhoto url={line.photoUrl} size="xl" alt={line.title} />
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                // The photo sits flush in the row's corner, whole (owner 2026-10-08): no padding around it; the text keeps its inset.
+                <section key={line.id} aria-label="Product" data-testid="pick-order-product" className="flex items-start gap-3 bg-surface-card">
+                  <RecordSquarePhoto
+                    url={line.photoUrl}
+                    size="xl"
+                    alt={line.title}
+                    fit="natural"
+                    onOpen={
+                      line.photoUrl
+                        ? () => {
+                            setViewerPhoto(line.photoUrl);
+                            setViewerOpen(true);
+                          }
+                        : undefined
+                    }
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1 py-2 pr-mode-page">
                     <p className="break-words text-2xl font-semibold leading-tight text-text-default">{line.title}</p>
                     {/* The list card's facts, the same painter: ×qty first, then condition · price. */}
                     <RecordLineFacts
@@ -166,13 +215,15 @@ export function PickOrderScreen({
                 </section>
               ))}
 
-              <DetailFacts label="Pick">
-                <DetailFact
-                  label="Picked"
-                  value={c.picked ? 'Picked' : 'Not picked'}
-                  hint={c.picked?.byName ?? (card.orderFound === false ? 'Order not in system' : undefined)}
-                />
-              </DetailFacts>
+              {/* Only once picked (owner 2026-10-08): the staff bubble, the name and when — no "Not picked" empty state. */}
+              {c.picked ? (
+                <DetailFacts label="Pick">
+                  <DetailFact
+                    label="Picked by"
+                    value={<PickedByFace staffId={c.picked.byId} name={c.picked.byName} at={c.picked.at} />}
+                  />
+                </DetailFacts>
+              ) : null}
 
               <Disclosure label="More order details" testId="pick-order-details">
                 <DetailFacts label="Order details">
@@ -198,10 +249,17 @@ export function PickOrderScreen({
                   <DetailFact label="Tracking" value={card.tracking} mono copy={card.tracking} />
                   <DetailFact label="SKU" value={card.sku} mono copy={card.sku} />
                   {details?.buyerNote ? <DetailFact label="Buyer note" value={details.buyerNote} /> : null}
-                  {details?.staffNote ? <DetailFact label="Notes" value={details.staffNote} /> : null}
                   {card.inlineMicrocopy ? <DetailFact label="Scan note" value={card.inlineMicrocopy} /> : null}
                 </DetailFacts>
               </Disclosure>
+
+              {/* The staff note in sight, between the order's details and its serials (owner 2026-10-08): one row,
+                  no heading band, nothing at all when there is no note. */}
+              {details?.staffNote ? (
+                <DetailFacts label="Staff note">
+                  <DetailFact label="Staff note" value={details.staffNote} />
+                </DetailFacts>
+              ) : null}
 
               <DetailSectionHeading>
                 Serials · {card.serialNumbers.length} of {qty} scanned
@@ -221,27 +279,12 @@ export function PickOrderScreen({
             </div>
           )}
         </div>
-        {/* The listing, one tap away (owner 2026-09-29): a white pill with a soft grey shadow floating
-            over the content, centred on the dock's Pair bin cell (Undo · Scan · Pair bin) —
-            "Listing" with the external-link glyph at its right; opens the marketplace in a new tab.
-            A listing on another platform than the order's (an eBay order → the Ecwid store) would open
-            the wrong page, so it greys out instead of linking. */}
-        {details?.listingHref ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 grid grid-cols-3">
-            <Button
-              href={details.listingMatchesOrder ? details.listingHref : undefined}
-              disabled={!details.listingMatchesOrder}
-              variant="secondary"
-              size="lg"
-              radius="pill"
-              iconRight={<ExternalLink />}
-              ariaLabel={details.listingMatchesOrder ? 'View listing' : "Listing unavailable — it would open another platform's store"}
-              data-testid="pick-order-listing"
-              className={cn('pointer-events-auto col-start-3 justify-self-center border-0 bg-surface-card px-5 font-semibold ring-0', elevationClass('raised'))}
-            >
-              Listing
-            </Button>
-          </div>
+        {card ? (
+          <PickListingPill
+            listingHref={details?.listingHref ?? null}
+            canEdit={has('orders.create')}
+            onEditItemNumber={() => setItemSheetOpen(true)}
+          />
         ) : null}
       </div>
 
@@ -269,19 +312,78 @@ export function PickOrderScreen({
         <MobileCaptureWindow
           label={pairBin.pairing ? 'Bin camera' : 'Pick camera'}
           collapsedLabel={scanLabel}
-          status={pairBin.pairing ? `Bin for ${lines[0]?.title ?? sku}` : card ? card.orderId : 'Order'}
+          status={pairBin.pairing ? `Pair ${lines[0]?.title ?? sku}` : card ? card.orderId : 'Order'}
           onDecode={pairBin.pairing ? (value) => void pairBin.pair(value) : c.handleScan}
+          // Hand entry on the pick camera is a serial (or another identifier); a serial's last 8 is enough.
+          manualLabel="Serial / identification"
+          manualHint="Last 8 of the serial number"
           pending={c.busy || pairBin.busy ? 1 : 0}
           armRequest={pairBin.armRequest}
+          // Pairing done, or the picker pressed Done on "Serial added": the camera goes away.
+          disarmRequest={pairBin.disarmRequest + doneRequest}
           dedupMs={SCAN_DEDUP_MS}
           initiallyArmed={false}
-          onArmedChange={setCameraUp}
+          // The camera stands alone at the bottom (owner 2026-10-08): no dock under the lens or the typed
+          // field; its check puts it away and the dock returns. While pairing, that check is the way out.
+          onArmedChange={(armed) => {
+            if (armed) return;
+            if (pairBin.pairing) pairBin.cancel();
+            // The camera's own check on "Serial added" is Done.
+            if (c.added) c.finishAdded();
+          }}
+          resultContent={
+            c.added && !pairBin.pairing ? (
+              <PickSerialAddedPanel
+                added={c.added}
+                title={lines[0]?.title ?? card?.productTitle ?? ''}
+                photoUrl={lines[0]?.photoUrl ?? null}
+                onAddMore={c.addMore}
+                onDone={() => {
+                  c.finishAdded();
+                  setDoneRequest((n) => n + 1);
+                }}
+              />
+            ) : undefined
+          }
+          manualContent={
+            pairBin.pairing ? (
+              <PickPairManual
+                busy={pairBin.busy}
+                onPairTote={(tote) => void pairBin.pair(tote, 'tote')}
+                onChooseLocation={pairBin.chooseLocation}
+              />
+            ) : undefined
+          }
           collapsedFrame={(scan) => (
             <DetailDock label="Pick actions" verbs={verbs} onVerb={onVerb} size="glove" center={scan} />
           )}
         />
-        {cameraUp ? <DetailDock label="Pick actions" verbs={verbs} onVerb={onVerb} size="glove" /> : null}
       </div>
+      <PassPickSheet
+        orderId={orderId}
+        myStaffId={user?.staffId ?? null}
+        open={passOpen}
+        onOpenChange={setPassOpen}
+        onPassed={(name) => {
+          toast.success(`${card?.orderId ?? 'Order'} passed to ${name}`);
+          // Passed: the order leaves my list, so the walk moves on without a write of its own.
+          onSkip();
+        }}
+      />
+      <MobileSwipePhotoViewer
+        // The row paints the table-sized thumb; full screen asks the marketplace for its full-size rendition.
+        slides={viewerPhoto ? [{ id: `pick-photo:${orderId}`, previewUrl: marketplaceFullUrl(viewerPhoto) ?? viewerPhoto }] : []}
+        open={viewerOpen && viewerPhoto != null}
+        onClose={() => setViewerOpen(false)}
+      />
+      <PairItemNumberSheet
+        orderId={orderId}
+        initial={details?.itemNumber ?? null}
+        myStaffId={user?.staffId ?? null}
+        open={itemSheetOpen}
+        onOpenChange={setItemSheetOpen}
+        onPaired={(itemNumber) => toast.success(`Item number ${itemNumber} paired to ${card?.orderId ?? 'the order'}`)}
+      />
     </div>
   );
 }

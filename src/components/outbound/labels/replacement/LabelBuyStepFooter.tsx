@@ -1,83 +1,78 @@
 'use client';
 
-/** The sticky Buy footer under the rate list → its confirm step. Never buys a stale quote. */
+/**
+ * The label-buy stepper's bottom row: Back on the left, a quiet hint of what
+ * still blocks the step, and the step's one verb on the right (Next, Get rates,
+ * Buy, Confirm & buy, Done) — the thumb-zone button on a phone.
+ */
 
-import { Truck } from '@/components/Icons';
+import type { ReactNode } from 'react';
+import { ArrowLeft } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { formatMoney } from '@/lib/shipping/label-rate-choice';
-import { rateTotal } from '@/lib/shipping/replacement-rate-shop';
-import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
+import { cn } from '@/utils/_cn';
 
-export function ReplacementBuyFooter({
-  selectedRate,
-  confirming,
-  stale,
-  orderRef,
-  noun,
-  reasonLabel,
-  buying,
+export interface LabelBuyStepVerb {
+  label: string;
+  icon?: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+  autoFocus?: boolean;
+  testId?: string;
+}
+
+export function LabelBuyStepFooter({
+  onBack,
+  hint,
+  hintTestId,
+  tone = 'quiet',
   error,
-  onConfirmOpen,
-  onCancel,
-  onBuy,
+  verb,
 }: {
-  selectedRate: ShippingRateOption | null;
-  confirming: boolean;
-  /** The parcel, insurance or ship-to changed since the quote. */
-  stale: boolean;
-  orderRef: string;
-  /** What is bought — "label" (the order's first) or "replacement label". */
-  noun: string;
-  reasonLabel: string | null;
-  buying: boolean;
+  /** Absent on the first step and once the label is bought. */
+  onBack?: () => void;
+  /** What still blocks the verb, e.g. "Enter L × W × H"; null when ready. */
+  hint: string | null;
+  hintTestId?: string;
+  /** `warning`: the quote is out of date. */
+  tone?: 'quiet' | 'warning';
   error: string | null;
-  onConfirmOpen: () => void;
-  onCancel: () => void;
-  onBuy: (rate: ShippingRateOption) => void;
+  verb: LabelBuyStepVerb;
 }) {
-  const total = selectedRate ? formatMoney(rateTotal(selectedRate), selectedRate.currency) : null;
   return (
-    <footer className="shrink-0 border-t border-border-hairline px-5 py-3" data-testid="send-replacement-buy-footer">
-      {selectedRate && confirming ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="min-w-0 flex-1 text-role-caption text-text-default">
-            Buy this <span className="font-semibold">{total}</span> {selectedRate.carrierName} {selectedRate.serviceName}{' '}
-            {noun} for {orderRef}
-            {reasonLabel ? ` · ${reasonLabel}` : ''}?
-          </p>
-          {error ? (
-            <p className="w-full text-role-caption text-text-danger" role="alert">{error}</p>
-          ) : null}
-          <Button variant="ghost" disabled={buying} onClick={onCancel}>
-            Cancel
+    <footer className="flex shrink-0 flex-col gap-2 border-t border-border-hairline px-5 py-3" data-testid="send-replacement-buy-footer">
+      {error ? (
+        <p className="text-role-caption text-text-danger" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex items-center gap-3">
+        {onBack ? (
+          <Button variant="ghost" icon={<ArrowLeft />} disabled={verb.loading} onClick={onBack} data-testid="label-buy-back">
+            Back
           </Button>
-          <Button
-            variant="primary"
-            loading={buying}
-            disabled={stale}
-            onClick={() => onBuy(selectedRate)}
-            data-testid="send-replacement-confirm-buy"
-          >
-            Confirm &amp; buy
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center justify-end gap-3">
-          <span className="text-role-caption text-text-faint">
-            {stale ? 'Refresh rates before buying.' : selectedRate ? null : 'Pick a rate to buy.'}
-          </span>
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<Truck />}
-            disabled={!selectedRate || stale}
-            onClick={onConfirmOpen}
-            data-testid="send-replacement-buy"
-          >
-            {total ? `Buy ${total} ${noun}` : `Buy ${noun}`}
-          </Button>
-        </div>
-      )}
+        ) : null}
+        <span
+          className={cn('ml-auto text-right text-role-caption', tone === 'warning' ? 'text-text-warning' : 'text-text-faint')}
+          data-testid={hintTestId}
+        >
+          {hint}
+        </span>
+        <Button
+          // Keyed per verb: a new step's verb mounts fresh, so `autoFocus` (Confirm & buy) lands.
+          key={verb.testId ?? verb.label}
+          variant="primary"
+          size="lg"
+          icon={verb.icon}
+          loading={verb.loading}
+          disabled={verb.disabled}
+          autoFocus={verb.autoFocus}
+          onClick={verb.onClick}
+          data-testid={verb.testId}
+        >
+          {verb.label}
+        </Button>
+      </div>
     </footer>
   );
 }

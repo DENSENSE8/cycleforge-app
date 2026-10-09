@@ -1,5 +1,5 @@
 /**
- * Unit tests for Unbox flow capture-order parsing and application.
+ * Unit tests for Unbox flow capture-order parse / serialize / apply.
  *
  * Run: `node --import tsx --test src/lib/stations/unbox-flow-capture-order.test.ts`
  */
@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import {
   applyCaptureOrderOverride,
   parseUnboxFlowCaptureOrder,
+  serializeUnboxFlowCaptureOrder,
 } from './unbox-flow-capture-order';
 
 test('applyCaptureOrderOverride: empty override is identity', () => {
@@ -27,4 +28,10 @@ test('parseUnboxFlowCaptureOrder: tolerates junk', () => {
   assert.deepEqual(parseUnboxFlowCaptureOrder('{"found":["serial","serial","x"]}'), {
     found: ['serial', 'x'],
   });
+});
+
+test('serializeUnboxFlowCaptureOrder round-trips', () => {
+  const map = { return: ['serial', 'condition'], found: ['label'] };
+  const raw = serializeUnboxFlowCaptureOrder(map);
+  assert.deepEqual(parseUnboxFlowCaptureOrder(raw), map);
 });

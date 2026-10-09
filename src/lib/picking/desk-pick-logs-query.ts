@@ -109,9 +109,14 @@ export async function fetchDeskPickLogRows(orgId: OrgId, opts: DeskPickLogRowsQu
             SELECT 1 FROM orders o_q
             LEFT JOIN shipment_links osl_q
               ON osl_q.owner_id = o_q.id AND osl_q.owner_type = 'ORDER'
-            WHERE sal.shipment_id IS NOT NULL
-              AND o_q.organization_id = sal.organization_id
-              AND (osl_q.shipment_id = sal.shipment_id OR o_q.shipment_id = sal.shipment_id)
+            WHERE o_q.organization_id = sal.organization_id
+              AND (
+                o_q.id = sal.order_row_id
+                OR (
+                  sal.shipment_id IS NOT NULL
+                  AND (osl_q.shipment_id = sal.shipment_id OR o_q.shipment_id = sal.shipment_id)
+                )
+              )
               AND (
                 o_q.order_id ILIKE ${q}
                 OR o_q.product_title ILIKE ${q}
@@ -137,7 +142,9 @@ export async function fetchDeskPickLogRows(orgId: OrgId, opts: DeskPickLogRowsQu
         sal.fnsku,
         sal.shipment_id,
         sal.scan_ref,
-        sal.organization_id
+        sal.organization_id,
+        -- The anchored order row (stored column) — the order-anchored pick (phone walk, walk-in / Pickup) has no shipment.
+        sal.order_row_id
       FROM station_activity_logs sal
       WHERE ${sqlDeskSessionAnchor('sal')}
         ${staffClause}
@@ -166,7 +173,7 @@ export async function fetchDeskPickLogRows(orgId: OrgId, opts: DeskPickLogRowsQu
 
       serials.serial_number,
 
-      -- Order data (via shipment_id join)
+      -- Order data (the anchored order row, else via shipment_id)
       ord_match.id AS order_db_id,
       ord_match.order_id,
       COALESCE(ff.product_title, ord_match.product_title) AS product_title,
@@ -221,17 +228,20 @@ export async function fetchDeskPickLogRows(orgId: OrgId, opts: DeskPickLogRowsQu
         o.created_at
       FROM orders o
       LEFT JOIN shipment_links osl ON osl.owner_id = o.id AND osl.owner_type = 'ORDER'
-      WHERE sal.shipment_id IS NOT NULL
-        AND o.organization_id = sal.organization_id
+      WHERE o.organization_id = sal.organization_id
         AND (
-          osl.shipment_id = sal.shipment_id
-          OR o.shipment_id = sal.shipment_id
+          o.id = sal.order_row_id
+          OR (
+            sal.shipment_id IS NOT NULL
+            AND (osl.shipment_id = sal.shipment_id OR o.shipment_id = sal.shipment_id)
+          )
         )
       ORDER BY
         CASE
-          WHEN osl.shipment_id = sal.shipment_id THEN 0
-          WHEN o.shipment_id = sal.shipment_id THEN 1
-          ELSE 2
+          WHEN o.id = sal.order_row_id THEN 0
+          WHEN osl.shipment_id = sal.shipment_id THEN 1
+          WHEN o.shipment_id = sal.shipment_id THEN 2
+          ELSE 3
         END,
         CASE WHEN COALESCE(osl.is_primary, false) THEN 0 ELSE 1 END,
         o.created_at DESC NULLS LAST,

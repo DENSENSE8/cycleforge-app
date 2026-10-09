@@ -150,6 +150,8 @@ export const qk = {
     /** GET /api/org/gs1 — the resolved { gln, companyPrefix } for label printers. */
     identity: () => ['org-gs1', 'identity'] as const,
   },
+  /** GET /api/label-print-jobs — distinct location codes and totes printed (the Labels grid's counts). */
+  printedWarehouseLabels: ['printed-warehouse-labels'] as const,
   locations: {
     /** Broad invalidation prefix — matches every warehouse locations list query. */
     all: ['locations'] as const,

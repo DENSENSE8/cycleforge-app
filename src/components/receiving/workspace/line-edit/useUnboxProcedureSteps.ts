@@ -25,9 +25,10 @@ import { refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
 import { parsePhotoAspectList, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { isReturnIntake, isIntakeClassified } from '@/lib/receiving/triage-intake-kind';
-import { resolveContextFromFlags } from '@/lib/stations/procedure';
+import { resolveContextFromFlags, UNBOX_FLOW_LABEL } from '@/lib/stations/procedure';
 import {
   parseUnboxFlowCaptureOrder,
+  serializeUnboxFlowCaptureOrder,
   UNBOX_FLOW_CAPTURE_ORDER_SETTING_KEY,
 } from '@/lib/stations/unbox-flow-capture-order';
 import { conditionLabel } from '@/lib/conditions';
@@ -144,8 +145,14 @@ interface UnboxProcedureStepsResult {
   nextNeighbour: ProcedureStepRow | null;
   /** Evidence has arrived, so a zero means "nothing shot", not "not loaded". */
   settled: boolean;
+  /** Operator-voiced flow label (Found · Unfound · Return) for the checklist. */
+  flowLabel: string;
+  /** Row count for a skeleton at the real geometry. */
+  stepCount: number;
   /** Jump the pointer to a settled step (the reopen affordance). */
   focusStep: (key: string | null) => void;
+  /** Persist capture-step order for the active flow as org SOP (`receiving.unboxFlowCaptureOrder`). */
+  reorderCaptureSteps: (orderedKeys: string[]) => void;
 }
 
 export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureStepsResult {
@@ -174,7 +181,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
 
   // Org SOP capture order. One JSON string in the settings registry; every
   // procedure surface derives from the same override.
-  const { value: captureOrderRaw } = useSetting<string>(
+  const { value: captureOrderRaw, set: setCaptureOrder } = useSetting<string>(
     'receiving',
     UNBOX_FLOW_CAPTURE_ORDER_SETTING_KEY,
   );
@@ -388,7 +395,17 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   const prevStep = activeIndex > 0 ? steps[activeIndex - 1] : null;
   const nextNeighbour =
     activeIndex >= 0 && activeIndex < steps.length - 1 ? steps[activeIndex + 1] : null;
-
+  const flow = vocabulary.flow;
+  const reorderCaptureSteps = useCallback(
+    (orderedKeys: string[]) => {
+      const next = serializeUnboxFlowCaptureOrder({
+        ...captureOrderMap,
+        [flow]: orderedKeys,
+      });
+      void setCaptureOrder(next, 'org');
+    },
+    [captureOrderMap, flow, setCaptureOrder],
+  );
 
   return {
     steps,
@@ -396,6 +413,9 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     prevStep,
     nextNeighbour,
     settled: counts.settled,
+    flowLabel: UNBOX_FLOW_LABEL[flow],
+    stepCount: captureStepVocabulary(vocabulary).length,
     focusStep,
+    reorderCaptureSteps,
   };
 }

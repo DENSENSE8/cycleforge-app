@@ -21,7 +21,6 @@ import {
   type PurchasedLabel,
 } from '@/lib/shipping/order-label-purchase';
 import { labelPurchaseBody } from '@/lib/shipping/label-purchase-response';
-import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 import { createOrderNote } from '@/lib/orders/order-notes';
 import { isLabelPurpose, type LabelPurpose } from '@/lib/shipping/label-purpose';
 import { labelTrailNote } from '@/lib/shipping/order-label-links';
@@ -127,15 +126,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         labelIngestionId: null,
       });
     }
-
-    // Buyer-note interlock — before the IRREVERSIBLE purchase: the order's
-    // current buyer note must be acknowledged (src/lib/orders/buyer-note-interlock.ts).
-    const buyerNoteHold = await readBuyerNoteHold(
-      { query: (text, params) => tenantQuery(orgId, text, params) },
-      orgId,
-      orderId,
-    );
-    if (buyerNoteHold) return NextResponse.json(buyerNoteHoldBody(buyerNoteHold), { status: 409 });
 
     // 1. Claim the key, buy the label — IRREVERSIBLE — and record it before
     //    anything else can fail.

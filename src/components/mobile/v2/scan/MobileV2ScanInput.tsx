@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from '@/design-system/motion';
+import { ScanViewfinderFrame } from './ScanViewfinderFrame';
 import { Collapse } from '@/design-system/components/Collapse';
 import { Camera } from '@/components/Icons';
 import {
@@ -138,24 +138,7 @@ export function MobileV2ScanInput({
       />
 
       <Collapse open={live} appear>
-        <div className="relative w-full overflow-hidden bg-blue-950" style={{ height: viewfinderHeight }}>
-          <video
-            ref={scanner.videoRef as React.RefObject<HTMLVideoElement>}
-            className="absolute inset-0 h-full w-full object-cover opacity-70 contrast-125"
-            autoPlay
-            playsInline
-            muted
-          />
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className={`relative ${boxSize} rounded-mode-control border-2 border-glass/40 bg-glass/5 backdrop-blur-[1px]`}>
-              <motion.div
-                animate={{ top: ['5%', '95%', '5%'] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute left-6 right-6 h-[2px] bg-blue-400 shadow-[0_0_15px_rgba(96,165,250,1)]"
-              />
-            </div>
-          </div>
-        </div>
+        <ScanViewfinderFrame videoRef={scanner.videoRef} height={viewfinderHeight} boxSize={boxSize} />
       </Collapse>
     </div>
   );

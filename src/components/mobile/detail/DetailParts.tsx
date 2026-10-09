@@ -137,6 +137,8 @@ export interface DetailNavItem {
   id: string;
   title: string;
   icon: ReactNode;
+  /** A picture that stands in for the icon well (a place's photo), drawn larger. */
+  media?: ReactNode;
   meta: ReactNode;
   href?: string | null;
   onSelect?: () => void;
@@ -152,13 +154,15 @@ const ROW_CLASS =
  */
 const LIVE_ROW_CLASS = `${ROW_CLASS} ${MOBILE_DATA_LIST_ROW_INTERACTION_CLASS}`;
 
-export function DetailNavRow({ href, onSelect, title, meta, icon }: Omit<DetailNavItem, 'id'>) {
+export function DetailNavRow({ href, onSelect, title, meta, icon, media }: Omit<DetailNavItem, 'id'>) {
   const live = Boolean(href || onSelect);
   const body = (
     <>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-mode bg-mode-well text-mode-muted [&>svg]:h-5 [&>svg]:w-5">
-        {icon}
-      </span>
+      {media ?? (
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-mode bg-mode-well text-mode-muted [&>svg]:h-5 [&>svg]:w-5">
+          {icon}
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="block text-mode-body font-semibold text-mode-ink">{title}</span>
         <span className="block text-role-caption text-mode-muted">{meta}</span>

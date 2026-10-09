@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Pencil, Trash2 } from '@/components/Icons';
+import { Check, Pencil, RotateCcw, Trash2 } from '@/components/Icons';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/design-system/primitives';
@@ -16,10 +16,11 @@ const SERIAL_STATE_LABEL: Record<PickOrderSerialRow['state'], string> = {
 };
 
 /**
- * The order's serials. A serial on this card's live scan session is tapped
- * into an edit row in place: the serial in a field, Delete, Save. Save drops
- * the old serial and adds the corrected one (which picks its unit); Delete
- * drops it and puts its unit back to allocated.
+ * The order's serials. A serial on this card's live scan session carries its
+ * own Undo inline at the right (owner 2026-10-08) — it drops that serial and
+ * puts its unit back to allocated. Tapping the serial opens an edit row in
+ * place: the serial in a field, Delete, Save. Save drops the old serial and
+ * adds the corrected one (which picks its unit).
  */
 export function PickSerialList({
   rows,
@@ -103,26 +104,40 @@ export function PickSerialList({
         return (
           <li key={row.serial}>
             {row.editable ? (
-              <button
-                type="button"
-                aria-label={`Edit serial ${row.serial}`}
-                data-testid="pick-serial-row"
-                disabled={busy}
-                onClick={() => {
-                  setEditing(row.serial);
-                  setDraft(row.serial);
-                }}
-                className={cn(
-                  'ds-raw-button flex min-h-mode-hit w-full items-center justify-between gap-3 px-mode-page py-2.5 text-left',
-                  focusRing('control'),
-                )}
-              >
-                <span className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="break-all font-mono text-mode-body font-semibold text-mode-ink">{row.serial}</span>
-                  <Pencil className="size-4 shrink-0 text-mode-muted" />
-                </span>
-                <span className="flex shrink-0 items-center gap-2">{badges}</span>
-              </button>
+              <div className="flex items-center gap-2 pr-mode-page">
+                {/* ds-raw-button: the whole serial line is the edit target; a Button face would box the row. */}
+                <button
+                  type="button"
+                  aria-label={`Edit serial ${row.serial}`}
+                  data-testid="pick-serial-row"
+                  disabled={busy}
+                  onClick={() => {
+                    setEditing(row.serial);
+                    setDraft(row.serial);
+                  }}
+                  className={cn(
+                    'ds-raw-button flex min-h-mode-hit min-w-0 flex-1 items-center justify-between gap-3 py-2.5 pl-mode-page text-left',
+                    focusRing('control'),
+                  )}
+                >
+                  <span className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="break-all font-mono text-mode-body font-semibold text-mode-ink">{row.serial}</span>
+                    <Pencil className="size-4 shrink-0 text-mode-muted" />
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">{badges}</span>
+                </button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<RotateCcw />}
+                  disabled={busy}
+                  onClick={() => void onRemove(row.serial)}
+                  data-testid="pick-serial-undo"
+                  ariaLabel={`Undo serial ${row.serial}`}
+                >
+                  Undo
+                </Button>
+              </div>
             ) : (
               <div className="flex items-center justify-between gap-3 px-mode-page py-2.5">
                 <span className="flex min-w-0 flex-wrap items-center gap-2">

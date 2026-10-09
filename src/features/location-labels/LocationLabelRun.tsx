@@ -1,277 +1,179 @@
 'use client';
 
 /**
- * A run of labels off the picked address: per bay, odd / even levels, one axis
- * (positions on a level, levels on a bay, bays on an aisle) or the parts-drawer
- * preset. Every number is a stepper or a tile; every label is a full-width
- * row that can be unticked; the first ticked sticker is previewed.
+ * A bulk run of location labels on one aisle. `useLabelRun` owns the plan;
+ * `LabelRunControls` is the left-column form — bays and levels, each a
+ * from–through pair of Figma-style scrub fields (press and drag left / right,
+ * or click to type) plus All · Odd · Even, and optional positions. The ticked
+ * list renders on the right (`RunLabelList`).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { LabelPrintRunNumField } from '@/components/labels/LabelPrintRunNumField';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
-import { TouchQtyStepper } from '@/design-system/components/TouchQtyStepper';
-import { LOCATION_BAY_LABEL, LOCATION_BAY_LABEL_PLURAL, pad2 } from '@/lib/barcode-routing';
+import { Checkbox } from '@/design-system/primitives/Checkbox';
+import { LOCATION_BAY_LABEL_PLURAL } from '@/lib/barcode-routing';
 import {
-  expandOddEvenBayLevelsPrintRun,
-  expandPartsDrawersPrintRun,
-  expandPrintRun,
-  expandRaggedBayLevelsPrintRun,
+  MAX_RUN_LABELS,
+  expandRangePrintRun,
   type ExpandedPrintRunRow,
-  type PrintRunVaryAxis,
+  type RunParity,
+  type RunRange,
 } from '@/lib/locations/expand-print-run';
-import { NumberTiles } from './NumberTiles';
-import { RaggedBayPicker, RunLabelList } from './LabelRunParts';
 
-/** Seeds: a bay of five levels, an aisle of twelve bays, a level of twenty positions. */
-const SEED_LEVELS = 5;
-const SEED_BAYS = 12;
-const SEED_POSITIONS = 20;
-
-type RunMode = 'ragged' | 'oddEven' | 'axis' | 'parts';
-
-export type LabelRunFreeze = {
+/** The aisle a run prints on — room and aisle are picked in the address steps. */
+export interface LabelRunAisle {
   roomName: string;
   zoneLetter: string;
   aisle: number;
-  bay?: number;
-  level?: number;
-  position?: number;
-  /** Bay labels: position-0 codes, levels / bays only. */
-  rack: boolean;
-};
-
-const VARY_LABEL: Record<PrintRunVaryAxis, string> = {
-  bay: LOCATION_BAY_LABEL_PLURAL,
-  level: 'Levels',
-  position: 'Positions',
-};
-
-const SEED_THROUGH: Record<PrintRunVaryAxis, number> = {
-  bay: SEED_BAYS,
-  level: SEED_LEVELS,
-  position: SEED_POSITIONS,
-};
-
-const AXIS_NOUN: Record<PrintRunVaryAxis, string> = {
-  bay: LOCATION_BAY_LABEL.toLowerCase(),
-  level: 'level',
-  position: 'position',
-};
-
-const BAY_UNIT = [LOCATION_BAY_LABEL.toLowerCase(), LOCATION_BAY_LABEL.toLowerCase()] as const;
-
-function varyOptions(f: LabelRunFreeze): PrintRunVaryAxis[] {
-  if (f.rack) return f.bay != null ? ['level'] : [];
-  const axes: PrintRunVaryAxis[] = ['bay'];
-  if (f.bay != null) axes.push('level');
-  if (f.bay != null && f.level != null) axes.push('position');
-  return axes;
 }
 
-/** Deepest axis left open: positions on a picked level, levels on a picked bay, else bays. */
-function seedAxis(f: LabelRunFreeze): PrintRunVaryAxis {
-  const axes = varyOptions(f);
-  return axes[axes.length - 1] ?? 'level';
+type Span = { from: number; through: number };
+
+const SEED_BAYS: RunRange = { from: 1, through: 12, parity: 'all' };
+const SEED_LEVELS: RunRange = { from: 1, through: 5, parity: 'all' };
+const SEED_POSITIONS: Span = { from: 1, through: 20 };
+
+const PARITY_TABS: { id: RunParity; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'odd', label: 'Odd' },
+  { id: 'even', label: 'Even' },
+];
+
+export interface LabelRun {
+  bays: RunRange;
+  setBays: (range: RunRange) => void;
+  levels: RunRange;
+  setLevels: (range: RunRange) => void;
+  /** Null = no position on the face. */
+  positions: Span | null;
+  setPositions: (range: Span | null) => void;
+  /** Every label the run names, in print order. */
+  rows: ExpandedPrintRunRow[];
+  /** Why `rows` is empty, for the list's hint. */
+  emptyHint: string;
+  excluded: ReadonlySet<string>;
+  toggle: (code: string) => void;
+  /** The labels still ticked, in print order. */
+  ticked: ExpandedPrintRunRow[];
 }
 
-function seedMode(f: LabelRunFreeze): RunMode {
-  if (f.rack) return f.bay != null ? 'axis' : 'ragged';
-  return f.bay != null ? 'axis' : 'oddEven';
-}
-
-export function LocationLabelRun({
-  freeze,
-  gln,
-  disabled,
-  onRowsChange,
-}: {
-  freeze: LabelRunFreeze;
-  gln: string;
-  disabled: boolean;
-  /** The ticked labels, in print order. */
-  onRowsChange: (rows: ExpandedPrintRunRow[]) => void;
-}) {
-  const [mode, setMode] = useState<RunMode>(() => seedMode(freeze));
-  const [vary, setVary] = useState<PrintRunVaryAxis>(() => seedAxis(freeze));
-  const [from, setFrom] = useState(1);
-  const [through, setThrough] = useState(() => SEED_THROUGH[seedAxis(freeze)]);
-  const [bayFrom, setBayFrom] = useState(1);
-  const [bayThrough, setBayThrough] = useState(SEED_BAYS);
-  const [oddLevels, setOddLevels] = useState(SEED_LEVELS);
-  const [evenLevels, setEvenLevels] = useState(SEED_LEVELS);
-  const [bayLevels, setBayLevels] = useState<Record<number, number>>({});
+export function useLabelRun(aisle: LabelRunAisle | null): LabelRun {
+  const [bays, setBays] = useState(SEED_BAYS);
+  const [levels, setLevels] = useState(SEED_LEVELS);
+  const [positions, setPositions] = useState<Span | null>(null);
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(() => new Set());
 
-  // A new address starts a new run.
-  const freezeKey = `${freeze.roomName}|${freeze.zoneLetter}|${freeze.aisle}|${freeze.bay}|${freeze.level}|${freeze.position}|${freeze.rack}`;
+  // A new aisle starts a new run.
+  const aisleKey = aisle ? `${aisle.roomName}|${aisle.zoneLetter}|${aisle.aisle}` : '';
   useEffect(() => {
-    const axis = seedAxis(freeze);
-    setMode(seedMode(freeze));
-    setVary(axis);
-    setFrom(1);
-    setThrough(SEED_THROUGH[axis]);
-    setBayFrom(1);
-    setBayThrough(SEED_BAYS);
-    setOddLevels(SEED_LEVELS);
-    setEvenLevels(SEED_LEVELS);
-    setBayLevels({});
+    setBays(SEED_BAYS);
+    setLevels(SEED_LEVELS);
+    setPositions(null);
     setExcluded(new Set());
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reseed on the address, not on each freeze object
-  }, [freezeKey]);
+  }, [aisleKey]);
 
-  const raggedBays = useMemo(
-    () => Object.keys(bayLevels).map(Number).sort((a, b) => a - b),
-    [bayLevels],
+  const { rows, emptyHint } = useMemo((): { rows: ExpandedPrintRunRow[]; emptyHint: string } => {
+    if (!aisle) return { rows: [], emptyHint: 'Pick a room and an aisle to plan a bulk print.' };
+    const plan = expandRangePrintRun({ zone: aisle.zoneLetter, aisle: aisle.aisle, bays, levels, positions });
+    if (plan.status === 'ok') return { rows: plan.rows, emptyHint: '' };
+    if (plan.status === 'too_many') {
+      return { rows: [], emptyHint: `${plan.count} labels is more than one run takes (${MAX_RUN_LABELS}). Narrow a range.` };
+    }
+    return { rows: [], emptyHint: 'No labels match these ranges.' };
+  }, [aisle, bays, levels, positions]);
+
+  const toggle = useCallback(
+    (code: string) =>
+      setExcluded((prev) => {
+        const next = new Set(prev);
+        if (next.has(code)) next.delete(code);
+        else next.add(code);
+        return next;
+      }),
+    [],
   );
 
-  const rows = useMemo((): ExpandedPrintRunRow[] => {
-    const { zoneLetter: zone, aisle, rack } = freeze;
-    // Position lands on the face only when the address picked one.
-    const pinned = !rack && freeze.position != null && freeze.position > 0 ? freeze.position : undefined;
-    if (mode === 'parts' && !rack) return expandPartsDrawersPrintRun({ zone, aisle });
-    if (mode === 'ragged') {
-      return expandRaggedBayLevelsPrintRun({
-        zone,
-        aisle,
-        rack,
-        position: rack ? undefined : (pinned ?? 1),
-        bays: raggedBays.map((bay) => ({ bay, letter: 'X', levelStart: 1, levelEnd: bayLevels[bay] })),
-      });
-    }
-    if (mode === 'oddEven') {
-      return expandOddEvenBayLevelsPrintRun({ zone, aisle, bayFrom, bayThrough, oddLevels, evenLevels, position: pinned, rack: rack || pinned == null });
-    }
-    const axis = rack ? 'level' : vary;
-    return expandPrintRun({
-      zone,
-      aisle,
-      bay: freeze.bay,
-      level: freeze.level,
-      position: pinned,
-      vary: axis,
-      from,
-      through,
-      rack: axis === 'position' ? false : rack || pinned == null,
-    });
-  }, [freeze, mode, vary, from, through, bayFrom, bayThrough, oddLevels, evenLevels, raggedBays, bayLevels]);
-
   const ticked = useMemo(() => rows.filter((row) => !excluded.has(row.code)), [rows, excluded]);
-  useEffect(() => {
-    onRowsChange(ticked);
-  }, [ticked, onRowsChange]);
 
-  const axes = varyOptions(freeze);
-  const modes: { id: RunMode; label: string }[] = [
-    { id: 'ragged', label: `Per ${LOCATION_BAY_LABEL.toLowerCase()}` },
-    { id: 'oddEven', label: 'Odd / even' },
-    ...(axes.length > 0 ? [{ id: 'axis' as const, label: freeze.rack ? 'Levels' : 'One axis' }] : []),
-    ...(!freeze.rack ? [{ id: 'parts' as const, label: 'Parts drawers' }] : []),
-  ];
+  return { bays, setBays, levels, setLevels, positions, setPositions, rows, emptyHint, excluded, toggle, ticked };
+}
 
-  const toggleRow = (code: string) =>
-    setExcluded((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-
+/** From never passes through: from stops at through, through stops at from. */
+function SpanFields({ label, span, onChange, disabled }: { label: string; span: Span; onChange: (span: Span) => void; disabled: boolean }) {
   return (
-    <section aria-label="Print run" className="flex flex-col" data-testid="label-run">
-      <div className="px-mode-page py-2">
-        <TabSwitch
-          tabs={modes.map((m) => ({ ...m, testId: `label-run-mode-${m.id}` }))}
-          activeTab={mode}
-          onTabChange={(id) => setMode(id as RunMode)}
-          scrollable
-        />
-      </div>
-
-      {mode === 'ragged' ? (
-        <RaggedBayPicker bayLevels={bayLevels} onChange={setBayLevels} seedLevels={SEED_LEVELS} disabled={disabled} />
-      ) : null}
-
-      {mode === 'oddEven' ? (
-        <div className="flex flex-col divide-y divide-mode-rule border-y border-mode-rule">
-          {[
-            { label: `${LOCATION_BAY_LABEL_PLURAL} from`, value: bayFrom, set: setBayFrom, min: 1, max: bayThrough, unit: BAY_UNIT },
-            { label: `${LOCATION_BAY_LABEL_PLURAL} through`, value: bayThrough, set: setBayThrough, min: bayFrom, max: 99, unit: BAY_UNIT },
-            { label: 'Levels on odd bays', value: oddLevels, set: setOddLevels, min: 1, max: 99, unit: ['level', 'levels'] as const },
-            { label: 'Levels on even bays', value: evenLevels, set: setEvenLevels, min: 1, max: 99, unit: ['level', 'levels'] as const },
-          ].map((field) => (
-            <div key={field.label} className="flex flex-col gap-1 py-2">
-              <p className="px-mode-page text-role-caption font-semibold text-text-muted">{field.label}</p>
-              <TouchQtyStepper
-                value={field.value}
-                onChange={field.set}
-                min={field.min}
-                max={field.max}
-                unit={field.unit}
-                label={field.label}
-                disabled={disabled}
-              />
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {mode === 'axis' ? (
-        <div className="flex flex-col">
-          {!freeze.rack && axes.length > 1 ? (
-            <div className="px-mode-page py-2">
-              <TabSwitch
-                tabs={axes.map((axis) => ({ id: axis, label: VARY_LABEL[axis], testId: `label-run-vary-${axis}` }))}
-                activeTab={vary}
-                onTabChange={(id) => {
-                  const axis = id as PrintRunVaryAxis;
-                  setVary(axis);
-                  setFrom(1);
-                  setThrough(SEED_THROUGH[axis]);
-                }}
-              />
-            </div>
-          ) : null}
-          <div className="flex flex-col gap-1 border-y border-mode-rule py-2">
-            <p className="px-mode-page text-role-caption font-semibold text-text-muted">From</p>
-            <TouchQtyStepper
-              value={from}
-              onChange={setFrom}
-              min={1}
-              max={through}
-              unit={[AXIS_NOUN[freeze.rack ? 'level' : vary], AXIS_NOUN[freeze.rack ? 'level' : vary]]}
-              label="Starts at"
-              disabled={disabled}
-              testId="label-run-from"
-            />
-          </div>
-          <p className="px-mode-page pt-3 text-role-caption font-semibold text-text-muted">Through</p>
-          <NumberTiles
-            key={`${vary}-${freezeKey}`}
-            label="Ends at"
-            value={through}
-            onPick={(n) => setThrough(n)}
-            count={Math.max(10, SEED_THROUGH[freeze.rack ? 'level' : vary])}
-            min={from}
-            pad={(freeze.rack ? 'level' : vary) !== 'level'}
-            disabled={disabled}
-            testId="label-run-through"
-          />
-        </div>
-      ) : null}
-
-      {mode === 'parts' ? (
-        <p className="px-mode-page py-3 text-role-caption text-text-muted">A1–A4 · B1–B48 on aisle {pad2(freeze.aisle)}.</p>
-      ) : null}
-
-      <RunLabelList
-        rows={rows}
-        excluded={excluded}
-        onToggle={toggleRow}
-        roomName={freeze.roomName}
-        gln={gln}
-        emptyHint={mode === 'ragged' ? 'Pick one or more bays.' : 'Set a valid from – through.'}
+    <span className="flex items-center gap-1">
+      <LabelPrintRunNumField
+        label={`${label} from`}
+        showLabel={false}
+        value={span.from}
+        max={span.through}
+        onChange={(from) => onChange({ ...span, from })}
         disabled={disabled}
       />
-    </section>
+      <span className="text-role-caption text-text-muted">–</span>
+      <LabelPrintRunNumField
+        label={`${label} through`}
+        showLabel={false}
+        value={span.through}
+        min={span.from}
+        onChange={(through) => onChange({ ...span, through })}
+        disabled={disabled}
+      />
+    </span>
+  );
+}
+
+function ParityRow({
+  label,
+  range,
+  onChange,
+  disabled,
+  testId,
+}: {
+  label: string;
+  range: RunRange;
+  onChange: (range: RunRange) => void;
+  disabled: boolean;
+  testId: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-mode-page py-2" data-testid={testId}>
+      <p className="w-20 text-role-caption font-semibold text-text-default">{label}</p>
+      <SpanFields label={label} span={range} onChange={(span) => onChange({ ...range, ...span })} disabled={disabled} />
+      <TabSwitch
+        tabs={PARITY_TABS.map((tab) => ({ ...tab, testId: `${testId}-${tab.id}` }))}
+        activeTab={range.parity}
+        onTabChange={(id) => onChange({ ...range, parity: id as RunParity })}
+        size="sm"
+        fit="hug"
+      />
+    </div>
+  );
+}
+
+/** The left-column bulk form, under the room and aisle steps. */
+export function LabelRunControls({ run, disabled }: { run: LabelRun; disabled: boolean }) {
+  return (
+    <div className="flex flex-col border-t border-mode-rule py-1" data-testid="label-run-controls">
+      <ParityRow label={LOCATION_BAY_LABEL_PLURAL} range={run.bays} onChange={run.setBays} disabled={disabled} testId="label-run-bays" />
+      <ParityRow label="Levels" range={run.levels} onChange={run.setLevels} disabled={disabled} testId="label-run-levels" />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-mode-page py-2">
+        <label className="flex w-20 cursor-pointer items-center gap-2 text-role-caption font-semibold text-text-default">
+          <Checkbox
+            checked={run.positions != null}
+            disabled={disabled}
+            onCheckedChange={(on) => run.setPositions(on === true ? SEED_POSITIONS : null)}
+            data-testid="label-run-positions-toggle"
+          />
+          Positions
+        </label>
+        {run.positions ? (
+          <SpanFields label="Positions" span={run.positions} onChange={run.setPositions} disabled={disabled} />
+        ) : (
+          <span className="text-role-caption text-text-muted">None — labels read zone · aisle · bay · level</span>
+        )}
+      </div>
+    </div>
   );
 }

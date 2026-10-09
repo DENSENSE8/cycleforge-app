@@ -14,7 +14,6 @@ import { publishActivityLogged, publishOrderChanged, publishPackerLogChanged, pu
 import { ensureReplenishmentForOrder } from '@/lib/replenishment';
 import { withAuth } from '@/lib/auth/withAuth';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
-import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 import { mirrorLegacyPackingToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
@@ -596,14 +595,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             }
 
             const order = orderLookup.rows[0];
-
-            // Buyer-note interlock: nothing below (PACKED, ledger, print bundle)
-            // runs until the order's current buyer note is acknowledged
-            // (src/lib/orders/buyer-note-interlock.ts). The 409 carries the note.
-            const buyerNoteHold = await readBuyerNoteHold(client, ctx.organizationId, Number(order.id));
-            if (buyerNoteHold) {
-                return NextResponse.json(buyerNoteHoldBody(buyerNoteHold), { status: 409 });
-            }
 
             // A pack scan records PACKED. Only the physical dock scan-out path
             // may advance an order to SHIPPED.

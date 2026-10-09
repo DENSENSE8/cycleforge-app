@@ -102,6 +102,7 @@ export async function triggerPackPrintBundle(input: {
   };
 }
 
+/** Print-bundle status bus (dispatch + subscribe). Desktop UI removed 2026-10-08; kept for the mobile port. */
 export function dispatchPackPrintBundleUi(detail: PrintBundleUiState | null) {
   window.dispatchEvent(new CustomEvent(PACK_PRINT_BUNDLE_UI_EVENT, { detail }));
 }

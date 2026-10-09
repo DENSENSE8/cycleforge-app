@@ -62,7 +62,7 @@ export interface CounterCustomerInput {
   phone: string;
   name?: string | null;
   email?: string | null;
-  /** Callers: submitCounterTransaction, POST /api/kiosk/intake. Schema: customers.shipping_address_1. User: "intake their information like name, email address, phone number, address". */
+  /** The visit's ship-to, encoded by `encodeShipToAddress` (lib/customers/ship-to-address). Written to `customers.shipping_*` field by field. */
   address?: string | null;
 }
 

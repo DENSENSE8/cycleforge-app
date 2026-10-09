@@ -33,7 +33,6 @@ import {
   dispatchPackActiveOrder,
 } from '@/components/packer/usePackerOrderPane';
 import {
-  dispatchPackPrintBundleUi,
   PACKER_FOCUS_SCAN_EVENT,
   triggerPackPrintBundle,
 } from '@/lib/print/pack-print-bundle-client';
@@ -45,7 +44,6 @@ import { toast } from '@/lib/toast';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
 
 interface ActivePackingOrder {
   orderRowId: number | null;
@@ -240,7 +238,6 @@ export default function PackScanColumn({
     setErrorMessage(null);
     setActiveOrder(null);
     dispatchPackActiveFba(null);
-    dispatchPackPrintBundleUi(null);
 
     try {
       // A unit label (or a tote) first tries the order it is on: pack + print.
@@ -319,29 +316,25 @@ export default function PackScanColumn({
         }
 
         const normalizedScan = isTrackingInput ? normalizeTracking(scan) : scan;
-        // A held order (buyer note) opens the note first; acknowledging it
-        // re-sends the scan under a fresh key — see sendWithBuyerNoteAck.
-        const res = await sendWithBuyerNoteAck(() => {
-          const idempotencyKey = safeRandomUUID();
-          return fetch('/api/packing-logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Idempotency-Key': idempotencyKey,
-            },
-            body: JSON.stringify({
-              trackingNumber: normalizedScan,
-              // Tote codes and unit labels resolve on the scan as made.
-              rawScan: scan,
-              // Armed lookup: the server searches only this identifier kind.
-              mode: mode ?? 'auto',
-              photos: [],
-              packerId: String(userId),
-              packerName: userName,
-              createdAt: formatPSTTimestamp(),
-              idempotencyKey,
-            }),
-          });
+        const idempotencyKey = safeRandomUUID();
+        const res = await fetch('/api/packing-logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
+          body: JSON.stringify({
+            trackingNumber: normalizedScan,
+            // Tote codes and unit labels resolve on the scan as made.
+            rawScan: scan,
+            // Armed lookup: the server searches only this identifier kind.
+            mode: mode ?? 'auto',
+            photos: [],
+            packerId: String(userId),
+            packerName: userName,
+            createdAt: formatPSTTimestamp(),
+            idempotencyKey,
+          }),
         });
         const data = await res.json();
         if (res.status === 404 && data?.unitNotOnOrder) {
@@ -386,8 +379,9 @@ export default function PackScanColumn({
             isUnknownOrder,
           });
 
-          // JIT pack Phase 1 — PoPC after ORDERS pack (not unknown).
-          // Status + Reprint render in PackOrderPanel (middle), not this column.
+          // JIT pack Phase 1 — PoPC after ORDERS pack (not unknown). The desktop
+          // papers status card was removed 2026-10-08; the print still fires and
+          // a failed bundle surfaces as one non-blocking toast.
           if (
             !isUnknownOrder &&
             orderRowId &&
@@ -397,17 +391,12 @@ export default function PackScanColumn({
               Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0
                 ? packerLogIdRaw
                 : null;
-            dispatchPackPrintBundleUi({
-              status: 'printing',
-              missingTypes: [],
-              message: 'Printing packing papers…',
-              orderRowId,
-              packerLogId,
-            });
-            void triggerPackPrintBundle({
-              orderRowId,
-              packerLogId,
-            }).then(dispatchPackPrintBundleUi);
+            void triggerPackPrintBundle({ orderRowId, packerLogId }).then(
+              (result) => {
+                if (result.status === 'failed') toast.error(result.message);
+              },
+              () => toast.error('Packing papers failed to print'),
+            );
           }
         }
 

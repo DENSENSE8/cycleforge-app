@@ -10,6 +10,7 @@ export interface StationTaskController {
   activeTask: StationTask;
   activeDisplay: string | null;
   ticketActive: boolean;
+  fulfilledActive: boolean;
   photosActive: boolean;
   pairActive: boolean;
   displaysActive: boolean;
@@ -25,13 +26,17 @@ export interface StationTaskController {
  * Photos shows only once the carton has photos, Ticket only once a ticket is
  * linked or Claim / Link existing ticket was pressed, Pair only while the
  * carton is unmatched or `# Pair` was pressed (and only on stations that pass
- * `pair`). A tab the operator opened stays for that record.
+ * `pair`), Return order only while a scanned serial traces to an order that
+ * was packed or shipped (and only on stations that pass `fulfilledOrder`). A
+ * tab the operator opened stays for that record.
  */
 export interface StationTaskContext {
   hasPhotos: boolean;
   hasTicket: boolean;
   /** Omit on stations without a Pair tab. */
   pair?: { needed: boolean };
+  /** Omit on stations without a Return order tab (Unbox only). */
+  fulfilledOrder?: { found: boolean };
 }
 
 /**
@@ -104,15 +109,19 @@ export function useStationTaskController({
   const { hasPhotos, hasTicket } = context;
   const offersPair = context.pair != null;
   const pairNeeded = context.pair?.needed ?? false;
+  const offersFulfilled = context.fulfilledOrder != null;
+  const fulfilledFound = context.fulfilledOrder?.found ?? false;
   const visible = useMemo(() => {
     const shown = new Set<StationTask>(['work', 'displays', activeTask]);
     for (const task of revealed) shown.add(task);
     if (hasPhotos) shown.add('photos');
     if (hasTicket) shown.add('ticket');
     if (pairNeeded) shown.add('pair');
+    if (fulfilledFound) shown.add('fulfilled');
     if (!offersPair) shown.delete('pair');
+    if (!offersFulfilled) shown.delete('fulfilled');
     return shown;
-  }, [activeTask, revealed, hasPhotos, hasTicket, pairNeeded, offersPair]);
+  }, [activeTask, revealed, hasPhotos, hasTicket, pairNeeded, offersPair, fulfilledFound, offersFulfilled]);
 
   const tasks = useMemo(
     () => stationHeaderTasks({ workLabel, workIcon, workTone, visible }),
@@ -146,6 +155,7 @@ export function useStationTaskController({
     activeTask,
     activeDisplay,
     ticketActive: activeTask === 'ticket',
+    fulfilledActive: activeTask === 'fulfilled',
     photosActive: activeTask === 'photos',
     pairActive: activeTask === 'pair',
     displaysActive: activeTask === 'displays',

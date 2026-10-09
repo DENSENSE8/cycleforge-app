@@ -11,6 +11,7 @@ import {
   type EbayAccountRole,
 } from './oauth-config';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { marketplaceFullUrl } from '@/lib/photos/marketplace-thumb-url';
 
 /** eBay API Client Handles authentication, token management, and API calls for a specific eBay account */
 export class EbayClient {
@@ -138,32 +139,6 @@ export class EbayClient {
     });
 
     return callback(api);
-  }
-
-  private getArrayCandidate(payload: any, keys: string[]): any[] {
-    for (const key of keys) {
-      if (Array.isArray(payload?.[key])) {
-        return payload[key];
-      }
-    }
-
-    return [];
-  }
-
-  private isActiveReturnState(state: string): boolean {
-    const normalized = String(state || '').trim().toUpperCase();
-    if (!normalized) return true;
-
-    return ![
-      'CLOSED',
-      'CLOSE',
-      'COMPLETED',
-      'COMPLETE',
-      'RESOLVED',
-      'REFUNDED',
-      'CANCELLED',
-      'CANCELED',
-    ].includes(normalized);
   }
 
   /**
@@ -398,57 +373,32 @@ export class EbayClient {
     }
   }
 
-  async fetchOpenReturns(limit = 10): Promise<any[]> {
-    try {
-      return this.withOAuthCredentials(async (api) => {
-        return this.auditCall('GET', '/post-order/v2/return/search', async () => {
-          const response = await api.postOrder.return.search({
-            limit: Math.max(1, Math.min(limit * 3, 50)),
-            offset: 0,
-            role: 'SELLER',
-          });
+  /**
+   * One page of the seller's return requests created in [from, to] — every
+   * state (Post-Order `GET /post-order/v2/return/search`). Raw JSON; the
+   * returns import (`src/lib/ebay/returns.ts`) parses it.
+   */
+  async searchReturnsPage(params: { from: string; to: string; limit: number; offset: number }): Promise<unknown> {
+    return this.withOAuthCredentials(async (api) =>
+      this.auditCall('GET', '/post-order/v2/return/search', async () =>
+        api.postOrder.return.search({
+          creation_date_range_from: params.from,
+          creation_date_range_to: params.to,
+          limit: params.limit,
+          offset: params.offset,
+          role: 'SELLER',
+        }),
+      ),
+    );
+  }
 
-          const returns = this.getArrayCandidate(response, ['returns', 'members', 'items', 'returnRequests']);
-
-          return returns
-            .filter((entry: any) =>
-              this.isActiveReturnState(
-                String(
-                  entry?.returnState ||
-                    entry?.state ||
-                    entry?.status ||
-                    entry?.returnStatus ||
-                    ''
-                )
-              )
-            )
-            .slice(0, limit)
-            .map((entry: any) => ({
-              returnId: String(entry?.returnId || entry?.id || ''),
-              orderId: String(entry?.orderId || entry?.order?.orderId || ''),
-              itemId: String(entry?.itemId || entry?.item?.itemId || ''),
-              state: String(
-                entry?.returnState ||
-                  entry?.state ||
-                  entry?.status ||
-                  entry?.returnStatus ||
-                  'OPEN'
-              ),
-              creationDate: String(
-                entry?.creationDate ||
-                  entry?.creationDateValue ||
-                  entry?.creationDateTime ||
-                  entry?.lastModifiedDate ||
-                  ''
-              ),
-              lastModifiedDate: String(entry?.lastModifiedDate || entry?.creationDate || ''),
-            }));
-        });
-      });
-    } catch (error: any) {
-      console.error(`[${this.accountName}] Error fetching return requests:`, error.message);
-      throw new Error(`Failed to fetch return requests for ${this.accountName}: ${error.message}`);
-    }
+  /** One return request in full (`GET /post-order/v2/return/{returnId}`, fieldgroups=FULL). Raw JSON. */
+  async getReturnDetail(returnId: string): Promise<unknown> {
+    return this.withOAuthCredentials(async (api) =>
+      this.auditCall('GET', `/post-order/v2/return/${returnId}`, async () =>
+        api.postOrder.return.getReturn(returnId, 'FULL'),
+      ),
+    );
   }
 
   /**
@@ -510,7 +460,8 @@ export class EbayClient {
               itemId: String(item.ItemID ?? '').trim(),
               title: String(item.Title ?? '').trim(),
               sku: item.SKU != null ? String(item.SKU).trim() || null : null,
-              imageUrl: item.PictureDetails?.GalleryURL ?? null,
+              // GalleryURL is the 140/225px gallery thumb; the catalog keeps the full-size rendition.
+              imageUrl: marketplaceFullUrl(item.PictureDetails?.GalleryURL),
             }))
             .filter((l) => l.itemId && l.title),
           totalPages: Math.max(1, Number(parsed.ActiveList?.PaginationResult?.TotalNumberOfPages) || 1),

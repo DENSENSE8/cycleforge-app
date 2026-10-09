@@ -27,7 +27,7 @@ import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
 import { locationHubHref, locationHubPath, locationKeypadHref, withLocationScanProof } from '@/lib/mobile/location-hub-href';
 import { locationScanLanding, withLocationScanLanding, type LocationScanLanding } from '@/lib/mobile/location-scan-landing';
 import { fnskuHubHref } from '@/lib/mobile/fnsku-hub-href';
-import { routeScan, unwrapScannedLocation } from '@/lib/barcode-routing';
+import { routeScan } from '@/lib/barcode-routing';
 import {
   LOCATION_TAPE_KEY_PREFIX,
   locationTapeEntry,
@@ -60,9 +60,9 @@ import { useArrivalHistory } from '@/components/mobile/receiving/useArrivalHisto
 import { useArrivalStation } from '@/components/mobile/receiving/useArrivalStation';
 import { useArrivalPlacementHandoff } from '@/components/mobile/v2/receiving/useArrivalPlacementHandoff';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { announceStockTransfer, postStockTransfer } from '@/lib/inventory/stock-transfer-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { locationRecordQueryKey, scanLocation, type ScannedLocation } from '@/components/mobile/scan/location-bind-api';
+import { locationMissSuggestions, type LocationSuggestion } from '@/lib/locations/location-miss';
 import {
   resolvePhoneScanIntent,
   withPhoneScanCorrelation,
@@ -182,6 +182,8 @@ function MobileScanIdentifyInner() {
   const { resolve } = useScanDispatch();
   const [dispatching, setDispatching] = useState(0);
   const [locationError, setLocationError] = useState<string | null>(null);
+  /** Real locations near a typed code that matched none — one tap opens one. */
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
   /** Out: the last confirm's words, and its undoable handle (station rule: live until the next scan). */
   const [outNotice, setOutNotice] = useState<string | null>(null);
   const [outUndo, setOutUndo] = useState<{ entryId: string; shipmentId: number } | null>(null);
@@ -192,11 +194,18 @@ function MobileScanIdentifyInner() {
     recordLocationVisit(entry, href);
   }, []);
 
+  const showLocationMiss = useCallback((error: unknown) => {
+    setLocationError(error instanceof Error ? error.message : 'Could not verify location');
+    setLocationSuggestions(locationMissSuggestions(error));
+    playScanFeedback('reject');
+  }, [playScanFeedback]);
+
   const onDecode = useCallback(
     (raw: string, source: ScanInputSource) => {
       const value = raw.trim();
       if (!value) return;
       setLocationError(null);
+      setLocationSuggestions([]);
       setOutNotice(null);
       setOutUndo(null);
       setDispatching((n) => n + 1);
@@ -209,23 +218,20 @@ function MobileScanIdentifyInner() {
               playScanFeedback('reject');
               return;
             }
-            const code = unwrapScannedLocation(value);
             // One request: registers a new flat location, reads the record, mints the proof.
             let authorized: ScannedLocation;
             try {
-              authorized = await scanLocation(code);
+              authorized = await scanLocation(value, { typed: source === 'typed' });
             } catch (error) {
-              setLocationError(error instanceof Error ? error.message : 'Could not verify location');
-              playScanFeedback('reject');
+              showLocationMiss(error);
               return;
             }
             const { record, proof } = authorized;
+            // The real barcode, however the code was typed (`c02094` → `C0209400`).
+            const code = record.code;
             const returnTo = mobileJobReturn(searchParams.get('returnTo')) ?? '/m/stock';
             const pairSku = searchParams.get('pairSku')?.trim();
             const moveLpn = searchParams.get('moveLpn')?.trim();
-            const moveSku = searchParams.get('moveSku')?.trim();
-            const moveFrom = searchParams.get('moveFrom')?.trim();
-            const moveQty = Number(searchParams.get('moveQty'));
             if (moveLpn) {
               const commandId = safeRandomUUID();
               const response = await fetch(`/api/handling-units/${encodeURIComponent(moveLpn)}`, {
@@ -246,22 +252,6 @@ function MobileScanIdentifyInner() {
                 return;
               }
               playScanFeedback('success');
-              router.replace(returnTo);
-              return;
-            }
-            if (moveSku && moveFrom && Number.isSafeInteger(moveQty) && moveQty > 0) {
-              let receipt;
-              try {
-                receipt = await postStockTransfer({ fromBarcode: moveFrom, toBarcode: code, sku: moveSku, qty: moveQty });
-              } catch (error) {
-                setLocationError(error instanceof Error ? error.message : 'Could not move the stock');
-                playScanFeedback('reject');
-                return;
-              }
-              playScanFeedback('success');
-              announceStockTransfer(receipt, {
-                onSettled: () => queryClient.invalidateQueries({ queryKey: ['mobile-location-bind'] }),
-              });
               router.replace(returnTo);
               return;
             }
@@ -290,10 +280,15 @@ function MobileScanIdentifyInner() {
           const dispatch = await resolve(value, qcArmed ? QC_SCAN_SESSION : null);
           const returnTo = searchParams.get('returnTo');
           if (returnTo === '/m/orders') {
-            // Allocate opens scan as a find action, not a route away from the
-            // queue. The queue runs the scanned value through its existing
-            // backend search contract and spotlights the matching work.
-            router.push(withPhoneScanCorrelation(`/m/orders?scan=${encodeURIComponent(value)}`, correlation));
+            // Allocate's scan identifies: it opens the one record the resolver
+            // names (its URL). It never filters the queue, and it never runs the
+            // inbound door (an outbound tracking is not a receive).
+            if (correlation.mobileRoute) {
+              router.push(withPhoneScanCorrelation(correlation.mobileRoute, correlation));
+              return;
+            }
+            setLocationError(`No single order matches ${value}`);
+            playScanFeedback('reject');
             return;
           }
           if (returnTo === '/m/orders/new') {
@@ -431,15 +426,14 @@ function MobileScanIdentifyInner() {
           }
           // A location is a full-screen record with an X back here, never
           // a sheet over the camera (operator 2026-09-25).
-          const code = unwrapScannedLocation(value);
           let authorized: ScannedLocation;
           try {
-            authorized = await scanLocation(code);
+            authorized = await scanLocation(value, { typed: source === 'typed' });
           } catch (error) {
-            setLocationError(error instanceof Error ? error.message : 'Could not verify location');
-            playScanFeedback('reject');
+            showLocationMiss(error);
             return;
           }
+          const code = authorized.record.code;
           // One loose item opens straight on its ±1 adjust; several ask which first.
           queryClient.setQueryData(locationRecordQueryKey(code), authorized.record);
           const landing = locationScanLanding(authorized.record);
@@ -452,7 +446,7 @@ function MobileScanIdentifyInner() {
         }
       })();
     },
-    [resolve, qcArmed, locationOnly, router, searchParams, submitRaw, playScanFeedback, applyLocationTape, scanMode, lpnTarget, queryClient, outbound],
+    [resolve, qcArmed, locationOnly, router, searchParams, submitRaw, playScanFeedback, applyLocationTape, scanMode, lpnTarget, queryClient, outbound, showLocationMiss],
   );
 
   // The kernel owns hardware scans on this screen.
@@ -640,6 +634,22 @@ function MobileScanIdentifyInner() {
         operationLocked={operationLocked}
         exitHref={exitHref}
       />
+      {locationSuggestions.length > 0 ? (
+        <div className="flex items-center gap-2 overflow-x-auto border-b border-border-soft px-4 py-2" role="group" aria-label="Did you mean" data-testid="scan-location-suggestions">
+          <span className="shrink-0 text-role-micro font-semibold text-text-muted">Did you mean</span>
+          {locationSuggestions.map((suggestion) => (
+            <Button
+              key={suggestion.code}
+              variant="secondary"
+              size="sm"
+              className="shrink-0 font-mono"
+              onClick={() => onDecode(suggestion.code, 'typed')}
+            >
+              {suggestion.face}
+            </Button>
+          ))}
+        </div>
+      ) : null}
       <div className="min-h-0 flex-1">
         <MobileV2ScanStation
           entries={entries}

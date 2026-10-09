@@ -3,7 +3,9 @@
 /** Line-scoped item photo verbs — one SoT for dock Band 1 (`item_photos`) and the PO-line capture row Photos expand: */
 
 import { useCallback, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { receivingSurfaceBasePath, UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +48,8 @@ export function ItemPhotoCaptureStrip({
   emptyFallback?: boolean;
 }) {
   const queryClient = useQueryClient();
+  // Link lands on Unbox Displays › Photos › Link — the only surface listening.
+  const onUnbox = receivingSurfaceBasePath(usePathname()) === UNBOX_SURFACE_ROUTE;
   const { getClient } = useAblyClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
@@ -147,6 +151,18 @@ export function ItemPhotoCaptureStrip({
     <PhotoStepDockStrip
       hostMarker={hostMarker}
       rootProps={dz.rootProps}
+      link={
+        onUnbox
+          ? {
+              onClick: () => {
+                emitReceiving('receiving-open-photo-link', { lineId });
+                handFocusBack();
+              },
+              ariaLabel: 'Link an existing carton photo to this line',
+              label: 'Link a photo',
+            }
+          : undefined
+      }
       upload={{
         onClick: () => dz.openPicker(),
         disabled: uploading,

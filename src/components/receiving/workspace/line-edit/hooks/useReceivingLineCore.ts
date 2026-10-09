@@ -11,7 +11,6 @@ import { copyToClipboard } from '@/utils/_dom';
 import { buildReceivingCopyInfo } from '@/utils/copy-all-receiving';
 import { useEntitySupportTicket } from '@/hooks/useEntitySupportTicket';
 import { resolveTrackingOpenUrl } from '@/lib/tracking-format';
-import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useSkuIdentity } from '@/hooks/useSkuIdentity';
 import { collectCartonListingLinks, normalizeListingHref } from '@/lib/receiving/listing-links';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
@@ -575,13 +574,10 @@ export function useReceivingLineCore(
 
   // ── Derived identity values shared by the carton chip row ──────────────────
   const poNumber = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
-  // Listing link: an explicit pasted URL wins; otherwise derive from catalog
-  // platform rows + storefront search by SKU (collectCartonListingLinks).
-  // Zoho PO: never invent a usavshop/Ecwid URL from the inventory SKU.
-  const listingOpenHref =
-    listingLinks[0]?.href ??
-    (normalizeListingHref(listingLink) ||
-      (isUnmatched || isZohoPo ? null : getExternalUrlByItemNumber(row.sku)));
+  // Listing link: catalog platform rows / stored links (collectCartonListingLinks),
+  // else an explicit pasted URL. No item-number linkage → no link (never an Ecwid
+  // store search from the SKU).
+  const listingOpenHref = listingLinks[0]?.href ?? (normalizeListingHref(listingLink) || null);
   const poOpenHref = (() => {
     const id = (row.zoho_purchaseorder_id || '').trim();
     if (id) return `https://inventory.zoho.com/app#/purchaseorders/${encodeURIComponent(id)}`;

@@ -34,6 +34,7 @@ test('one sheet per unit, each with its own serials and issue; a linked repair h
     visitNotes: 'Customer waiting',
     devices: repairDevicesFromLines(lines),
     ticketNumber: 812,
+    shipTo: '12 Main St, Springfield IL 62701',
   });
 
   assert.deepEqual(
@@ -49,6 +50,7 @@ test('one sheet per unit, each with its own serials and issue; a linked repair h
     assert.equal(sheet.props.name, 'Ada Lovelace');
     assert.equal(sheet.props.contact, '555-123-4567');
     assert.equal(sheet.props.ticketNumber, 812);
+    assert.equal(sheet.props.shipTo, '12 Main St, Springfield IL 62701');
   }
 });
 
@@ -58,6 +60,7 @@ test('a unit with no reasons states the visit notes; a unit with no serial state
     visitNotes: 'Rattles when moved',
     devices: repairDevicesFromLines([repairLine('a', { serialNumber: ' , ' })]),
     ticketNumber: '',
+    shipTo: '',
   });
   assert.equal(sheet!.props.issue, 'Rattles when moved');
   assert.equal(sheet!.props.serialNumber, '—');

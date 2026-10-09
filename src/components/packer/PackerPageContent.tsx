@@ -10,9 +10,9 @@ import {
 } from '@/design-system/foundations/motion-presets-hooks';
 
 /**
- * Desk packer station. Phones pack through the pick → `/m/pack/start/[orderId]`
- * job and the `/m/p/[id]/photos` capture bridge; there is no phone pack queue
- * (`docs/mobile-first/SURFACE_LAW.md`).
+ * Desk packer station. Its tracking scans feed the phone Packing photo feed
+ * (`/m/packing`) and the `/m/p/[id]/photos` capture bridge; phones also pack
+ * through the pick → `/m/pack/start/[orderId]` job (`docs/mobile-first/SURFACE_LAW.md`).
  */
 export function PackerPageContent() {
   useRealtimeToasts('packer');

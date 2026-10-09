@@ -90,15 +90,19 @@ export function MobileCameraPanel({
       <Button
         variant="success"
         size="lg"
-        radius="control"
+        // Framed in a dock it wears the dock verbs' face: mode corner + the depth ledge in its own fill's ink (owner 2026-10-08).
+        radius={collapsedFrame ? 'mode' : 'control'}
+        depth={Boolean(collapsedFrame)}
         onClick={arm}
         aria-expanded={false}
         aria-controls={panelId}
         icon={<ChevronUp aria-hidden />}
         className={cn(
           'w-full shrink-0',
+          // Framed in a dock (the pick walk): one row like the dock's glove verbs — arrow left of the
+          // label, the same height, so every cell of the row lines up (owner 2026-10-08).
           collapsedFrame
-            ? 'h-auto min-h-18 flex-col gap-1 whitespace-normal px-1 text-center shadow-none transition-none enabled:active:scale-100'
+            ? 'h-auto min-h-mode-hit-cta self-stretch whitespace-nowrap px-1'
             : 'min-h-11',
         )}
       >

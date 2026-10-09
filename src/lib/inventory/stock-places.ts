@@ -31,6 +31,8 @@ export interface StockTote {
   /** The warehouse address where the physical tote is currently parked. */
   physicalLocationId: number | null;
   physicalLocationName: string | null;
+  /** The parked address's barcode — what a SKU pairs to when it is paired by tote. */
+  physicalLocationBarcode: string | null;
 }
 
 type Db = Pick<PoolClient, 'query'>;
@@ -44,10 +46,12 @@ export async function listStockTotes(db: Db, orgId: string): Promise<StockTote[]
     barcode: string | null;
     physical_location_id: string | number | null;
     physical_location_name: string | null;
+    physical_location_barcode: string | null;
   }>(
     `SELECT hu.id, hu.code, hu.status, stock_place.barcode,
             parked.id AS physical_location_id,
-            COALESCE(parked.display_name, parked.name, parked.barcode) AS physical_location_name
+            COALESCE(parked.display_name, parked.name, parked.barcode) AS physical_location_name,
+            parked.barcode AS physical_location_barcode
        FROM handling_units hu
        LEFT JOIN locations stock_place
          ON stock_place.organization_id = hu.organization_id
@@ -68,6 +72,7 @@ export async function listStockTotes(db: Db, orgId: string): Promise<StockTote[]
     locationBarcode: row.barcode,
     physicalLocationId: row.physical_location_id == null ? null : Number(row.physical_location_id),
     physicalLocationName: row.physical_location_name,
+    physicalLocationBarcode: row.physical_location_barcode,
   }));
 }
 

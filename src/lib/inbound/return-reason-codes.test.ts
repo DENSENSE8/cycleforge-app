@@ -10,6 +10,22 @@ describe('readReturnReason', () => {
     assert.deepEqual(readReturnReason('  CR-SWITCHEROO '), { label: 'Wrong item sent', code: 'CR-SWITCHEROO' });
   });
 
+  it('reads eBay Post-Order ReturnReasonEnum codes as words, keeping the code', () => {
+    assert.deepEqual(readReturnReason('NOT_AS_DESCRIBED'), { label: 'Not as described', code: 'NOT_AS_DESCRIBED' });
+    assert.deepEqual(readReturnReason('DEFECTIVE_ITEM'), { label: "Defective / doesn't work", code: 'DEFECTIVE_ITEM' });
+    assert.deepEqual(readReturnReason('WRONG_SIZE'), { label: 'Wrong size', code: 'WRONG_SIZE' });
+    assert.deepEqual(readReturnReason('NO_LONGER_NEED_ITEM'), { label: 'Changed mind / no longer needed', code: 'NO_LONGER_NEED_ITEM' });
+    assert.deepEqual(readReturnReason('ORDERED_ACCIDENTALLY'), { label: 'Ordered by mistake', code: 'ORDERED_ACCIDENTALLY' });
+    assert.deepEqual(readReturnReason('MISSING_PARTS'), { label: 'Missing parts / accessories', code: 'MISSING_PARTS' });
+    assert.deepEqual(readReturnReason('ARRIVED_DAMAGED'), { label: 'Arrived damaged', code: 'ARRIVED_DAMAGED' });
+  });
+
+  it('a bare eBay code word is a code only because it is a known one', () => {
+    assert.deepEqual(readReturnReason('OTHER'), { label: 'Other', code: 'OTHER' });
+    assert.deepEqual(readReturnReason('CUSTOMIZED'), { label: 'Customized — failed authentication', code: 'CUSTOMIZED' });
+    assert.deepEqual(readReturnReason('RANDOMWORD'), { label: 'RANDOMWORD', code: null });
+  });
+
   it('an unknown code stays the code — no guessed meaning', () => {
     assert.deepEqual(readReturnReason('CR-SOMETHING_NEW'), { label: 'CR-SOMETHING_NEW', code: null });
   });

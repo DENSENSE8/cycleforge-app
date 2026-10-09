@@ -269,6 +269,8 @@ export const AUDIT_ACTION = {
   /** A marketplace purchase (eBay buyer account, …) was imported onto the Incoming
    *  spine via the bridge/sync (Universal Incoming Phase 2). */
   RECEIVING_INBOUND_IMPORT:  'receiving.inbound.import',
+  /** An operator walked platform return history (eBay / Amazon) into the inbound import (`POST /api/returns/backfill`). */
+  RECEIVING_RETURNS_BACKFILL: 'receiving.returns.backfill',
   /** An inbound order entered by mistake was deleted before anything physical happened (`deleteInboundOrder`). */
   RECEIVING_INBOUND_ORDER_DELETE: 'receiving.inbound.order.delete',
   /** An operator manually linked one Incoming spine row to a second purchase identity (e.g. */
@@ -351,6 +353,7 @@ export const AUDIT_ACTION = {
   HANDLING_UNIT_ASSIGN:   'handling_unit.assign',
   HANDLING_UNIT_UNASSIGN: 'handling_unit.unassign',
   HANDLING_UNIT_PAIR:     'handling_unit.pair',
+  HANDLING_UNIT_LOAD:     'handling_unit.load',
   // Label manifests (preboxed kit — one label, many serials)
   MANIFEST_CREATE:        'label_manifest.create',
   MANIFEST_ADD_ITEM:      'label_manifest.add_item',
@@ -593,6 +596,7 @@ export const AUDIT_ACTION = {
   SKU_STOCK_BIN_ASSIGN:   'sku_stock.bin.assign',
   SKU_STOCK_BIN_UNASSIGN: 'sku_stock.bin.unassign',
   SKU_STOCK_LOCATION_SET: 'sku_stock.location.set',
+  SKU_STOCK_ENSURE:       'sku_stock.ensure',
   // SKU catalog (CRUD)
   SKU_CATALOG_CREATE: 'sku_catalog.create',
   SKU_CATALOG_UPDATE: 'sku_catalog.update',
@@ -662,8 +666,9 @@ export const AUDIT_ACTION = {
   ORDER_ACKNOWLEDGED: 'order.acknowledged',
   ORDER_UNACKNOWLEDGED: 'order.unacknowledged',
   /**
-   * A staffer read the order's marketplace buyer note and cleared the pack /
-   * label interlock for its current text (src/lib/orders/buyer-note-interlock.ts).
+   * Historical: a staffer acknowledged the order's buyer note to clear the old
+   * pack / label interlock. Interlock removed 2026-10-08 — no longer written;
+   * kept so historic audit rows still filter on it.
    */
   ORDER_BUYER_NOTE_ACKNOWLEDGED: 'order.buyer_note_acknowledged',
   /** Staff corrected the order's buyer contact / ship-to (PATCH /api/orders/[id]/buyer). */

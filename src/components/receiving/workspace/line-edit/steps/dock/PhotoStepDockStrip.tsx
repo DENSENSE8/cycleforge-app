@@ -3,7 +3,7 @@
 /** Band 1 RIGHT recipe for every Unbox photo procedure step: */
 
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
-import { Camera, Upload } from '@/components/Icons';
+import { Camera, Images, Upload } from '@/components/Icons';
 import { STATION_CONTEXT_PHOTO_TONE } from '@/components/station/entity-context/station-context-action-pill';
 import { Button } from '@/design-system/primitives/Button';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -72,12 +72,15 @@ function SegmentButton({
 }
 
 export function PhotoStepDockStrip({
+  link,
   upload,
   phone,
   fileInput,
   rootProps,
   hostMarker,
 }: {
+  /** Unbox only: link an existing carton photo (Displays › Photos › Link). */
+  link?: PhotoStepSegmentProps;
   upload: PhotoStepSegmentProps;
   phone: PhotoStepSegmentProps;
   fileInput?: ReactNode;
@@ -101,10 +104,18 @@ export function PhotoStepDockStrip({
         cornerClass('flush'),
       )}
       data-unbox-photo-step-dock
-      data-unbox-photo-segments="2"
+      data-unbox-photo-segments={link ? '3' : '2'}
       {...(hostMarker ? { [hostMarker]: true } : {})}
       {...rootProps}
     >
+      {link ? (
+        <SegmentButton
+          {...link}
+          tone="card"
+          data-testid="unbox-photo-link"
+          icon={<Images className="mr-1.5 h-4 w-4 shrink-0" aria-hidden />}
+        />
+      ) : null}
       <SegmentButton
         {...upload}
         tone="card"

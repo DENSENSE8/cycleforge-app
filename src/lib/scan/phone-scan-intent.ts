@@ -5,13 +5,19 @@ export interface PhoneScanCorrelation {
 
 interface ResolveIntentResponse {
   mobileScanEventId?: unknown;
+  mobileRoute?: unknown;
+}
+
+/** The persisted intent plus the resolver's route: the phone URL of the one record the scan names, or `null`. */
+export interface PhoneScanIntent extends PhoneScanCorrelation {
+  mobileRoute: string | null;
 }
 
 /** Persist the phone's identify intent before any downstream domain commit. */
 export async function resolvePhoneScanIntent(
   input: string,
   clientEventId: string,
-): Promise<PhoneScanCorrelation> {
+): Promise<PhoneScanIntent> {
   try {
     const response = await fetch('/api/scan/resolve', {
       method: 'POST',
@@ -24,13 +30,15 @@ export async function resolvePhoneScanIntent(
     });
     const body = await response.json().catch(() => null) as ResolveIntentResponse | null;
     const id = Number(body?.mobileScanEventId);
+    const route = body?.mobileRoute;
     return {
       mobileScanEventId: Number.isSafeInteger(id) && id > 0 ? id : null,
       clientEventId,
+      mobileRoute: typeof route === 'string' && route.startsWith('/') && !route.startsWith('//') ? route : null,
     };
   } catch {
     // Domain work remains available when telemetry/realtime is degraded.
-    return { mobileScanEventId: null, clientEventId };
+    return { mobileScanEventId: null, clientEventId, mobileRoute: null };
   }
 }
 

@@ -1430,7 +1430,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   // match (`?q=`); Carrier · Channel are NAV_FACET_GROUPS['live-feed']; Staff = packages the
   // staffer is assigned to, picked or packed (`readLiveFeedFilters`).
   'live-feed': {
-    search: { placeholder: 'Scan or type tracking, order #, SKU', source: 'url-param', param: 'q' },
+    search: { placeholder: 'Find tracking, order #, SKU', source: 'url-param', param: 'q' },
     controls: {
       staff: [{ id: 'staff', param: 'staff', label: 'Staff' }],
     },

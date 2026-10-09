@@ -11,6 +11,7 @@ interface PackingPolicy {
  * Reads the org's packing-checklist enforcement mode (GET /api/packing/policy)
  * so packer surfaces can apply block_until_matched. Org-level + slow-changing,
  * so it's cached for 5 min. Falls back to 'advisory' until loaded.
+ * Desktop UI removed 2026-10-08; kept for the mobile port.
  */
 export function usePackingPolicy() {
   return useQuery<PackingPolicy>({

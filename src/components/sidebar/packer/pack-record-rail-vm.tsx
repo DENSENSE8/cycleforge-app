@@ -8,7 +8,8 @@ import {
   SOURCE_DOT_BG,
   SOURCE_DOT_LABEL,
 } from '@/utils/source-dot';
-import { orderRowConditionLabel } from '@/lib/conditions';
+import { conditionSentenceLabel, EMPTY_META_DASH, orderRowConditionLabel } from '@/lib/conditions';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 /** Source facets a pack row's dot resolves from (order vs SKU scan vs FBA). */
 function packRecordSource(record: PackerRecord) {
@@ -28,16 +29,14 @@ export function getPackerRecordStatusDotLabel(record: PackerRecord): string {
   return SOURCE_DOT_LABEL[packRecordSource(record).dotType];
 }
 
-function packerRecordRailTitle(record: PackerRecord): string {
-  return normalizeProductTitle(record.product_title) || 'Unknown Product';
-}
-
 export function packerRecordToRailVM(record: PackerRecord): RailRowVM {
-  const title = packerRecordRailTitle(record);
+  // Marketplace titles often arrive ALL CAPS; the rail reads sentence case (mixed-case titles pass through).
+  const title = sentenceCaseLabel(normalizeProductTitle(record.product_title)) || 'Unknown product';
   const qty = Math.max(1, parseInt(String(record.quantity || '1'), 10) || 1);
-  // Condition label resolves through the SoT (`src/lib/conditions.ts`) — never
-  // a rail-local grade→label map.
-  const condition = orderRowConditionLabel(String(record.condition || '').trim());
+  // Condition resolves through the SoT (`src/lib/conditions.ts`) in sentence
+  // case ("Used - A", never "USED - A"); empty / N/A stays the dash.
+  const rawCondition = orderRowConditionLabel(String(record.condition || '').trim());
+  const condition = rawCondition === EMPTY_META_DASH ? rawCondition : conditionSentenceLabel(rawCondition);
 
   return {
     title,

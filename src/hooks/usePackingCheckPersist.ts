@@ -1,6 +1,6 @@
 'use client';
 
-/** Persist packing-checklist ticks (packing-checklist-plan Phase 2). */
+/** Persist packing-checklist ticks (packing-checklist-plan Phase 2). Desktop UI removed 2026-10-08; kept for the mobile port. */
 
 import { useCallback } from 'react';
 import { safeRandomUUID } from '@/lib/safe-uuid';

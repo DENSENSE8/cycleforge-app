@@ -32,8 +32,6 @@ export const LABEL_BUY_ERROR_CODES = [
   'LABEL_PURCHASE_IN_FLIGHT',
   /** This clientEventId's label was voided — get fresh rates (and a new clientEventId) to buy again. */
   'LABEL_PURCHASE_VOIDED',
-  /** The reference names an order whose buyer note is unacknowledged. */
-  'BUYER_NOTE_UNACKNOWLEDGED',
 ] as const;
 export type LabelBuyErrorCode = (typeof LABEL_BUY_ERROR_CODES)[number];
 
@@ -311,7 +309,7 @@ export function buildLabelBuyOpenApi(): Record<string, unknown> {
         responses: {
           '200': { description: 'Bought (or the recorded purchase for this clientEventId) — LabelBuyResult' },
           '400': unavailable,
-          '409': rejected('LABEL_PURCHASE_IN_FLIGHT / LABEL_PURCHASE_VOIDED / LABEL_TEST_MODE_BLOCKED / BUYER_NOTE_UNACKNOWLEDGED'),
+          '409': rejected('LABEL_PURCHASE_IN_FLIGHT / LABEL_PURCHASE_VOIDED / LABEL_TEST_MODE_BLOCKED'),
           '502': rejected('SHIPSTATION_ERROR — nothing was charged'),
         },
       },

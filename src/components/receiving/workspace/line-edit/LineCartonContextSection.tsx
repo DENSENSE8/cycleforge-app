@@ -51,8 +51,10 @@ interface LineCartonContextSectionProps {
    * chip-anchored InlinePillPicker menus.
    */
   classifyInteractive?: boolean;
-  /** Open the caller-owned inline tracking editor. */
+  /** Open the caller-owned tracking editor (Unbox: Displays › Tracking). */
   onEditTracking?: () => void;
+  /** Open the caller-owned listing editor (Unbox: Displays › Listings). */
+  onEditListing?: () => void;
   /** Open Package Pairing → PO (link / change / import a Zoho PO). */
   onEditPo?: () => void;
   /** Pulse tracking chip while Tracking tab is active. */
@@ -80,6 +82,7 @@ export function LineCartonContextSection({
   showClassifyControls = true,
   classifyInteractive = true,
   onEditTracking,
+  onEditListing,
   onEditPo,
   trackingEditOpen = false,
   poEditOpen = false,
@@ -114,6 +117,7 @@ export function LineCartonContextSection({
       listingLink={c.listingLink}
       listingOpenHref={c.listingOpenHref}
       listingLinks={c.listingLinks}
+      onEditListing={onEditListing}
       poOpenHref={c.poOpenHref}
       trackingOpenHref={c.trackingOpenHref}
       poDisplay={cartonOrderNumber || c.poNumber}

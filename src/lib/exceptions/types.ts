@@ -43,7 +43,7 @@ export const EXCEPTION_KIND_SPEC: Readonly<Record<ExceptionKind, ExceptionKindSp
   fbm: {
     domain: 'fulfillment',
     label: 'FBM',
-    membership: 'A merchant-fulfilled order held by an order exception other than SKU mapping (address, buyer request, marketplace hold, testing, shipping, out of stock, other).',
+    membership: 'A merchant-fulfilled order held by an order exception other than SKU mapping (address, marketplace hold, testing, shipping, out of stock, other).',
   },
   labels: {
     domain: 'fulfillment',

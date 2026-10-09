@@ -8,16 +8,18 @@
  * in the walk, empty ones say Empty. Path chips jump back up; a location opens
  * its record (`/m/loc/…`), whose X returns to the bay it came from. The shell's
  * search escapes the hierarchy: it lists the room's stocked places, and a typed
- * or scanned code opens that location directly.
+ * or scanned code opens that location directly. With `?pair=<sku>&return=…` (the `/m/pick` Pair door,
+ * owner 2026-10-08) the same walk chooses that SKU's home bin: a location row pairs instead of opening.
  */
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { AlertTriangle, MapPin, Warehouse } from '@/components/Icons';
 import { DetailNav, type DetailNavItem } from '@/components/mobile/detail/DetailParts';
 import { PathChips, type PathChip } from '@/design-system/components/PathChips';
 import { MOBILE_DATA_LIST_ROW_INTERACTION_CLASS } from '@/design-system/components/MobileDataListRow';
 import { Button } from '@/design-system/primitives/Button';
+import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
 import { EmptyState } from '@/design-system/primitives/EmptyState';
 import { BAY_SIDE_FACE, locationCodeFlat, pad2 } from '@/lib/barcode-routing';
 import { labelFace, parseLabelCode } from '@/features/location-labels/location-label-model';
@@ -38,6 +40,8 @@ import { locationHubPath } from '@/lib/mobile/location-hub-href';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { cn } from '@/utils/_cn';
 import { useMobileV2Search } from '../MobileV2SearchContext';
+import { pairSkuToLocation, STOCK_PAIR_PARAM, STOCK_PAIR_RETURN_PARAM } from '@/lib/picking/pair-sku-location';
+import { toast } from '@/lib/toast';
 
 function count(value: number, singular: string, plural = `${singular}s`): string {
   return `${value} ${value === 1 ? singular : plural}`;
@@ -64,16 +68,23 @@ function groupIcon(group: Pick<StockDrillGroup, 'hasOnHold' | 'hasCleanup' | 'ha
   return group.hasOnHold || group.hasCleanup || group.hasException ? <AlertTriangle className="text-amber-600" /> : icon;
 }
 
-function locationRow(summary: StockLocationSummary, returnTo: string): DetailNavItem {
+function locationRow(summary: StockLocationSummary, returnTo: string, onPair: ((code: string) => void) | null): DetailNavItem {
   return {
     id: summary.key,
     title: summary.face,
     icon: groupIcon(summary, <MapPin />),
+    // The level's picture: the item photographed last (empty levels keep the pin).
+    media: summary.photoUrl ? (
+      <ItemRecordThumb imageUrl={summary.photoUrl} fit="cover" plainEmpty className="h-14 min-h-14 w-14 shrink-0 rounded-lg" iconClassName="h-6 w-6" />
+    ) : undefined,
     meta: [
       summary.empty ? 'Empty' : `${count(summary.quantity, 'unit')} · ${count(summary.skuCount, 'SKU')}`,
       ...flags(summary),
     ].join(' · '),
-    href: summary.routeCode ? withJobReturn(locationHubPath(summary.routeCode), returnTo) : null,
+    // Pair mode: the row is the choice, not the door to its record.
+    ...(onPair && summary.routeCode
+      ? { onSelect: () => onPair(summary.routeCode!) }
+      : { href: summary.routeCode ? withJobReturn(locationHubPath(summary.routeCode), returnTo) : null }),
   };
 }
 
@@ -96,6 +107,36 @@ export function MobileV2StockLocations({
   const searchParams = useSearchParams();
   const query = useMobileV2Search().query.trim() || legacyQuery;
   const returnTo = `${pathname}?${searchParams.toString()}`.replace(/\?$/, '');
+  // Pair mode (owner 2026-10-08, `/m/pick` Pair → Location): the walk chooses the SKU's home bin by hand.
+  // Every level carries `pair` + `return`; tapping a location pairs it, then its ± count opens.
+  const pairSku = searchParams.get(STOCK_PAIR_PARAM)?.trim() || null;
+  const rawPairReturn = searchParams.get(STOCK_PAIR_RETURN_PARAM) ?? '';
+  const pairReturn = rawPairReturn.startsWith('/') && !rawPairReturn.startsWith('//') ? rawPairReturn : '/m/pick';
+  const [pairing, setPairing] = useState(false);
+  const [pairError, setPairError] = useState<string | null>(null);
+  const drillHref = (at: Partial<StockDrillScope>): string => {
+    const href = stockDrillHref(at);
+    if (!pairSku) return href;
+    const pairParams = new URLSearchParams({ [STOCK_PAIR_PARAM]: pairSku, [STOCK_PAIR_RETURN_PARAM]: pairReturn });
+    return `${href}${href.includes('?') ? '&' : '?'}${pairParams.toString()}`;
+  };
+  const onPair = pairSku
+    ? (code: string) => {
+        if (pairing) return;
+        setPairing(true);
+        setPairError(null);
+        pairSkuToLocation(pairSku, code)
+          // Only pairing (owner 2026-10-08): no take / put-away count — straight back to the pick.
+          .then((barcode) => {
+            toast.success(`${pairSku} paired to ${barcode}`);
+            router.push(pairReturn);
+          })
+          .catch((err: unknown) => {
+            setPairError(err instanceof Error ? err.message : 'Pairing failed — choose the location again');
+            setPairing(false);
+          });
+      }
+    : null;
   // The walk is the building: every aisle, bay and level stays in place, empty or not, so a
   // side of the aisle never disappears (owner 2026-10-03). Search lists stocked places only.
   const summaries = useMemo(() => summarizeStockLocations(rows), [rows]);
@@ -103,20 +144,20 @@ export function MobileV2StockLocations({
   const room = rooms.find((facet) => facet.id === scope.room) ?? null;
   const numericAisle = typeof scope.aisle === 'number' ? scope.aisle : null;
 
-  const chips: PathChip[] = [{ id: 'rooms', value: 'Rooms', href: stockDrillHref({}), testId: 'stock-path-rooms' }];
-  if (room) chips.push({ id: 'room', value: room.label, href: stockDrillHref({ room: room.id }), testId: 'stock-path-room' });
+  const chips: PathChip[] = [{ id: 'rooms', value: 'Rooms', href: drillHref({}), testId: 'stock-path-rooms' }];
+  if (room) chips.push({ id: 'room', value: room.label, href: drillHref({ room: room.id }), testId: 'stock-path-room' });
   if (room && scope.aisle != null) {
     chips.push(
       scope.aisle === STOCK_DRILL_OTHER
         ? { id: 'aisle', value: 'Other locations', testId: 'stock-path-aisle' }
-        : { id: 'aisle', label: 'Aisle', value: pad2(scope.aisle), href: stockDrillHref({ room: room.id, aisle: scope.aisle }), testId: 'stock-path-aisle' },
+        : { id: 'aisle', label: 'Aisle', value: pad2(scope.aisle), href: drillHref({ room: room.id, aisle: scope.aisle }), testId: 'stock-path-aisle' },
     );
   }
   if (room && numericAisle != null && scope.side) {
     chips.push({
       id: 'side',
       value: BAY_SIDE_FACE[scope.side].short,
-      href: stockDrillHref({ room: room.id, aisle: numericAisle, side: scope.side }),
+      href: drillHref({ room: room.id, aisle: numericAisle, side: scope.side }),
       testId: 'stock-path-side',
     });
   }
@@ -139,7 +180,11 @@ export function MobileV2StockLocations({
       // A code always offers its place first — at every level, so an empty place stays reachable.
       const segments = parseLabelCode(query);
       const codeRows: DetailNavItem[] = segments
-        ? [{ id: 'code', title: `Open ${labelFace(segments)}`, icon: <MapPin />, meta: 'Location record', href: withJobReturn(locationHubPath(locationCodeFlat(segments)), returnTo) }]
+        ? [
+            onPair
+              ? { id: 'code', title: `Pair to ${labelFace(segments)}`, icon: <MapPin />, meta: 'Location', onSelect: () => onPair(locationCodeFlat(segments)) }
+              : { id: 'code', title: `Open ${labelFace(segments)}`, icon: <MapPin />, meta: 'Location record', href: withJobReturn(locationHubPath(locationCodeFlat(segments)), returnTo) },
+          ]
         : [];
       if (!room) {
         // The room level holds no stock: a code opens its place; words narrow the rooms.
@@ -150,14 +195,14 @@ export function MobileV2StockLocations({
             ...codeRows,
             ...rooms
               .filter((facet) => facet.label.toLocaleLowerCase().includes(words))
-              .map((facet) => ({ id: facet.id, title: facet.label, icon: <Warehouse />, meta: count(facet.count, 'location'), href: stockDrillHref({ room: facet.id }) })),
+              .map((facet) => ({ id: facet.id, title: facet.label, icon: <Warehouse />, meta: count(facet.count, 'location'), href: drillHref({ room: facet.id }) })),
           ],
           empty: 'Type a location code, or pick a room to search its stock.',
         };
       }
       return {
         label: 'Search results',
-        rows: [...codeRows, ...stocked.filter((summary) => stockLocationMatches(summary, query)).map((summary) => locationRow(summary, returnTo))],
+        rows: [...codeRows, ...stocked.filter((summary) => stockLocationMatches(summary, query)).map((summary) => locationRow(summary, returnTo, onPair))],
         empty: `Nothing in ${room.label} matches “${query}”.`,
       };
     }
@@ -167,7 +212,7 @@ export function MobileV2StockLocations({
         // Places with no room are a repair queue, not a room: last.
         rows: [...rooms]
           .sort((a, b) => Number(a.id === UNROOMED_FACET_ID) - Number(b.id === UNROOMED_FACET_ID))
-          .map((facet) => ({ id: facet.id, title: facet.label, icon: <Warehouse />, meta: count(facet.count, 'location'), href: stockDrillHref({ room: facet.id }) })),
+          .map((facet) => ({ id: facet.id, title: facet.label, icon: <Warehouse />, meta: count(facet.count, 'location'), href: drillHref({ room: facet.id }) })),
         empty: 'No rooms yet.',
       };
     }
@@ -178,7 +223,7 @@ export function MobileV2StockLocations({
       if (aisles.length === 0) {
         return {
           label: `Locations in ${room.label}`,
-          rows: stockDrillLocations(summaries, { ...scope, aisle: STOCK_DRILL_OTHER }).map((summary) => locationRow(summary, returnTo)),
+          rows: stockDrillLocations(summaries, { ...scope, aisle: STOCK_DRILL_OTHER }).map((summary) => locationRow(summary, returnTo, onPair)),
           empty: `${room.label} has no locations yet.`,
         };
       }
@@ -190,10 +235,10 @@ export function MobileV2StockLocations({
             title: `Aisle ${pad2(aisle.key)}`,
             icon: groupIcon(aisle, <MapPin />),
             meta: groupMeta(aisle, 'bay'),
-            href: stockDrillHref({ room: room.id, aisle: aisle.key }),
+            href: drillHref({ room: room.id, aisle: aisle.key }),
           })),
           ...(other > 0
-            ? [{ id: 'other', title: 'Other locations', icon: <Warehouse />, meta: `${other} without an aisle`, href: stockDrillHref({ room: room.id, aisle: STOCK_DRILL_OTHER }) }]
+            ? [{ id: 'other', title: 'Other locations', icon: <Warehouse />, meta: `${other} without an aisle`, href: drillHref({ room: room.id, aisle: STOCK_DRILL_OTHER }) }]
             : []),
         ],
         empty: `${room.label} has no locations yet.`,
@@ -205,7 +250,7 @@ export function MobileV2StockLocations({
       const choice = (side: StockDrillSide): SideChoice => ({
         side,
         group: sides[side],
-        href: stockDrillHref({ room: room.id, aisle: numericAisle, side }),
+        href: drillHref({ room: room.id, aisle: numericAisle, side }),
       });
       return {
         label: null,
@@ -224,14 +269,14 @@ export function MobileV2StockLocations({
           title: `Bay ${pad2(bay.key)}`,
           icon: groupIcon(bay, <MapPin />),
           meta: groupMeta(bay, null),
-          href: stockDrillHref({ room: room.id, aisle: numericAisle, bay: bay.key }),
+          href: drillHref({ room: room.id, aisle: numericAisle, bay: bay.key }),
         })),
         empty: `No ${face.bays.toLocaleLowerCase()} in aisle ${pad2(numericAisle)}.`,
       };
     }
     return {
       label: scope.aisle === STOCK_DRILL_OTHER ? 'Other locations' : `Locations in bay ${pad2(scope.bay ?? 0)}`,
-      rows: stockDrillLocations(summaries, scope).map((summary) => locationRow(summary, returnTo)),
+      rows: stockDrillLocations(summaries, scope).map((summary) => locationRow(summary, returnTo, onPair)),
       empty: 'No locations here.',
     };
   })();
@@ -239,6 +284,23 @@ export function MobileV2StockLocations({
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col bg-mode-panel" data-testid="mobile-v2-stock" data-level={currentChip}>
       <div className="sticky top-0 z-sticky border-b border-mode-rule bg-mode-panel">
+        {pairSku ? (
+          <div className="flex items-center gap-3 border-b border-mode-rule px-mode-page py-2" data-testid="stock-pair-banner" aria-live="polite">
+            <MapPin className="h-5 w-5 shrink-0 text-blue-600" aria-hidden />
+            <p className="min-w-0 flex-1 text-role-body">
+              <span className="font-semibold text-mode-ink">{pairing ? 'Pairing…' : 'Tap the location to pair'}</span>
+              <span className="block truncate font-mono text-role-caption text-mode-muted">{pairSku}</span>
+            </p>
+            <Button variant="secondary" size="md" radius="mode" disabled={pairing} onClick={() => router.push(pairReturn)} data-testid="stock-pair-cancel">
+              Cancel
+            </Button>
+          </div>
+        ) : null}
+        {pairError ? (
+          <p role="alert" className="border-b border-mode-rule px-mode-page py-2 text-role-caption font-semibold text-text-danger">
+            {pairError}
+          </p>
+        ) : null}
         <PathChips density="compact" chips={chips} currentId={currentChip} ariaLabel="Warehouse path" testId="stock-path" />
       </div>
 

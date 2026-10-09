@@ -1,11 +1,10 @@
 'use client';
 
 /**
- * The replacement form's I/O: the rate quote, the purchase (idempotent, held
- * behind an unread buyer note), and the per-staff remembered carrier.
+ * The replacement form's I/O: the rate quote, the purchase (idempotent), and
+ * the per-staff remembered carrier.
  */
 
-import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
 import {
   carrierFacets,
   carrierKey,
@@ -52,8 +51,7 @@ export async function fetchReplacementRates(body: ReplacementRatesRequest['body'
  * label list; a replacement's reason + note ride to the label ledger and the
  * order note. `clientEventId` is one per INTENDED
  * purchase, reused on a retry (the route claims it before charging, so a
- * retry replays instead of buying twice). A held order (buyer note) opens the
- * note before the irreversible purchase.
+ * retry replays instead of buying twice).
  */
 export async function purchaseReplacementLabel(input: {
   orderId: number;
@@ -64,21 +62,19 @@ export async function purchaseReplacementLabel(input: {
   note: string;
 }): Promise<ReplacementPurchase> {
   const note = input.note.trim();
-  const res = await sendWithBuyerNoteAck(() =>
-    fetch('/api/shipping/order-labels/purchase', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        orderId: input.orderId,
-        rateId: input.rateId,
-        clientEventId: input.clientEventId,
-        purpose: input.purpose,
-        notifyCustomer: false,
-        ...(input.purpose === 'replacement' && input.reason ? { replacementReason: input.reason } : {}),
-        ...(input.purpose === 'replacement' && note ? { replacementNote: note } : {}),
-      }),
+  const res = await fetch('/api/shipping/order-labels/purchase', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      orderId: input.orderId,
+      rateId: input.rateId,
+      clientEventId: input.clientEventId,
+      purpose: input.purpose,
+      notifyCustomer: false,
+      ...(input.purpose === 'replacement' && input.reason ? { replacementReason: input.reason } : {}),
+      ...(input.purpose === 'replacement' && note ? { replacementNote: note } : {}),
     }),
-  );
+  });
   const data = (await res.json()) as ReplacementPurchase;
   if (!res.ok || !data.ok) throw new Error(data.error || 'Purchase failed.');
   return data;

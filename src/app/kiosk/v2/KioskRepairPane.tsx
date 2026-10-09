@@ -15,6 +15,7 @@ import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas
 import RepairServiceForm from '@/components/repair/RepairServiceForm';
 import { KioskCartDoneFace } from './KioskCartDoneFace';
 import { repairPaperworkSheets, repairVisitFactsFromLines } from '@/lib/kiosk/repair-paperwork-sheets';
+import { decodeShipToAddress, formatShipToOneLine } from '@/lib/customers/ship-to-address';
 import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';
 import type { RepairFormData } from '@/components/repair/RepairIntakeForm';
 import {
@@ -390,8 +391,9 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
         visitNotes: formData.repairNotes,
         devices,
         ticketNumber: paperworkTicketId ?? '',
+        shipTo: formatShipToOneLine(decodeShipToAddress(session.customerAddress)),
       }),
-    [devices, formData.customer, formData.repairNotes, paperworkTicketId],
+    [devices, formData.customer, formData.repairNotes, paperworkTicketId, session.customerAddress],
   );
 
   /** The VISIT's facts, as they stand right now. */

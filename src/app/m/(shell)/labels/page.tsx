@@ -8,19 +8,19 @@ import { WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
 export const dynamic = 'force-dynamic';
 
 /**
- * `/m/labels` — print location / bay labels (one sticker or a run) to the
+ * `/m/labels` — print location labels (one sticker or a run) to the
  * remembered label station: the shared `LocationLabelBuilder` under the record
- * bar. `?code=` prefills the address (the location record's door), `?kind=rack`
- * opens on bay labels, `?back=` is where the X returns. With nothing prefilled
- * the camera starts up — scan the sticker first; it is the screen's one scan door.
+ * bar. `?code=` prefills the address (the location record's door), `?back=` is
+ * where the X returns. With nothing prefilled the camera starts up — scan the
+ * sticker first; it is the screen's one scan door.
  */
 export default async function MobileLabelsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string; kind?: string; back?: string }>;
+  searchParams: Promise<{ code?: string; back?: string }>;
 }) {
   await requirePermission('print.label');
-  const { code, kind, back } = await searchParams;
+  const { code, back } = await searchParams;
   const initialCode = code?.trim() || null;
   return (
     <div className="flex min-h-full flex-col" data-testid="m-labels">
@@ -32,7 +32,7 @@ export default async function MobileLabelsPage({
         lead={<Printer className="h-5 w-5 text-mode-muted" />}
         scanSeat={false}
       />
-      <LocationLabelBuilder initialKind={kind === 'rack' ? 'rack' : 'bin'} initialCode={initialCode} armScan={!initialCode} dock="dock" />
+      <LocationLabelBuilder initialCode={initialCode} armScan={!initialCode} dock="dock" />
     </div>
   );
 }

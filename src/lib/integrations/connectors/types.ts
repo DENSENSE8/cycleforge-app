@@ -10,6 +10,7 @@ export type AuthKind = 'oauth' | 'nango' | 'vault';
 /** What a connection can do — drives capability badges, which providers the sync orchestrator runs, AND product-surface gating/labels (see… */
 export type Capability =
   | 'orders'
+  | 'returns'
   | 'inventory'
   | 'tracking'
   | 'labels'

@@ -2,7 +2,15 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
 
 import type { ActiveStationOrder } from '@/hooks/station/types';
-import { addDeskSerial, resolveDeskScanType, scanDeskTracking, undoLastDeskStep } from './desk-scan-client';
+import type { ShippedOrder } from '@/types/orders';
+import {
+  addDeskSerial,
+  deskOrderFromQueueRow,
+  removeOrderSerials,
+  resolveDeskScanType,
+  scanDeskTracking,
+  undoLastDeskStep,
+} from './desk-scan-client';
 
 function card(overrides: Partial<ActiveStationOrder> = {}): ActiveStationOrder {
   return {
@@ -138,5 +146,40 @@ describe('undoLastDeskStep', () => {
     assert.ok(result.ok);
     assert.equal(result.undone, 'label');
     assert.equal(result.order, null);
+  });
+});
+
+describe('deskOrderFromQueueRow', () => {
+  it('a reopened order starts with every serial already saved on it (legacy CSV rows split, deduped)', () => {
+    const row = { id: 19955, order_id: 'CF-TEST-PH-000001', sku: 'TMP-1', quantity: '2', serial_number: '123456, sn-2,SN-2' } as unknown as ShippedOrder;
+    const order = deskOrderFromQueueRow(row);
+    assert.deepEqual(order.serialNumbers, ['123456', 'SN-2']);
+    assert.equal(order.salId, null);
+  });
+});
+
+describe('removeOrderSerials', () => {
+  it('drops each serial off the ORDER and answers its remaining serials', async () => {
+    const seen: { url: string; method?: string; body: unknown }[] = [];
+    const answers = [['SN-2'], []];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      seen.push({ url, method: init.method, body: JSON.parse(String(init.body)) });
+      return new Response(JSON.stringify({ success: true, serialNumbers: answers[seen.length - 1], unpickedUnits: 1 }), { status: 200 });
+    }) as typeof fetch;
+    const result = await removeOrderSerials(19955, ['SN-1', 'SN-2']);
+    assert.deepEqual(seen.map((c) => [c.url, c.method, c.body]), [
+      ['/api/orders/19955/serials', 'DELETE', { serial: 'SN-1' }],
+      ['/api/orders/19955/serials', 'DELETE', { serial: 'SN-2' }],
+    ]);
+    assert.ok(result.ok);
+    assert.deepEqual(result.serialNumbers, []);
+    assert.equal(result.unpickedUnits, 2);
+  });
+
+  it('stops at the first refusal and says which serial', async () => {
+    globalThis.fetch = (async () => new Response(JSON.stringify({ success: false, error: 'order not found' }), { status: 404 })) as typeof fetch;
+    const result = await removeOrderSerials(1, ['SN-1', 'SN-2']);
+    assert.equal(result.ok, false);
+    assert.equal(!result.ok && result.error, 'order not found');
   });
 });

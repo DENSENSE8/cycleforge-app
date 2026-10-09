@@ -81,7 +81,8 @@ export function customerPhone(c: CustomerRecord): string {
   return clean(c.phone) || clean(c.mobile);
 }
 
-function postalLines(parts: {
+/** Street line, city line, country — blank parts and lines dropped. The ONE postal layout. */
+export function postalLines(parts: {
   line1: string | null | undefined;
   line2: string | null | undefined;
   city: string | null | undefined;

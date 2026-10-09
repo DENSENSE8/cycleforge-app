@@ -69,6 +69,7 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
   contact,
   price,
   startDateTime,
+  shipTo,
   density = 'full',
   sections,
   surface = 'screen',
@@ -151,6 +152,14 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
           <div className={`shrink-0 border-r border-black bg-surface-canvas p-2 font-semibold ${isCompact ? 'w-28' : 'w-40'}`}>Contact Info:</div>
           <div className="min-w-0 flex-1 break-words p-2">{contactDisplay}</div>
         </div>
+        {shipTo?.trim() ? (
+          /* ds-allow-raw-neutral: print ink — literal black-on-white output */
+          <div className="flex border-b border-r border-black" data-testid="repair-paper-ship-to">
+            {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
+            <div className={`shrink-0 border-r border-black bg-surface-canvas p-2 font-semibold ${isCompact ? 'w-28' : 'w-40'}`}>Ship To:</div>
+            <div className="min-w-0 flex-1 break-words p-2">{shipTo}</div>
+          </div>
+        ) : null}
       </div>
 
       {/* Price Section */}

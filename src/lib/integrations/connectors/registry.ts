@@ -8,7 +8,8 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   ebay: {
     provider: 'ebay',
     authKind: 'oauth',
-    capabilities: ['orders'],
+    // returns: buyer returns + reasons, imported by `/api/cron/returns/sync` (`src/lib/returns/returns-sync.ts`).
+    capabilities: ['orders', 'returns'],
     authorizeStartPath: '/api/ebay/connect',
     healthPath: '/api/ebay/health',
     // Lazy imports so the connection reader never pulls in the eBay client.
@@ -18,7 +19,8 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   amazon: {
     provider: 'amazon',
     authKind: 'oauth',
-    capabilities: ['orders'],
+    // returns: MFN + FBA returns reports, imported by `/api/cron/returns/sync`.
+    capabilities: ['orders', 'returns'],
     authorizeStartPath: '/api/amazon/oauth/start',
     healthPath: '/api/amazon/health',
     // Lazy import so the connection reader never pulls in the Amazon client.

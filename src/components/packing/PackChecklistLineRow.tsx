@@ -15,6 +15,7 @@ import type { KitPartDocument } from '@/lib/packing/kit-part-document';
 import { orderRowConditionLabel } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
 
+/** Pack checklist line row (consumed by `OrderPackChecklist`). Desktop UI removed 2026-10-08; kept for the mobile port. */
 interface PackChecklistLineRowProps {
   line: PackChecklistLineDto;
   checked: boolean;

@@ -16,6 +16,7 @@ import {
 import { useKioskSession } from '@/lib/kiosk/kiosk-session-store';
 import { paperworkTicketNumber, useNextTicketPreview } from '@/lib/kiosk/use-next-ticket-preview';
 import { KIOSK_UTILITY_SHEET } from '@/app/kiosk/kiosk-chrome';
+import { decodeShipToAddress, formatShipToOneLine } from '@/lib/customers/ship-to-address';
 
 export function KioskPaperworkPanel() {
   const session = useKioskSession();
@@ -39,8 +40,17 @@ export function KioskPaperworkPanel() {
         visitNotes: visit.notes,
         devices,
         ticketNumber: ticketNumber ?? '',
+        shipTo: formatShipToOneLine(decodeShipToAddress(session.customerAddress)),
       }),
-    [session.customerName, session.customerPhone, session.customerEmail, visit.notes, devices, ticketNumber],
+    [
+      session.customerName,
+      session.customerPhone,
+      session.customerEmail,
+      session.customerAddress,
+      visit.notes,
+      devices,
+      ticketNumber,
+    ],
   );
 
   return (

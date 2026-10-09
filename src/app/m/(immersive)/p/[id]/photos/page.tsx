@@ -3,6 +3,8 @@
 import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { MobilePackerPhotoStudio } from '@/components/mobile/photos/MobilePackerPhotoStudio';
+import { mobileJobReturn } from '@/lib/mobile/nav-trail';
+import { PACKING_PATHS } from '@/lib/nav/route-tree';
 
 function PhotoPageInner() {
   const params = useParams<{ id: string }>();
@@ -16,12 +18,10 @@ function PhotoPageInner() {
     Number.isSafeInteger(mobileScanEventIdRaw) && mobileScanEventIdRaw > 0
       ? mobileScanEventIdRaw
       : null;
-  // Guided Review capture is the default for /m/p/{id}/photos (plan §2b).
-  const stepParam = searchParams.get('step');
-  const spamMode = searchParams.get('mode') === 'spam';
-  const guided = !spamMode;
+  // Verify & finish after ✓ is the default; `?mode=spam` is the bare capture.
+  const guided = searchParams.get('mode') !== 'spam';
   const completePacking = searchParams.get('complete') === '1';
-  const initialStep = stepParam === 'box' ? 'box' : 'slip';
+  const title = searchParams.get('title')?.trim() || null;
 
   const validPackerLogId = Number.isFinite(packerLogId) && packerLogId > 0;
   if (!validPackerLogId) {
@@ -36,14 +36,16 @@ function PhotoPageInner() {
 
   return (
     <MobilePackerPhotoStudio
+      // A new desk scan replaces /m/p/<id>/photos in place: a fresh studio per pack, no carried-over count or Verify state.
+      key={packerLogId}
       packerLogId={packerLogId}
       orderId={orderId}
       orderRowId={Number.isSafeInteger(orderRowId) && orderRowId > 0 ? orderRowId : null}
       headerLabel={headerLabel}
-      returnHref={completePacking ? '/m/pick' : '/m/work'}
-      maxPhotos={10}
+      productTitle={title}
+      // Close always lands on the Packing photo feed unless the opener named another `?back=`.
+      returnHref={mobileJobReturn(searchParams.get('back')) ?? PACKING_PATHS.mobile}
       guided={guided}
-      initialStep={initialStep}
       completePacking={completePacking}
       scanClientEventId={scanClientEventId}
       mobileScanEventId={mobileScanEventId}

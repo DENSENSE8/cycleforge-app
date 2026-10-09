@@ -76,12 +76,14 @@ import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSectio
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { OrderEvidencePhotosButton } from './OrderEvidencePhotosButton';
+import { OrderReturnReason } from './OrderReturnReason';
 import { OrderPhotoStrip } from './OrderPhotoStrip';
 import { RecordFulfillmentSources } from '@/design-system/components/record-ledger/RecordFulfillmentSources';
 import type { UnitTimelinePhotoRowSource } from '@/lib/timeline/unit-photos-events';
 import { OrderPoLinksRow } from './OrderPoLinksRow';
 import { OrderNotesPanel } from './notes/OrderNotesPanel';
 import { requestOrderNoteFocus } from './notes/order-note-focus';
+import { requestOrderPhotos } from './order-photos-request';
 import { TrackingReplaceField } from './tracking/TrackingReplaceField';
 import { TrackingHistory } from './tracking/TrackingHistory';
 import { DeliveryPromise } from '@/design-system/components/record-ledger/DeliveryPromise';
@@ -96,7 +98,8 @@ import { useOrderChannel } from '@/hooks/useCatalog';
 import { platformDisplayName } from '@/lib/platform-display';
 import { orderCarrierEventsQuery, type CarrierEvent } from '@/lib/queries/carrier-events-query';
 import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
-import { fulfillmentCurrentStatus, hasExternalFulfillmentHandoff } from '@/lib/orders/order-fulfillment-summary';
+import { hasExternalFulfillmentHandoff, orderStatusTags } from '@/lib/orders/order-fulfillment-summary';
+import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
 
 /** One column of the record: the panel its sections stack in. */
 const COLUMN_CLASS = DESK_RECORD_COLUMN_CARD_CLASS;
@@ -153,18 +156,18 @@ export function OrderRecordTitle({ record, records }: { record: ShippedOrder; re
         ids={orderLines(record, records).map((line) => Number(line.id))}
         platformLabel={platformName}
         revealOpenOnHover
+        copyOnClick
       >
-        <span className="flex min-w-max flex-nowrap items-center gap-1 whitespace-nowrap" aria-label={`Order ${face} on ${platformName}`}>
-          <span className="shrink-0">{face}</span>
-          <span className="size-1 shrink-0 rounded-mode-pill bg-mode-edge" aria-hidden />
-          <span
-            className="shrink-0 text-role-data font-medium normal-case tracking-normal text-mode-muted"
-            data-testid="order-record-platform"
-          >
-            {platformName}
-          </span>
-        </span>
+        {/* The id alone is the face: a click copies it and the menu opens flush on ITS right edge (operator 2026-10-08). */}
+        <span className="shrink-0">{face}</span>
       </OrderAdminLinkAction>
+      <span className="size-1 shrink-0 rounded-mode-pill bg-mode-edge" aria-hidden />
+      <span
+        className="shrink-0 text-role-data font-medium normal-case tracking-normal text-mode-muted"
+        data-testid="order-record-platform"
+      >
+        {platformName}
+      </span>
       {orderedAt ? (
         <>
           <span className="size-1 shrink-0 rounded-mode-pill bg-mode-edge" aria-hidden />
@@ -203,6 +206,36 @@ export function OrderRecordStatus({ record, records }: { record: ShippedOrder; r
           {next.label}
         </span>
       ) : null}
+    </span>
+  );
+}
+
+/**
+ * Every status the order wears now — where it is (Buyer cancel, Picked, On
+ * the way…) and Urgent with its word — as pills at the very top right of the
+ * record header, left of the In place | Split switch (operator 2026-10-08).
+ * Pinned orange (owner 2026-09-29): a current status reads in ONE tone.
+ */
+export function OrderRecordStatusTags({ record, records }: { record: ShippedOrder; records: readonly ShippedOrder[] }) {
+  const tags = orderStatusTags(orderLines(record, records));
+  return (
+    <span className="flex min-w-0 shrink-0 items-center gap-1.5" data-testid="order-record-statuses">
+      {tags.map((tag) => (
+        <span
+          key={tag.id}
+          className={cn(
+            'inline-flex h-6 min-w-0 items-center gap-1.5 whitespace-nowrap rounded-mode-pill px-2 text-role-data font-semibold',
+            STATE_TONE_CLASSES.warning.pill,
+          )}
+          title={tag.detail ?? `Current status: ${tag.label}`}
+          aria-label={`Current status: ${tag.label}`}
+          data-testid="order-record-status-tag"
+          data-status={tag.id}
+        >
+          <span className={cn('size-1.5 shrink-0 rounded-full', STATE_TONE_CLASSES.warning.dot)} aria-hidden />
+          {tag.label}
+        </span>
+      ))}
     </span>
   );
 }
@@ -247,6 +280,8 @@ export function OrderRecordView({
   documentsRequest,
 }: OrderRecordViewProps) {
   const shows = new Set<OrderRecordSectionId>(VIEW_SPECS[viewKey].record);
+  // A read-only view (no verbs) paints no Actions panel, no More actions and binds no record keys but P (photos).
+  const readOnly = VIEW_SPECS[viewKey].verbs === null;
   const r = record as QueueRowRecord;
   const view = ordersCompoundView(record, {
     stateLabel: null,
@@ -330,13 +365,15 @@ export function OrderRecordView({
     );
   };
 
-  // The record's own keys (W · N · M, `ORDER_RECORD_KEYS`), listed in the `?` overview as "This record".
+  // The record's own keys (W · N · M · P, `ORDER_RECORD_KEYS`), listed in the `?` overview as "This record".
+  // Read only binds P alone: viewing the photos is not working the order.
   const slip = usePrintPackingSlip(Number(record.id));
   useOrderRecordKeys({
     enabled: paperwork == null,
-    onReplaceTracking: shows.has('facts') ? () => setReplacingTracking(true) : undefined,
-    onFocusNote: shows.has('note') ? () => requestOrderNoteFocus(Number(record.id)) : undefined,
-    onPrintSlip: slip.print,
+    onReplaceTracking: !readOnly && shows.has('facts') ? () => setReplacingTracking(true) : undefined,
+    onFocusNote: !readOnly && shows.has('note') ? () => requestOrderNoteFocus(Number(record.id)) : undefined,
+    onPrintSlip: readOnly ? undefined : slip.print,
+    onViewPhotos: () => requestOrderPhotos(Number(record.id)),
   });
 
   // ── F-pattern groups (owner 2026-09-27) ────────────────────────────────────
@@ -358,7 +395,6 @@ export function OrderRecordView({
   const multi = lines.length > 1;
   const allocateDetail = VIEW_SPECS[viewKey].recordPresentation === 'allocate';
   const externalFulfillmentVisible = allocateDetail && hasExternalFulfillmentHandoff(lines);
-  const currentFulfillment = fulfillmentCurrentStatus(lines);
   const buyerNote = String(record.buyer_note ?? '').trim() || null;
   const immediateOrderTotal = lines.reduce<number | null>((total, line) => {
     if (line.sale_amount == null || line.sale_amount === '') return total;
@@ -404,59 +440,48 @@ export function OrderRecordView({
     </span>
   ) : undefined;
 
-  const fulfilmentGroup = shows.has('stages') ? (
-    <RecordGroup
-      title="Fulfillment"
-      titleAccessory={
-        allocateDetail ? (
-          // Pinned orange (owner 2026-09-29): the current status reads in ONE tone, whatever the stage.
-          <span
-            className={cn(
-              'inline-flex h-6 min-w-0 items-center gap-1.5 rounded-mode-pill px-2 text-role-data font-semibold',
-              STATE_TONE_CLASSES.warning.pill,
-            )}
-            title={currentFulfillment.detail ?? `Current status: ${currentFulfillment.label}`}
-            aria-label={`Current status: ${currentFulfillment.label}`}
-            data-testid="fulfillment-current-status"
-          >
-            <span className={cn('size-1.5 shrink-0 rounded-full', STATE_TONE_CLASSES.warning.dot)} aria-hidden />
-            <span className="truncate">{currentFulfillment.label}</span>
-          </span>
-        ) : undefined
-      }
-      action={fulfillmentDeadline}
-      testId="order-record-chain"
-      singleLineHeader
-    >
-      {allocateDetail ? (
-        <RecordFulfillmentSources
-          key={record.id}
-          internal={lines.map((line) => (
-            <OrderLineFulfilment
-              key={line.id}
-              {...lineProps(line)}
-              assign={shows.has('assign')}
-              named={multi}
-              compact
+  // The return reason sits on top of Fulfillment wherever the record paints it (operator 2026-10-09).
+  const fulfilmentGroup = (
+    <>
+      <OrderReturnReason key={`return:${record.id}`} orderId={Number(record.id)} />
+      {shows.has('stages') ? (
+        <RecordGroup
+          title="Fulfillment"
+          action={fulfillmentDeadline}
+          testId="order-record-chain"
+          singleLineHeader
+        >
+          {allocateDetail ? (
+            <RecordFulfillmentSources
+              key={record.id}
+              internal={lines.map((line) => (
+                <OrderLineFulfilment
+                  key={line.id}
+                  {...lineProps(line)}
+                  assign={shows.has('assign')}
+                  named={multi}
+                  compact
+                />
+              ))}
+              external={externalFulfillmentVisible ? <CarrierFulfillmentRail orderId={Number(record.id)} record={record} /> : null}
             />
-          ))}
-          external={externalFulfillmentVisible ? <CarrierFulfillmentRail orderId={Number(record.id)} record={record} /> : null}
-        />
-      ) : (
-        <div className="min-w-0">
-          {lines.map((line) => (
-            <OrderLineFulfilment
-              key={line.id}
-              {...lineProps(line)}
-              assign={shows.has('assign')}
-              named={multi}
-              compact={false}
-            />
-          ))}
-        </div>
-      )}
-    </RecordGroup>
-  ) : null;
+          ) : (
+            <div className="min-w-0">
+              {lines.map((line) => (
+                <OrderLineFulfilment
+                  key={line.id}
+                  {...lineProps(line)}
+                  assign={shows.has('assign')}
+                  named={multi}
+                  compact={false}
+                />
+              ))}
+            </div>
+          )}
+        </RecordGroup>
+      ) : null}
+    </>
+  );
 
   const itemsGroup = shows.has('item') ? (
     <RecordGroup title={multi ? `Items · ${lines.length}` : 'Items'} testId="order-record-items">
@@ -644,7 +669,7 @@ export function OrderRecordView({
   // information category and paints its verbs in the Actions panel right
   // under it — every verb spelled out with its key (operator 2026-10-08).
   // The panel stays beside Paperwork too, so the record's keys keep firing.
-  const actionsPanel = allocateDetail ? (
+  const actionsPanel = allocateDetail && !readOnly ? (
     <RecordGroup title="Actions" testId="order-record-actions-panel">
       <OrderRecordActionStrip key={record.id} record={record} viewKey={viewKey} face="panel" />
     </RecordGroup>
@@ -691,7 +716,7 @@ export function OrderRecordView({
           </EvidenceDisclosure>
         </div>
       ) : null}
-      {!allocateDetail && moreVerbs.length > 0 ? (
+      {!allocateDetail && !readOnly && moreVerbs.length > 0 ? (
         <RecordGroup title="More actions" testId="order-record-more-actions" className="pb-2">
           <div className="flex flex-col px-2">
             {moreVerbs.map((verb) => (
@@ -804,7 +829,7 @@ function OrderItem({
   onOpenItemPaperwork: (itemNumber: string) => void;
   /** Keep the line price on the Floor (a desk with no Payment group — Exceptions); otherwise price is off the floor. */
   priceOnFloor: boolean;
-  /** The desk edits the order's facts: the platform picker (open line) and the listing link editor. */
+  /** The desk edits the order's facts: the platform picker (open line), the listing link editor, condition, qty and the catalog photo. Off = the item reads only. */
   editFacts: boolean;
 }) {
   const view = ordersCompoundView(line, { stateLabel: null, delayDays: null, todayKey });
@@ -819,6 +844,7 @@ function OrderItem({
   const queryClient = useQueryClient();
   const itemNumber = String(line.item_number ?? '').trim() || null;
   const skuCatalogId = Number(line.sku_catalog_id) > 0 ? Number(line.sku_catalog_id) : null;
+  const conditionLabel = conditionGradeTableLabel(line.condition);
 
   return (
     <RecordItem
@@ -829,7 +855,7 @@ function OrderItem({
       photo={{
         src: view.thumbUrl ?? null,
         onOpen: () => setPhotosOpen(true),
-        upload: skuCatalogId
+        upload: skuCatalogId && editFacts
           ? { skuCatalogId, onUploaded: () => void queryClient.invalidateQueries({ queryKey: ['orders'] }) }
           : null,
       }}
@@ -876,10 +902,12 @@ function OrderItem({
       left={[
         {
           label: 'Cond',
-          value: (
+          value: editFacts ? (
             <span className="block w-24">
               <LedgerCondition value={line.condition ?? null} onCommit={(value) => commits.handleCommitCondition(line, value)} />
             </span>
+          ) : (
+            <RecordItemValue value={conditionLabel === EMPTY_META_DASH ? null : conditionLabel} historyKind="Condition" />
           ),
         },
         ...(serials.length > 0
@@ -896,10 +924,12 @@ function OrderItem({
       right={[
         {
           label: 'Qty',
-          value: (
+          value: editFacts ? (
             <span className="block h-8 w-20">
               <LedgerQty bare value={units} onCommit={(value) => commits.handleCommitSubtitleField(line, 'orders.qty', value)} />
             </span>
+          ) : (
+            <RecordItemValue value={String(units)} historyKind="Quantity" />
           ),
         },
         ...(priceOnFloor

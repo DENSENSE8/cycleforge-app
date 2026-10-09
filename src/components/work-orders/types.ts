@@ -35,7 +35,7 @@ export interface WorkOrderRow {
   priority: number;
   deadlineAt: string | null;
   notes: string | null;
-  /** Marketplace buyer note (`orders.buyer_note`) — the NOTE badge + pack interlock. Orders only. */
+  /** Marketplace buyer note (`orders.buyer_note`) — the NOTE badge. Orders only. */
   buyerNote?: string | null;
   assignedAt: string | null;
   updatedAt: string | null;

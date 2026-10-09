@@ -9,6 +9,8 @@
 import { CollapseItem } from '@/design-system/components/Collapse';
 import { locationStockPositionFace, locationStockRowId, type LocationStockTableRow } from '@/lib/inventory/location-stock-row';
 import { formatDateTimePST } from '@/utils/date';
+import { cn } from '@/utils/_cn';
+import { stockQtyToneClass } from '@/design-system/tokens/stock-qty';
 import { stockLastTouch, type StockRowModel } from './stock-card-model';
 
 const SOURCE_LABEL: Readonly<Record<LocationStockTableRow['source'], string>> = {
@@ -43,7 +45,7 @@ export function StockRackPeek({ model, testIdPrefix }: { model: StockRowModel; t
                 {locationStockPositionFace(item) ?? 'No position'}
               </dd>
               <dd className="min-w-0 truncate font-mono text-text-default">{item.sku || '—'}</dd>
-              <dd className="text-right font-semibold tabular-nums text-text-default">{item.qty}</dd>
+              <dd className={cn('text-right font-semibold tabular-nums', stockQtyToneClass(item.qty))}>{item.qty}</dd>
               <dd className="min-w-0 truncate tabular-nums text-text-muted">{stamp(item.last_counted)}</dd>
               <dd className="min-w-0 truncate tabular-nums text-text-muted">{stamp(item.last_moved)}</dd>
             </div>

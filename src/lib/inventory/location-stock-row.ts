@@ -68,6 +68,13 @@ export interface LocationStockTableRow {
   image_url: string | null;
   /** Full-resolution URL of the SKU's own cover photo (null when the cover is a catalog/Zoho image). */
   cover_photo_url: string | null;
+  /**
+   * Thumb URL of the SKU's most recently attached `SKU_STOCK` photo (newest
+   * link), and that instant — the bay walk shows, per level, the photo of the
+   * item photographed last. Null when the SKU has no photo of its own.
+   */
+  latest_photo_url: string | null;
+  latest_photo_at: string | null;
   /** A floor-minted placeholder SKU (`TMP-…`) awaiting its Zoho pairing. */
   is_provisional: boolean;
   source: LocationStockSource;

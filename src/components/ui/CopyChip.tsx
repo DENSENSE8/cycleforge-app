@@ -11,7 +11,7 @@ import type { OptimisticSerialFlag } from '@/lib/receiving/optimistic-serials';
 import { useChipTooltip, useCopyChip } from '@/hooks';
 import { conditionGradeChipStyleOrPending } from '@/lib/condition-tone';
 import { conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
-import { skuScanPrefixBeforeColon, getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
+import { skuScanPrefixBeforeColon } from '@/hooks/useExternalItemUrl';
 import {
   EMPTY_CHIP_DISPLAY,
   QUIET_CHIP_EMPTY,
@@ -742,16 +742,8 @@ export function TrackingOrSkuScanChip({
   const display = getLast8(raw);
   if (isSkuFormattedScanRef(raw)) {
     const sku = skuScanPrefixBeforeColon(raw);
-    const productUrl = getExternalUrlByItemNumber(sku);
     return (
       <>
-        <PlatformChip
-          label="ecwid"
-          iconClass="text-blue-600"
-          onClick={() => {
-            if (productUrl) window.open(productUrl, '_blank', 'noopener,noreferrer');
-          }}
-        />
         <SourceOrderChip value={sku} display={getLast8(sku)} dense={dense} />
         <SkuScanRefChip value={raw} display={display} dense={dense} />
       </>

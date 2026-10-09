@@ -87,6 +87,7 @@ export function LineNotesCard({
   primaryActionDisabled = false,
   statusStamps,
   onOpenStatusHistory,
+  onOpenLocations,
   headerAction,
   onComposerModeChange,
   onComposerFocus,
@@ -166,6 +167,8 @@ export function LineNotesCard({
   primaryActionDisabled?: boolean;
   /** Where the header ⓘ sends the operator. */
   onOpenStatusHistory?: () => void;
+  /** Footer location pill → this station's Displays › Locations leaf. */
+  onOpenLocations?: () => void;
   /** Repoint the header ⓘ at a different job, with its own label. */
   headerAction?: { label: string; onClick: () => void; pressed?: boolean };
   /** Line stamps for the notes Info dialog + current putaway face. */
@@ -646,6 +649,7 @@ export function LineNotesCard({
             currentLocationName={statusStamps?.staged_location_name}
             currentLocationBarcode={statusStamps?.staged_location_barcode}
             currentLocationRoom={statusStamps?.staged_location_room}
+            onOpenLocations={onOpenLocations}
           />
         }
         trailingAction={trailingAction}
