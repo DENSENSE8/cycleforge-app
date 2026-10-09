@@ -3,7 +3,10 @@ import test from 'node:test';
 import {
   removableOrderRowIds,
   describeScanOut,
+  planRemoval,
   planScanOut,
+  selectedCardIds,
+  selectedLinks,
   selectedOrderRowIds,
   selectionInStage,
 } from './bulk-actions';
@@ -63,4 +66,40 @@ test('Remove from list takes only order cards still in the building', () => {
     ]),
     [3, 5],
   );
+});
+
+test('Flag takes every selected card, unlinked ones included, and offers reasons by the kinds selected', () => {
+  const cards = [
+    { orderRowId: 3, link: 'order' as const },
+    { orderRowId: -182938, link: 'package' as const },
+    { orderRowId: 3, link: 'order' as const },
+  ];
+  assert.deepEqual(selectedCardIds(cards), [3, -182938]);
+  assert.deepEqual(selectedLinks(cards), ['order', 'package']);
+});
+
+test('Remove from list takes orders or unlinked cards, never both at once', () => {
+  assert.deepEqual(
+    planRemoval([
+      { orderRowId: 3, link: 'order', stage: 'packed' },
+      { orderRowId: 4, link: 'order', stage: 'scanned_out' },
+    ]),
+    { kind: 'orders', ids: [3] },
+  );
+  assert.deepEqual(
+    planRemoval([
+      { orderRowId: -182938, link: 'package', stage: 'scanned_out' },
+      { orderRowId: -1000000042, link: 'scan', stage: 'scanned_out' },
+      { orderRowId: 4, link: 'order', stage: 'scanned_out' },
+    ]),
+    { kind: 'unlinked', ids: [-182938, -1000000042] },
+  );
+  assert.deepEqual(
+    planRemoval([
+      { orderRowId: 3, link: 'order', stage: 'packed' },
+      { orderRowId: -182938, link: 'package', stage: 'scanned_out' },
+    ]),
+    { kind: 'mixed' },
+  );
+  assert.deepEqual(planRemoval([{ orderRowId: 4, link: 'order', stage: 'scanned_out' }]), { kind: 'none' });
 });

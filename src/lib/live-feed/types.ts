@@ -1,5 +1,6 @@
 /** The Live feed's wire shapes (`/api/live-feed/board`, `/api/live-feed/lane`) — always today's board. Client-safe. */
 
+import type { LiveFeedFlag } from '@/lib/live-feed/flags';
 import type { PackageStage } from '@/lib/live-feed/stages';
 
 /** One step a package took: when, and who did it. */
@@ -69,6 +70,8 @@ export interface PackageCard {
   noteCount: number;
   latestNote: string | null;
   tags: string[];
+  /** Active flags (`live_feed_flags`): reason, note, who and when — oldest first. Any card can carry them. */
+  flags: LiveFeedFlag[];
   /**
    * The order's documents, as the docs popover's tabs count them: a shipping
    * label, a packing slip (a linked non-label document) and its product
@@ -128,6 +131,12 @@ export interface LiveFeedFacetOption {
 export interface LiveFeedFacets {
   carrier: LiveFeedFacetOption[];
   channel: LiveFeedFacetOption[];
+}
+
+/** The sidebar's own facet read adds what a board read does not count: documents owed and flag reasons. */
+export interface LiveFeedSidebarFacets extends LiveFeedFacets {
+  docs: LiveFeedFacetOption[];
+  flag: LiveFeedFacetOption[];
 }
 
 export interface PackageBoard {

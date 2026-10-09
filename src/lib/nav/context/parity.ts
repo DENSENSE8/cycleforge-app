@@ -346,6 +346,8 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'q', 'src/lib/live-feed/route.ts LIVE_FEED_PARAMS.q (Find) → NAV_PAGE_DECLS[live-feed].search'],
     ['param', 'carrier', 'src/lib/live-feed/route.ts readLiveFeedFilters → NAV_FACET_GROUPS live-feed (Carrier facet)'],
     ['param', 'channel', 'src/lib/live-feed/route.ts readLiveFeedFilters → NAV_FACET_GROUPS live-feed (Channel facet)'],
+    ['param', 'docs', 'src/lib/live-feed/route.ts readLiveFeedFilters → NAV_FACET_GROUPS live-feed (Documents owed facet)'],
+    ['param', 'flag', 'src/lib/live-feed/route.ts readLiveFeedFilters → NAV_FACET_GROUPS live-feed (Flagged facet)'],
     ['param', 'staff', 'src/lib/live-feed/route.ts readLiveFeedFilters → NAV_PAGE_DECLS[live-feed].controls.staff'],
     ['param', 'sort', 'src/lib/live-feed/route.ts LIVE_FEED_PARAMS.sort → per-column order menu (StageColumnHeader; owner 2026-10-05, board exempt from the sidebar placement law)'],
   ],

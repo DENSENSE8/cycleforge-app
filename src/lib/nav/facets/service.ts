@@ -32,7 +32,7 @@ import { countPrintFiles } from '@/lib/label-prints/print-files';
 import { stationLiveFacets } from '@/lib/nav/facets/station-live';
 import { liveFeedFacets } from '@/lib/nav/facets/live-feed';
 import type { LiveFeedFilters } from '@/lib/live-feed/route';
-import type { LiveFeedFacets } from '@/lib/live-feed/types';
+import type { LiveFeedSidebarFacets } from '@/lib/live-feed/types';
 import { loadLiveFeedFacets } from '@/lib/live-feed/load';
 import { isSupportFacetContext, supportFacets } from '@/lib/nav/facets/support';
 import type { SupportListRow } from '@/lib/support/list/support-list';
@@ -50,7 +50,7 @@ export interface NavFacetsDeps {
   /** The Support list's rows (`listSupportRows`), cut by the list's own predicates. */
   supportRows: (orgId: OrgId, q: string | null, nowMs: number) => Promise<SupportListRow[]>;
   /** The Live feed board's own facet read (`loadLiveFeedFacets`). */
-  liveFeedFacets: (orgId: OrgId, filters: LiveFeedFilters) => Promise<LiveFeedFacets>;
+  liveFeedFacets: (orgId: OrgId, filters: LiveFeedFilters) => Promise<LiveFeedSidebarFacets>;
 }
 
 export const defaultNavFacetsDeps: NavFacetsDeps = {

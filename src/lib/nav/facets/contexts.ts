@@ -163,10 +163,13 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     { id: 'job', label: 'Job', param: 'job', multi: true },
     { id: 'outcome', label: 'Outcome', param: 'outcome', multi: true },
   ],
-  // The board's own params (`LIVE_FEED_PARAMS`, `readLiveFeedFilters`): comma lists of carrier / channel keys.
+  // The board's own params (`LIVE_FEED_PARAMS`, `readLiveFeedFilters`): comma lists of carrier / channel keys,
+  // documents an order still owes (`label`/`slip`/`paperwork`), and active flag reasons (`live_feed_flags`).
   'live-feed': [
     { id: 'carrier', label: 'Carrier', param: 'carrier', multi: true },
     { id: 'channel', label: 'Platform', param: 'channel', multi: true },
+    { id: 'docs', label: 'Documents owed', param: 'docs', multi: true },
+    { id: 'flag', label: 'Flagged', param: 'flag', multi: true },
   ],
   // Inventory › Stock: health, then the address walked one part at a time —
   // Room › Aisle › Bay › Level › Position, each single-pick, each shown only

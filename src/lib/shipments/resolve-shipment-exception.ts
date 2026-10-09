@@ -151,7 +151,8 @@ export async function resolveShipmentException(
 
 // ─── Default (database) collaborators ────────────────────────────────────────
 
-async function loadTarget(orgId: OrgId, shipmentId: number): Promise<ResolveTarget | null> {
+/** The package's tracking and its open exception (by shipment or tracking key), if any. */
+export async function loadShipmentResolveTarget(orgId: OrgId, shipmentId: number): Promise<ResolveTarget | null> {
   const stn = await readVisibleShipment(orgId, shipmentId);
   if (!stn) return null;
   const exceptions = await withTenantTransaction(orgId, (client) =>
@@ -179,17 +180,27 @@ function toId(value: number | string | null): number | null {
   return value == null ? null : Number(value);
 }
 
-/** The link write, inside the caller's tenant transaction (GUC already set). */
-async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInput): Promise<ApplyResult> {
-  const ex = (
-    await client.query<LockedException>(
-      `SELECT id, status, shipment_id, notes FROM orders_exceptions
-        WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
-      [input.exceptionId, orgId],
-    )
-  ).rows[0];
-  if (!ex || ex.status !== 'open') return { ok: false, code: 'not_open' };
+/** What a shipment → order link wrote. */
+export interface ShipmentOrderLink {
+  order: { id: number; order_id: string | null; shipment_id: number | string | null; status: string | null };
+  orderShipmentId: number | null;
+  linkRole: 'ORDER_PRIMARY' | 'ORDER_SPLIT';
+  boxSeq: number;
+  statusAfter: string | null;
+}
 
+/**
+ * Link a box to an order inside the caller's tenant transaction (GUC already
+ * set): an ORDER link (primary when the order has none), `orders.shipment_id`
+ * when it was empty, the order `packed` when a completed ORDERS pack of the box
+ * exists, and the box's PACK scans re-enriched. Null when the org holds no such order.
+ * Shared by the exception resolve and the Live feed's pair (`src/lib/live-feed/pair.ts`).
+ */
+export async function linkShipmentToOrderInTx(
+  client: TxClient,
+  orgId: OrgId,
+  input: { shipmentId: number; orderRowId: number; staffId: number | null; source: string; metadata: Record<string, unknown> },
+): Promise<ShipmentOrderLink | null> {
   const order = (
     await client.query<{ id: number; order_id: string | null; shipment_id: number | string | null; status: string | null }>(
       `SELECT id, order_id, shipment_id, status FROM orders
@@ -197,7 +208,7 @@ async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInp
       [input.orderRowId, orgId],
     )
   ).rows[0];
-  if (!order) return { ok: false, code: 'order_not_found' };
+  if (!order) return null;
 
   const primaryLink = await client.query(
     `SELECT 1 FROM shipment_links
@@ -219,9 +230,9 @@ async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInp
       direction: 'OUTBOUND',
       isPrimary: makePrimary,
       role: linkRole,
-      source: 'shipment-exception-resolve',
+      source: input.source,
       linkedBy: input.staffId,
-      metadata: { orders_exception_id: input.exceptionId, client_event_id: input.clientEventId },
+      metadata: input.metadata,
     },
     client,
   );
@@ -251,13 +262,6 @@ async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInp
     [order.id, orgId, input.shipmentId],
   );
 
-  await client.query(
-    `UPDATE orders_exceptions
-        SET status = 'resolved', shipment_id = COALESCE(shipment_id, $3), updated_at = NOW()
-      WHERE id = $1 AND organization_id = $2`,
-    [ex.id, orgId, input.shipmentId],
-  );
-
   // The Shipped feed reads the order off the PACK enrichment projection;
   // recompute this package's scans so the row paints the order now.
   const salIds = await client.query<{ id: number }>(
@@ -268,6 +272,43 @@ async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInp
   await computePackerLogEnrichment(
     client,
     salIds.rows.map((r) => Number(r.id)),
+  );
+
+  return {
+    order,
+    orderShipmentId,
+    linkRole,
+    boxSeq: link.box_seq,
+    statusAfter: statusRes.rows[0]?.status ?? order.status,
+  };
+}
+
+/** The link write, inside the caller's tenant transaction (GUC already set). */
+async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInput): Promise<ApplyResult> {
+  const ex = (
+    await client.query<LockedException>(
+      `SELECT id, status, shipment_id, notes FROM orders_exceptions
+        WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+      [input.exceptionId, orgId],
+    )
+  ).rows[0];
+  if (!ex || ex.status !== 'open') return { ok: false, code: 'not_open' };
+
+  const linked = await linkShipmentToOrderInTx(client, orgId, {
+    shipmentId: input.shipmentId,
+    orderRowId: input.orderRowId,
+    staffId: input.staffId,
+    source: 'shipment-exception-resolve',
+    metadata: { orders_exception_id: input.exceptionId, client_event_id: input.clientEventId },
+  });
+  if (!linked) return { ok: false, code: 'order_not_found' };
+  const { order, orderShipmentId, linkRole } = linked;
+
+  await client.query(
+    `UPDATE orders_exceptions
+        SET status = 'resolved', shipment_id = COALESCE(shipment_id, $3), updated_at = NOW()
+      WHERE id = $1 AND organization_id = $2`,
+    [ex.id, orgId, input.shipmentId],
   );
 
   return {
@@ -289,10 +330,10 @@ async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInp
         shipment_id: toId(ex.shipment_id) ?? input.shipmentId,
         order_row_id: Number(order.id),
         order_ref: order.order_id,
-        order_status: statusRes.rows[0]?.status ?? order.status,
-        order_shipment_id: orderShipmentId ?? (makePrimary ? input.shipmentId : null),
+        order_status: linked.statusAfter,
+        order_shipment_id: orderShipmentId ?? (linkRole === 'ORDER_PRIMARY' ? input.shipmentId : null),
         link_role: linkRole,
-        box_seq: link.box_seq,
+        box_seq: linked.boxSeq,
       },
     },
   };
@@ -342,7 +383,7 @@ async function closeExceptionInTx(client: TxClient, orgId: OrgId, input: CloseIn
 const defaultDeps: ResolveShipmentExceptionDeps = {
   claim: ({ orgId, staffId, key }, produce) =>
     withIdempotencyClaim(pool, { orgId, staffId, idempotencyKey: key, route: RESOLVE_SHIPMENT_EXCEPTION_ROUTE }, produce),
-  loadTarget,
+  loadTarget: loadShipmentResolveTarget,
   linkOrder: (orgId, input) => withTenantTransaction(orgId, (client) => linkOrderInTx(client, orgId, input)),
   close: (orgId, input) => withTenantTransaction(orgId, (client) => closeExceptionInTx(client, orgId, input)),
   getRecord: getShipmentRecord,

@@ -26,6 +26,12 @@ export const LIVE_FEED_BOARD_API = '/api/live-feed/board';
 export const LIVE_FEED_LANE_API = '/api/live-feed/lane';
 /** Packages by find text (`q`) or by order row ids (`ids`) — inside the board's scope. */
 export const LIVE_FEED_PACKAGES_API = '/api/live-feed/packages';
+/** Flag cards with a reason (`POST`) / clear (`DELETE`) — `live_feed_flags`. */
+export const LIVE_FEED_FLAGS_API = '/api/live-feed/flags';
+/** Remove unlinked cards from the list (`POST`) / put back (`DELETE`) — `live_feed_dismissals`. */
+export const LIVE_FEED_DISMISSALS_API = '/api/live-feed/dismissals';
+/** Pair an unlinked card to an order (backfill). */
+export const LIVE_FEED_PAIR_API = '/api/live-feed/pair';
 
 export const LIVE_FEED_PARAMS = {
   /** The open package's order row id. */
@@ -38,6 +44,10 @@ export const LIVE_FEED_PARAMS = {
   channel: 'channel',
   /** Only packages this staffer is assigned to, picked or packed (`staff.id`). */
   staff: 'staff',
+  /** Facets: the documents an order still owes — `label`, `slip`, `paperwork` (`LIVE_FEED_DOCS_OWED`). Order cards only. */
+  docs: 'docs',
+  /** Facets: active flag reasons (`live_feed_flags`, `LIVE_FEED_FLAG_REASONS`). */
+  flag: 'flag',
   /** Column order, non-defaults only: `to_pick:latest,scanned_out:oldest` (`PACKAGE_STAGE_SORTS`). */
   sort: 'sort',
   /** API only. */
@@ -51,10 +61,24 @@ export const LIVE_FEED_PARAMS = {
 /** Cards per stage page. */
 export const LIVE_FEED_PAGE_SIZE = 25;
 
-/** The board's record filters — the sidebar's carrier / channel facets and staff control (the phone's "Mine") — and each column's chosen order. */
+/** A document an order can still owe — the docs popover's three tabs. */
+export const LIVE_FEED_DOCS_OWED = ['label', 'slip', 'paperwork'] as const;
+export type LiveFeedDocOwed = (typeof LIVE_FEED_DOCS_OWED)[number];
+
+export const LIVE_FEED_DOCS_OWED_LABEL: Record<LiveFeedDocOwed, string> = {
+  label: 'Owes shipping label',
+  slip: 'Owes packing slip',
+  paperwork: 'Owes product paperwork',
+};
+
+/** The board's record filters — the sidebar's carrier / channel / documents / flag facets and staff control (the phone's "Mine") — and each column's chosen order. */
 export interface LiveFeedFilters {
   carriers: string[] | null;
   channels: string[] | null;
+  /** Owes any of these documents (OR). */
+  docs: LiveFeedDocOwed[] | null;
+  /** Holds any of these active flag reasons (OR). */
+  flags: string[] | null;
   staffId: number | null;
   /** Columns whose order is NOT their default; `resolvePackageSorts` fills the rest. */
   sorts: Partial<Record<PackageStage, PackageSort>> | null;
@@ -96,9 +120,15 @@ function readSorts(params: ParamReader): Partial<Record<PackageStage, PackageSor
 
 export function readLiveFeedFilters(params: ParamReader): LiveFeedFilters {
   const staff = Number(params.get(LIVE_FEED_PARAMS.staff));
+  const docs = readKeys(params, LIVE_FEED_PARAMS.docs, (value) => value.toLowerCase())?.filter((value): value is LiveFeedDocOwed =>
+    (LIVE_FEED_DOCS_OWED as readonly string[]).includes(value),
+  );
+  const flags = readKeys(params, LIVE_FEED_PARAMS.flag, (value) => value.toLowerCase())?.filter((value) => /^[a-z][a-z0-9_]{1,39}$/.test(value));
   return {
     carriers: readKeys(params, LIVE_FEED_PARAMS.carrier, (value) => value.toUpperCase()),
     channels: readKeys(params, LIVE_FEED_PARAMS.channel, (value) => value.toLowerCase()),
+    docs: docs?.length ? docs : null,
+    flags: flags?.length ? flags : null,
     staffId: Number.isInteger(staff) && staff > 0 ? staff : null,
     sorts: readSorts(params),
   };
@@ -118,6 +148,8 @@ export function liveFeedFilterParams(filters: LiveFeedFilters): URLSearchParams 
   const params = new URLSearchParams();
   if (filters.carriers) params.set(LIVE_FEED_PARAMS.carrier, filters.carriers.join(','));
   if (filters.channels) params.set(LIVE_FEED_PARAMS.channel, filters.channels.join(','));
+  if (filters.docs) params.set(LIVE_FEED_PARAMS.docs, filters.docs.join(','));
+  if (filters.flags) params.set(LIVE_FEED_PARAMS.flag, filters.flags.join(','));
   if (filters.staffId != null) params.set(LIVE_FEED_PARAMS.staff, String(filters.staffId));
   const sort = liveFeedSortParam(filters.sorts);
   if (sort) params.set(LIVE_FEED_PARAMS.sort, sort);

@@ -14,11 +14,18 @@
  * into React state, since a `replaceState` write by this board must re-render
  * it at once), `q` (find: the sidebar's NavFind on a desk, the phone's own
  * field, or a gun scan anywhere on the board), and the sidebar's `carrier` /
- * `channel` facets and `staff` filter (the phone's "Mine").
+ * `channel` / `docs` / `flag` facets and `staff` filter (the phone's "Mine").
  *
- * Keys (outside text fields): Esc closes the package, else clears the
- * selection; J / K walk the open package's column; 1–4 jump to a stage; `/`
- * focuses find.
+ * A card verb keeps the board where it was: Pair to order follows the card to
+ * the order row it became, Remove from list steps to the next card in its
+ * column (else closes), and both drop the card from the selection.
+ *
+ * Keys (outside text fields, never under an open overlay or dialog): Esc
+ * closes the package, else clears the selection; J / K (↓ / ↑) walk the open
+ * package's column, or open the first package when none is; X checks the open
+ * package; 1–4 jump to a stage; `/` focuses find. With a package open its
+ * verbs take F (Flag…), R (Remove from list…), L (Pair to order…, a card no
+ * order owns) and D (Labels & paperwork, an order) — `PackageDetail`'s strip.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -34,6 +41,7 @@ import { SearchField } from '@/design-system/primitives/SearchField';
 import { Spinner } from '@/design-system/primitives/Spinner';
 import { useIsMobile } from '@/hooks/_ui';
 import { requestDeskSearchFocus } from '@/lib/outbound/desk-search-store';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { LIVE_FEED_QUERY_ROOT, liveFeedBoardQuery, liveFeedPackagesQuery } from '@/lib/live-feed/query';
 import { LIVE_FEED_PARAMS, liveFeedSortParam, readLiveFeedFilters, readLiveFeedOpen } from '@/lib/live-feed/route';
 import {
@@ -68,7 +76,14 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
   const searchParams = useSearchParams() ?? EMPTY_PARAMS;
   const replace = useReplaceSearchParams();
   const queryClient = useQueryClient();
-  const filterKey = [LIVE_FEED_PARAMS.carrier, LIVE_FEED_PARAMS.channel, LIVE_FEED_PARAMS.staff, LIVE_FEED_PARAMS.sort]
+  const filterKey = [
+    LIVE_FEED_PARAMS.carrier,
+    LIVE_FEED_PARAMS.channel,
+    LIVE_FEED_PARAMS.docs,
+    LIVE_FEED_PARAMS.flag,
+    LIVE_FEED_PARAMS.staff,
+    LIVE_FEED_PARAMS.sort,
+  ]
     .map((name) => searchParams.get(name) ?? '')
     .join('|');
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `filterKey` is the filters' identity.
@@ -189,23 +204,58 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
   }, []);
   const checkedIds = useMemo(() => new Set(checked.keys()), [checked]);
   const checkMode = checked.size > 0 || selectMode ? 'shown' : phone ? 'off' : 'hover';
+  const uncheck = useCallback((ids: readonly number[]) => {
+    setChecked((was) => {
+      if (!ids.some((id) => was.has(id))) return was;
+      const next = new Map(was);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  }, []);
+
+  // ── A card verb moves the board on: a paired card is now its order's row; a removed one steps to its neighbour.
+  const followPaired = useCallback(
+    (orderRowId: number) => {
+      if (openId != null) uncheck([openId]);
+      setOpened(null);
+      writeOpen(orderRowId);
+    },
+    [openId, uncheck, writeOpen],
+  );
+  const stepPastLeft = useCallback(
+    (ids: readonly number[]) => {
+      uncheck(ids);
+      const items = located?.column.items ?? [];
+      const next = located ? (items.slice(located.index + 1).find((item) => !ids.includes(item.orderRowId)) ?? null) : null;
+      if (next) open(next);
+      else close();
+    },
+    [close, located, open, uncheck],
+  );
 
   // ── Phone: one stage at a time.
   const pager = useColumnBoardPager(PACKAGE_STAGES, phone);
   const activeStage: PackageStage = isPackageStage(pager.activeId) ? pager.activeId : 'to_pick';
   const phoneFindRef = useRef<HTMLInputElement>(null);
 
-  // Keys: Esc, J / K, 1–4, `/`.
+  // Keys: Esc, J / K, X, 1–4, `/` (the open package's verbs bind their own).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      // A dialog, menu or the docs sheet owns the keyboard while it is up.
+      if (hasOpenOverlay()) return;
       const stage = PACKAGE_STAGES[Number(event.key) - 1];
+      const walk = event.key === 'j' || event.key === 'ArrowDown' ? 1 : event.key === 'k' || event.key === 'ArrowUp' ? -1 : 0;
       if (event.key === 'Escape' && openId != null) close();
       else if (event.key === 'Escape' && checked.size > 0) clearChecks();
-      else if (openId != null && (event.key === 'j' || event.key === 'ArrowDown')) step(1);
-      else if (openId != null && (event.key === 'k' || event.key === 'ArrowUp')) step(-1);
+      else if (openId != null && walk !== 0) step(walk);
+      else if (openId == null && walk !== 0) {
+        const first = columns.find((column) => column.items.length > 0)?.items[0];
+        if (!first) return;
+        open(first);
+      } else if (event.key === 'x' && openCard) toggleCheck(openCard);
       else if (stage && /^[1-4]$/.test(event.key)) {
         if (phone) pager.show(stage);
         const column = document.querySelector<HTMLElement>(`[data-testid="live-feed-column-${stage}"]`);
@@ -219,19 +269,7 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [openId, checked.size, close, clearChecks, step, phone, pager]);
-
-  // A gun scan anywhere on the board is a find (the global wedge listener lets the page claim it first).
-  useEffect(() => {
-    const onScan = (event: Event) => {
-      const value = (event as CustomEvent<{ value: string }>).detail?.value?.trim();
-      if (!value) return;
-      event.preventDefault();
-      writeParam(LIVE_FEED_PARAMS.q, value);
-    };
-    window.addEventListener('wedge-scan', onScan);
-    return () => window.removeEventListener('wedge-scan', onScan);
-  }, [writeParam]);
+  }, [openId, openCard, checked.size, close, clearChecks, step, open, toggleCheck, columns, phone, pager]);
 
   // The desk rail pushes the board aside (the house in-flow rail: one symmetric width tween),
   // and a package → package step crossfades inside it. Both collapse under reduced motion.
@@ -239,12 +277,16 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
   const railSwap = useMotionRole(motionRole.swap.focus);
   const detail = openCard ? (
     <PackageDetail
+      // A new card is a new body: its verb dialogs and scroll never carry over.
+      key={openCard.orderRowId}
       card={openCard}
       now={now}
       position={located ? { index: located.index, total: located.column.count } : null}
       onStep={step}
       onClose={close}
       onOpen={open}
+      onPaired={followPaired}
+      onLeft={stepPastLeft}
     />
   ) : null;
 
@@ -317,7 +359,7 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
             onChange={(value) => writeParam(LIVE_FEED_PARAMS.q, value.trim() || null)}
             onClear={() => writeParam(LIVE_FEED_PARAMS.q, null)}
             inputRef={phoneFindRef}
-            placeholder="Scan or type tracking, order #, SKU"
+            placeholder="Find tracking, order #, SKU"
             className="min-w-0 flex-1"
           />
           {viewerStaffId != null ? (

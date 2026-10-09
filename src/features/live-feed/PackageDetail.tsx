@@ -2,19 +2,24 @@
 
 /**
  * An open package — the board's second level. Top to bottom: where it is
- * (stage, walk to the next package in the column, close), what it is (photo,
- * title, sale, its pressure — with a way into Exceptions when it is out of
- * stock), its box (carrier + tracking, and the other orders packed with it),
- * its journey (who did each step, when, how long it waited), its tags, and
- * the conversation about it with the composer last. The same body serves the
- * desk's side panel and the phone's full-screen sheet.
+ * (stage, walk to the next package in the column, close), its verbs (an order:
+ * Flag, Labels & paperwork, Remove from list; a card no order owns: Pair to
+ * order, Flag, Remove from list — RecordActionStrip, keys F · D · L · R), what
+ * it is (photo, title, sale, its pressure — with a way into Exceptions when it
+ * is out of stock), its flags (who, when, clear), its box (carrier + tracking,
+ * and the other orders packed with it), its journey (who did each step, when,
+ * how long it waited), its tags, and the conversation about it with the
+ * composer last. The same body serves the desk's side panel and the phone's
+ * full-screen sheet.
  */
 
-import type { ReactNode } from 'react';
+import { useContext, useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Archive, Flag, Link2, ReceiptText } from 'lucide-react';
 import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { CopyChip } from '@/components/ui/CopyChip';
+import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { RecordPhoto } from '@/design-system/components/record-ledger/RecordPhoto';
 import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
@@ -25,6 +30,9 @@ import type { PackageCard } from '@/lib/live-feed/types';
 import { platformMetaBrandDot, sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import { LiveFeedDocsContext } from './card-docs';
+import { FlagDialog, OrderRemovalDialog, PairOrderDialog, UnlinkedRemovalDialog } from './card-verbs';
+import { FlagList } from './flag-pills';
 import { PackageCommentComposer, PackageCommentThread } from './PackageComments';
 import { PackageFacts } from './PackageFacts';
 import { PackageMiniRow } from './PackageMiniRow';
@@ -52,6 +60,8 @@ export function PackageDetail({
   onStep,
   onClose,
   onOpen,
+  onPaired,
+  onLeft,
 }: {
   card: PackageCard;
   now: number | null;
@@ -61,10 +71,69 @@ export function PackageDetail({
   onClose: () => void;
   /** Open another package (a box mate). */
   onOpen: (card: PackageCard) => void;
+  /** The unlinked card was paired: follow it to the order row it became. */
+  onPaired: (orderRowId: number) => void;
+  /** The card left the list (Remove from list): step on. */
+  onLeft: (cardIds: readonly number[]) => void;
 }) {
   const look = STAGE_LOOK[card.stage];
   const platform = sourcePlatformMeta(card.platform);
   const mates = useQuery(liveFeedPackagesQuery(card.boxMates));
+  const openDocs = useContext(LiveFeedDocsContext);
+
+  const verbs = useMemo<RecordActionVerb[]>(() => {
+    const ids = [card.orderRowId];
+    const flag: RecordActionVerb = {
+      id: 'flag',
+      label: 'Flag…',
+      icon: <Flag className="size-4" />,
+      hotkey: 'f',
+      dialog: (done) => <FlagDialog cardIds={ids} links={[card.link]} done={done} />,
+    };
+    if (card.link !== 'order') {
+      return [
+        {
+          id: 'pair',
+          label: 'Pair to order…',
+          icon: <Link2 className="size-4" />,
+          hotkey: 'l',
+          tone: 'primary',
+          dialog: (done) => <PairOrderDialog card={card} done={done} onPaired={onPaired} />,
+        },
+        flag,
+        {
+          id: 'remove-from-list',
+          label: 'Remove from list…',
+          icon: <Archive className="size-4" />,
+          hotkey: 'r',
+          tone: 'danger',
+          dialog: (done) => <UnlinkedRemovalDialog cardIds={ids} done={done} onRemoved={onLeft} />,
+        },
+      ];
+    }
+    const out: RecordActionVerb[] = [flag];
+    if (openDocs) {
+      out.push({
+        id: 'docs',
+        label: 'Labels & paperwork',
+        icon: <ReceiptText className="size-4" />,
+        hotkey: 'd',
+        run: () => openDocs(card, 'label'),
+      });
+    }
+    out.push({
+      id: 'remove-from-list',
+      label: 'Remove from list…',
+      icon: <Archive className="size-4" />,
+      hotkey: 'r',
+      tone: 'danger',
+      // A box that left the building is already off the To-ship list.
+      disabled: card.stage === 'scanned_out',
+      disabledReason: 'It already left the building — it is off the list',
+      dialog: (done) => <OrderRemovalDialog orderRowIds={ids} done={done} onRemoved={onLeft} />,
+    });
+    return out;
+  }, [card, onLeft, onPaired, openDocs]);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white" data-testid="live-feed-detail" data-order-row={card.orderRowId}>
@@ -100,6 +169,7 @@ export function PackageDetail({
           <IconButton icon={<X className="size-4" />} ariaLabel="Close package" size="md" radius="pill" onClick={onClose} />
         </div>
       </header>
+      <RecordActionStrip verbs={verbs} label={`${card.orderNumber ?? card.tracking ?? 'Package'} actions`} testId="live-feed-detail-verbs" />
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="flex gap-4 px-5 pb-4">
@@ -166,6 +236,12 @@ export function PackageDetail({
           ) : null}
         </div>
 
+        {card.flags.length > 0 ? (
+          <Section title="Flags">
+            <FlagList cardId={card.orderRowId} flags={card.flags} now={now} />
+          </Section>
+        ) : null}
+
         {card.boxMates.length > 0 ? (
           <Section title={`Same box · ${card.boxMates.length + 1} orders`}>
             <ul className="flex flex-col gap-1" data-testid="live-feed-box-mates">
@@ -188,7 +264,8 @@ export function PackageDetail({
             <p className="text-sm text-slate-600" data-testid="live-feed-unlinked">
               {card.link === 'package'
                 ? 'This box was scanned out at the dock, but no order owns its tracking number. It is shown so nothing the dock recorded is hidden.'
-                : 'This scan-out never matched a package on file. The scanned text is shown as the tracking.'}
+                : 'This scan-out never matched a package on file. The scanned text is shown as the tracking.'}{' '}
+              Pair it to the order it belongs to, or remove it from the list.
             </p>
             {card.carrierStatus ? <p className="mt-1 text-sm text-slate-500">Carrier: {card.carrierStatus}</p> : null}
           </Section>

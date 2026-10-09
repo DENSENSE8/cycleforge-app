@@ -8,13 +8,15 @@
  *             viewer; its verbs (Unpair / Unlink / Remove …) sit on the row
  *   owed      the order pane's own slots, opened for the job, so every write
  *             stays the one writer it already is (`LabelSlot`, `SlipSlot`,
- *             `LinePaperworkSlot`)
+ *             `LinePaperworkSlot`); the label slot's Buy label opens the
+ *             detailed label-buy form in the viewer column (`buying`)
  *
  * Product paperwork is per line: what is linked, then the library's
  * likeliest documents, then a library search — pressing any of them
  * previews it in the viewer; the viewer's Link pairs it.
  */
 
+import type { LabelBuyPurpose } from '@/components/outbound/labels/replacement/ReplacementForm';
 import { isPacketGap, type OrderPacket, type OrderPacketLine } from '@/lib/label-prints/order-packet-contracts';
 import { LabelSlot } from '@/features/labels-docs/orders/pane/LabelSlot';
 import { LinePaperworkSlot } from '@/features/labels-docs/orders/pane/LinePaperworkSlot';
@@ -72,7 +74,17 @@ function PaperworkLine({ line, ...shared }: Shared & { line: OrderPacketLine }) 
   );
 }
 
-export function DocTabBody({ tab, ...shared }: Shared & { tab: DocTab }) {
+export function DocTabBody({
+  tab,
+  buying,
+  onBuy,
+  ...shared
+}: Shared & {
+  tab: DocTab;
+  /** The label buy open in the viewer column, if any. */
+  buying: LabelBuyPurpose | null;
+  onBuy: (purpose: LabelBuyPurpose | null) => void;
+}) {
   const { packet, uploads } = shared;
 
   if (tab === 'paperwork') {
@@ -95,7 +107,7 @@ export function DocTabBody({ tab, ...shared }: Shared & { tab: DocTab }) {
     <div className="flex min-w-0 flex-col gap-3 p-4" data-testid={`docs-tab-${tab}`}>
       <LinkedList {...shared} items={linkedItems(packet, tab)} label={tab === 'label' ? 'Shipping labels on file' : 'Packing slips on file'} />
       <div className="min-w-0 rounded-xl border border-border-soft">
-        {tab === 'label' ? <LabelSlot packet={packet} sheet={{ uploads }} /> : <SlipSlot packet={packet} sheet />}
+        {tab === 'label' ? <LabelSlot packet={packet} sheet={{ uploads, buying, onBuy }} /> : <SlipSlot packet={packet} sheet />}
       </div>
     </div>
   );

@@ -2,14 +2,16 @@
 
 /**
  * The docs popover's zoomed-out face (operator 2026-10-06: rail and matrix,
- * toggle): every selected order × Shipping label · Packing slip · Product
- * paperwork, one state cell each. A cell opens that order on that tab (the
- * rail). Ticking orders lets ONE library document be linked to all of their
- * owed paperwork lines at once — each line paired at its default scope (SKU
- * first) through the same writer as the pane (`pairOrderManual`).
+ * toggle): every selected order the owed filter shows (`OwedFilter`, shared
+ * with the rail) × Shipping label · Packing slip · Product paperwork, one
+ * state cell each. A cell opens that order on that tab (the rail); J / K
+ * move the highlighted row and Enter opens it. Ticking orders lets ONE
+ * library document be linked to all of their owed paperwork lines at once —
+ * each line paired at its default scope (SKU first) through the same writer
+ * as the pane (`pairOrderManual`).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
@@ -28,6 +30,8 @@ import { SLOT_STATE_FACE } from '@/features/labels-docs/orders/pane/slot-faces';
 import { usePacketRefresh } from '@/features/labels-docs/orders/pane/use-packet-refresh';
 import { linkedItems } from './doc-selection';
 import { DOC_TAB_LABEL, DOC_TABS, docTabState, type DocTab } from './doc-tabs';
+import { OwedFilter, RAIL_FILTER_LABEL } from './OwedFilter';
+import type { RailFilter } from './sheet-model';
 
 /** Peek dwell — a cell crossed on the way elsewhere does not fetch a PDF. */
 const PEEK_DELAY_MS = 350;
@@ -62,7 +66,28 @@ interface LibraryManual {
   type: string | null;
 }
 
-export function DocsMatrix({ packets, onOpen }: { packets: readonly OrderPacket[]; onOpen: (orderId: number, tab: DocTab) => void }) {
+export function DocsMatrix({
+  packets,
+  all,
+  filter,
+  onFilter,
+  highlightId,
+  onOpen,
+}: {
+  /** The rows the owed filter shows. */
+  packets: readonly OrderPacket[];
+  /** Every order of the selection — the filter's counts. */
+  all: readonly OrderPacket[];
+  filter: RailFilter;
+  onFilter: (next: RailFilter) => void;
+  /** The row J / K stand on; Enter opens it. */
+  highlightId: number | null;
+  onOpen: (orderId: number, tab: DocTab) => void;
+}) {
+  const body = useRef<HTMLTableSectionElement>(null);
+  useEffect(() => {
+    body.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [highlightId]);
   const refresh = usePacketRefresh();
   const layout = useMotionTransition(springSnappy);
   const [picked, setPicked] = useState<ReadonlySet<number>>(new Set());
@@ -100,6 +125,11 @@ export function DocsMatrix({ packets, onOpen }: { packets: readonly OrderPacket[
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="docs-matrix">
+      <div className="flex min-w-0 items-end gap-3 border-b border-border-hairline px-4 py-2">
+        <div className="w-72 min-w-0">
+          <OwedFilter rows={all} value={filter} onChange={onFilter} />
+        </div>
+      </div>
       {chosen.length > 0 ? (
         <div className="flex min-w-0 items-center gap-3 border-b border-border-soft bg-surface-sunken px-4 py-2">
           <span className="shrink-0 text-role-caption font-semibold text-text-default">
@@ -130,13 +160,25 @@ export function DocsMatrix({ packets, onOpen }: { packets: readonly OrderPacket[
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={body}>
+            {packets.length === 0 ? (
+              <tr>
+                <td colSpan={2 + DOC_TABS.length} className="px-4 py-6 text-role-caption text-text-muted" data-testid="docs-matrix-empty">
+                  No order here is {RAIL_FILTER_LABEL[filter].toLowerCase()}.
+                </td>
+              </tr>
+            ) : null}
             {packets.map((packet) => (
               <motion.tr
                 key={packet.orderId}
                 layout="position"
                 transition={layout}
-                className={cn('border-b border-border-hairline', picked.has(packet.orderId) && 'bg-surface-selected')}
+                aria-current={packet.orderId === highlightId ? 'true' : undefined}
+                className={cn(
+                  'border-b border-border-hairline',
+                  picked.has(packet.orderId) ? 'bg-surface-selected' : packet.orderId === highlightId && 'bg-surface-hover',
+                )}
+                data-testid={`docs-matrix-row-${packet.orderId}`}
               >
                 <td className="px-3 py-1.5">
                   <Checkbox aria-label={`Select ${packet.orderRef}`} checked={picked.has(packet.orderId)} onCheckedChange={() => toggle(packet.orderId)} />

@@ -7,7 +7,9 @@
  * `dock` face — ONE filled pill, `N selected · ⌘ Actions · ↖ · ×` (operator
  * 2026-10-06, Linear's selection bar; this supersedes "no fill behind bottom
  * verbs" for the selection dock). Each write rides an existing path (see
- * `bulk-actions.ts`); Remove from list rides `/api/orders/list-removal`.
+ * `bulk-actions.ts`); Flag rides `live_feed_flags`; Remove from list rides
+ * `/api/orders/list-removal` for orders and `live_feed_dismissals` for the
+ * cards no order owns — a selection holding both is refused (pick one kind).
  * Mount it inside the board's `relative` frame: it floats over the board's bottom edge.
  */
 
@@ -27,17 +29,18 @@ import {
   type RecordActionVerb,
 } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { ACTION_DOCK_LIFT } from '@/design-system/tokens/dock-clearance';
-import { Archive, FileText, PackageCheck, PackageOpen, Printer, ScanLine, Undo2, UserRound } from 'lucide-react';
-import { ListRemovalDialog } from '@/components/orders/ListRemovalDialog';
-import { listRemovalReasonLabel } from '@/lib/orders/list-removal';
-import { removeFromList, restoreToList } from '@/lib/orders/list-removal-client';
+import { Archive, FileText, Flag, PackageCheck, PackageOpen, Printer, ScanLine, Undo2, UserRound } from 'lucide-react';
 import { cn } from '@/utils/_cn';
 import type { DocTab } from './docs-triage/doc-tabs';
 import { PrintPacketsDialog } from './PrintPacketsDialog';
+import { FlagDialog, OrderRemovalDialog, UnlinkedRemovalDialog } from './card-verbs';
 import {
   describeScanOut,
+  MIXED_REMOVAL_REASON,
+  planRemoval,
   planScanOut,
-  removableOrderRowIds,
+  selectedCardIds,
+  selectedLinks,
   selectedOrderRowIds,
   selectionInStage,
 } from './bulk-actions';
@@ -61,19 +64,20 @@ export function LiveFeedBulkBar({
   const queryClient = useQueryClient();
   const [printFocus, setPrintFocus] = useState<DocTab | null>(null);
   const [scanningOut, setScanningOut] = useState(false);
-  const [removing, setRemoving] = useState(false);
   const [packing, setPacking] = useState(false);
   const [undoing, setUndoing] = useState(false);
   // Error toasts and cache rollback belong to the mutation (useOptimisticMutation).
   const { mutateAsync: assignPicker, isPending: assigning } = useOrderAssignment();
-  const busy = assigning || scanningOut || removing || packing || undoing;
+  const busy = assigning || scanningOut || packing || undoing;
 
   const orderRowIds = useMemo(() => selectedOrderRowIds(cards), [cards]);
   const assignable = useMemo(() => selectionInStage(cards, 'to_pick'), [cards]);
   const packable = useMemo(() => selectionInStage(cards, 'picked'), [cards]);
   const scanOutable = useMemo(() => selectionInStage(cards, 'packed'), [cards]);
   const undoable = useMemo(() => selectionInStage(cards, 'scanned_out'), [cards]);
-  const removable = useMemo(() => removableOrderRowIds(cards), [cards]);
+  const removal = useMemo(() => planRemoval(cards), [cards]);
+  const cardIds = useMemo(() => selectedCardIds(cards), [cards]);
+  const links = useMemo(() => selectedLinks(cards), [cards]);
 
   const verbs = useMemo<RecordActionVerb[]>(() => {
     // The dock's own writer, once per box, as the signed-in staffer, now.
@@ -118,49 +122,38 @@ export function LiveFeedBulkBar({
         run: () => setPrintFocus('slip'),
       },
     ];
-    // Off the To-ship list with a reason — Undo puts them back (`order_list_removals`).
-    // Every form here is the strip's centered dialog; a landed write clears the
-    // checks (`onDone`) only once its done face closes (`onSettled`).
+    // Any card, any kind — the reasons offered fit every selected kind.
+    const flag: RecordActionVerb = {
+      id: 'flag',
+      label: 'Flag…',
+      icon: <Flag className="h-4 w-4" />,
+      disabled: busy,
+      disabledReason: BUSY_REASON,
+      dialog: (done) => <FlagDialog cardIds={cardIds} links={links} done={done} onSettled={onDone} />,
+    };
+    // Off the list with a reason — Undo puts them back. Orders and the cards
+    // no order owns ask different reasons, so one kind at a time. Every form
+    // here is the strip's centered dialog; a landed write clears the checks
+    // (`onDone`) only once its done face closes (`onSettled`).
     const remove: RecordActionVerb = {
       id: 'remove-from-list',
-      label: removing ? 'Removing…' : 'Remove from list…',
+      label: 'Remove from list…',
       icon: <Archive className="h-4 w-4" />,
       tone: 'danger',
-      disabled: busy || removable.length === 0,
-      disabledReason: busy ? BUSY_REASON : 'Only orders still in the building can leave the list',
-      dialog: (done) => (
-        <ListRemovalDialog
-          count={removable.length}
-          done={done}
-          onSettled={onDone}
-          onConfirm={async (reason, note) => {
-            setRemoving(true);
-            try {
-              const removedIds = await removeFromList(removable, reason, note);
-              refreshDomain('orders.outbound');
-              toast.undo(`Removed ${removedIds.length} from the list · ${listRemovalReasonLabel(reason)}`, {
-                onUndo: () => {
-                  void restoreToList(removedIds)
-                    .then((restored) => {
-                      toast.success(`Put ${restored.length} back on the list`);
-                      refreshDomain('orders.outbound');
-                      onDone();
-                    })
-                    .catch((error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not put them back'));
-                },
-              });
-              return removedIds.length;
-            } catch (error: unknown) {
-              toast.error(error instanceof Error ? error.message : 'Could not remove from the list');
-              return null;
-            } finally {
-              setRemoving(false);
-            }
-          }}
-        />
-      ),
+      disabled: busy || removal.kind === 'mixed' || removal.kind === 'none',
+      disabledReason: busy
+        ? BUSY_REASON
+        : removal.kind === 'mixed'
+          ? MIXED_REMOVAL_REASON
+          : 'Only orders still in the building, or packages no order owns, can leave the list',
+      dialog: (done) =>
+        removal.kind === 'unlinked' ? (
+          <UnlinkedRemovalDialog cardIds={removal.ids} done={done} onSettled={onDone} />
+        ) : (
+          <OrderRemovalDialog orderRowIds={removal.kind === 'orders' ? removal.ids : []} done={done} onSettled={onDone} />
+        ),
     };
-    const out: RecordActionVerb[] = [remove];
+    const out: RecordActionVerb[] = [flag, remove];
     if (assignable) {
       out.push({
         id: 'assign-picker',
@@ -269,7 +262,7 @@ export function LiveFeedBulkBar({
     }
     // Destructive last (RecordActionStrip law): prints, the stage verbs, then Remove from list.
     return [...printVerbs, ...out.filter((verb) => verb !== remove), remove];
-  }, [assignPicker, assignable, assigning, busy, cards, onDone, orderRowIds, packable, packing, queryClient, removable, removing, scanOutable, scanningOut, undoable, undoing]);
+  }, [assignPicker, assignable, assigning, busy, cardIds, cards, links, onDone, orderRowIds, packable, packing, queryClient, removal, scanOutable, scanningOut, undoable, undoing]);
 
   if (cards.length === 0) return null;
   const phone = surface === 'phone';

@@ -11,7 +11,7 @@
  * get it. A selection change cross-fades.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight, ExternalLink, FileSearch, MoveHorizontal, Scan } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { DocumentPreviewFrame } from '@/design-system/components/DocumentPreviewFrame';
@@ -28,7 +28,7 @@ import { DOC_TAB_LABEL, docTabState, type DocTab } from './doc-tabs';
 import { DocVerbs } from './doc-verbs';
 import { AlsoLinkVerb, LinkVerb } from './link-verbs';
 import { itemFacts } from './item-facts';
-import { nextOwed, sameSkuOwing, type SheetPlace } from './sheet-model';
+import { nextOwed, sameSkuOwing, type RailFilter, type SheetPlace } from './sheet-model';
 
 /** What the tab is missing and where to get it — the viewer with nothing to show. */
 function emptyCopy(packet: OrderPacket, tab: DocTab): { title: string; description: string } {
@@ -70,10 +70,12 @@ export function DocViewer({
   tab,
   packet,
   rows,
+  filter,
   uploads,
   justLinked,
   onLinked,
   registerLink,
+  registerOpen,
   onGo,
 }: {
   item: ViewerItem | null;
@@ -81,11 +83,15 @@ export function DocViewer({
   packet: OrderPacket;
   /** Every order of the selection, rail order — the also-link offer and Next owed read them. */
   rows: readonly OrderPacket[];
+  /** The owed filter — Next owed walks only what it shows. */
+  filter: RailFilter;
   uploads: LabelUploads;
   /** A Link landed in this sheet since the selection last changed: offer Next owed. */
   justLinked: boolean;
   onLinked: () => void;
   registerLink: (run: (() => void) | null) => void;
+  /** Hands the sheet's `O` key the shown document's address (null = nothing to open). */
+  registerOpen: (href: string | null) => void;
   onGo: (place: SheetPlace) => void;
 }) {
   const [fit, setFit] = useState<PdfFit>('page');
@@ -94,6 +100,10 @@ export function DocViewer({
   const openHref = item ? (item.src ?? (item.kind === 'preview' ? item.manual.driveUrl : null)) : null;
   const paged = item?.src != null && resolveDocumentPreviewMime(item.src) !== 'image';
   const noBytes = item && !item.src ? noBytesCopy(item) : null;
+  useEffect(() => {
+    registerOpen(openHref);
+    return () => registerOpen(null);
+  }, [openHref, registerOpen]);
 
   return (
     <section aria-label="Document viewer" className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas" data-testid="docs-viewer">
@@ -120,7 +130,7 @@ export function DocViewer({
           </Button>
         ) : null}
         {openHref ? (
-          <Button variant="ghost" size="sm" radius="control" icon={<ExternalLink />} href={openHref} data-testid="docs-viewer-open">
+          <Button variant="ghost" size="sm" radius="control" icon={<ExternalLink />} href={openHref} aria-keyshortcuts="O" data-testid="docs-viewer-open">
             Open in new tab
           </Button>
         ) : null}
@@ -171,20 +181,30 @@ export function DocViewer({
               ) : null}
             </>
           ) : null}
-          {justLinked ? <NextOwed rows={rows} from={{ orderId: packet.orderId, tab }} onGo={onGo} /> : null}
+          {justLinked ? <NextOwed rows={rows} from={{ orderId: packet.orderId, tab }} filter={filter} onGo={onGo} /> : null}
         </footer>
       ) : null}
     </section>
   );
 }
 
-/** After a link: jump to the next order or tab still owed — or say the selection is complete. */
-function NextOwed({ rows, from, onGo }: { rows: readonly OrderPacket[]; from: SheetPlace; onGo: (place: SheetPlace) => void }) {
-  const next = nextOwed(rows, from);
+/** After a link: jump to the next order or tab still owed (within the filter) — or say there is none. */
+function NextOwed({
+  rows,
+  from,
+  filter,
+  onGo,
+}: {
+  rows: readonly OrderPacket[];
+  from: SheetPlace;
+  filter: RailFilter;
+  onGo: (place: SheetPlace) => void;
+}) {
+  const next = nextOwed(rows, from, filter);
   if (!next) {
     return (
       <span className="ml-auto text-role-caption font-semibold text-text-success" data-testid="docs-viewer-complete">
-        Every order in this selection is complete.
+        {filter === 'all' ? 'Every order in this selection is complete.' : 'Nothing the filter shows is still owed.'}
       </span>
     );
   }

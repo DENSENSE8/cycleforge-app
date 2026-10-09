@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-08T18:54:43Z",
-  "totalRoutes": 1236,
+  "generatedAt": "2026-10-09T20:33:40Z",
+  "totalRoutes": 1246,
   "summary": {
-    "permissionGated": 1004,
+    "permissionGated": 1013,
     "authenticatedNoPermission": 145,
     "anonymousIntentional": 37,
-    "serviceToService": 50,
+    "serviceToService": 51,
     "ungatedRead": 0,
     "ungatedWrite": 0
   },
@@ -1917,6 +1917,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/cron/returns/sync/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "cron bearer secret",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/cron/search-outbox/route.ts",
       "methods": [
         "GET"
@@ -2955,6 +2964,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/handling-units/[id]/load/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "bin.adjust",
+      "exemptReason": null
+    },
+    {
       "path": "/api/handling-units/[id]/route.ts",
       "methods": [
         "DELETE",
@@ -3721,6 +3739,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/kiosk/visit/[id]/paperwork/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withKioskAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/kiosk/visit/[id]/receipt/route.ts",
       "methods": [
         "GET"
@@ -3805,6 +3832,7 @@
     {
       "path": "/api/label-print-jobs/route.ts",
       "methods": [
+        "GET",
         "POST"
       ],
       "gate": "withAuth",
@@ -3841,6 +3869,26 @@
       "exemptReason": null
     },
     {
+      "path": "/api/live-feed/dismissals/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/live-feed/flags/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
       "path": "/api/live-feed/lane/route.ts",
       "methods": [
         "GET"
@@ -3856,6 +3904,15 @@
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/live-feed/pair/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {
@@ -4620,15 +4677,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/orders/[id]/buyer-note/ack/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth (no permission)",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
       "path": "/api/orders/[id]/buyer/route.ts",
       "methods": [
         "PATCH"
@@ -4860,6 +4908,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/serials/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "gate": "withAuth",
+      "permission": "picking.scan",
       "exemptReason": null
     },
     {
@@ -5507,6 +5564,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/packing/photo-feed/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/packing/policy/route.ts",
       "methods": [
         "GET"
@@ -5775,6 +5841,15 @@
       "path": "/api/photos/nas-backup/route.ts",
       "methods": [
         "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "photos.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/photos/packer-nas-backup/route.ts",
+      "methods": [
         "POST"
       ],
       "gate": "withAuth",
@@ -8183,6 +8258,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/returns/backfill/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.import",
+      "exemptReason": null
+    },
+    {
       "path": "/api/returns/intake/route.ts",
       "methods": [
         "POST"
@@ -9255,6 +9339,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/sku-stock/[sku]/ensure/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "sku_stock.adjust",
       "exemptReason": null
     },
     {

@@ -62,3 +62,17 @@ Print (bottom right) for the active tab's stock across the selection; skipped-or
 - This order already has a **different tracking**: warn — Replace · Add as another box.
 - Motion: purposeful and quick (~150 ms fades/slides, viewer cross-fade, marks pop on link, list reorder);
   honours reduced motion.
+
+## Rulings round 3 (operator 2026-10-08 / 2026-10-09)
+
+- **Keys while the sheet is open** (`src/features/live-feed/docs-triage/sheet-keys.ts`; `?` lists them in the
+  shortcut sheet; never while typing): 1 2 3 tabs · J / K (↓ / ↑) next / previous order within the filter — the
+  rail's open order, or the grid's highlighted row · Enter opens the grid's row · N next owed order × tab · G
+  Orders / Grid · F cycles the owed filter · B buys the label an owed order needs · O opens the shown document in
+  a new tab · ⌘↵ links · P prints · Esc closes a label buy, clears the selection, then closes. The sheet claims
+  the keyboard and stops every key the Live feed board handles (Esc, J / K, ↑ / ↓, 1–4, `/`) at its edge.
+- **Owed filter** (Every order · Owing anything · Owing one tab), each option with its count, in the rail and the
+  grid; remembered per staffer. J / K and N walk only what it shows.
+- **Buy label** in the sheet paints the one detailed label-buy form (`ReplacementForm`, as in
+  `OrderLabelBuyDialog`) in the viewer column — outbound, or a replacement once the order has tracking or a
+  label; never a purpose switcher. Close / Done hands the column back to the preview.

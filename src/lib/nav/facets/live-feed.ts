@@ -8,9 +8,9 @@
 import type { NavFacetsResponse } from '@/lib/nav/context/schema';
 import { NAV_FACET_GROUPS } from '@/lib/nav/facets/contexts';
 import { readLiveFeedFilters, type LiveFeedFilters } from '@/lib/live-feed/route';
-import type { LiveFeedFacetOption, LiveFeedFacets } from '@/lib/live-feed/types';
+import type { LiveFeedFacetOption, LiveFeedSidebarFacets } from '@/lib/live-feed/types';
 
-export type LiveFeedFacetReader = (filters: LiveFeedFilters) => Promise<LiveFeedFacets>;
+export type LiveFeedFacetReader = (filters: LiveFeedFilters) => Promise<LiveFeedSidebarFacets>;
 
 /** Members the group's own filter keeps (all of them when unfiltered); a lower bound of the board total (keyless rows are not facet options). */
 function kept(options: readonly LiveFeedFacetOption[], selected: readonly string[] | null): number {
@@ -20,14 +20,21 @@ function kept(options: readonly LiveFeedFacetOption[], selected: readonly string
 export async function liveFeedFacets(params: Pick<URLSearchParams, 'get'>, read: LiveFeedFacetReader): Promise<NavFacetsResponse> {
   const filters = readLiveFeedFilters(params);
   const facets = await read(filters);
-  const [carrierDecl, channelDecl] = NAV_FACET_GROUPS['live-feed'];
+  const options: Record<string, LiveFeedFacetOption[]> = {
+    carrier: facets.carrier,
+    channel: facets.channel,
+    docs: facets.docs,
+    flag: facets.flag,
+  };
   return {
     context: 'live-feed',
-    // Exact whenever either facet is filtered; otherwise the larger keyed count.
+    // Exact whenever either keyed facet is filtered; otherwise the larger keyed count.
     total: Math.max(kept(facets.carrier, filters.carriers), kept(facets.channel, filters.channels)),
-    groups: [
-      { id: carrierDecl!.id, label: carrierDecl!.label, param: carrierDecl!.param, options: facets.carrier.map(({ value, count }) => ({ value, label: value, count })) },
-      { id: channelDecl!.id, label: channelDecl!.label, param: channelDecl!.param, options: facets.channel.map(({ value, label, count }) => ({ value, label: label || value, count })) },
-    ],
+    groups: NAV_FACET_GROUPS['live-feed'].map((decl) => ({
+      id: decl.id,
+      label: decl.label,
+      param: decl.param,
+      options: (options[decl.id] ?? []).map(({ value, label, count }) => ({ value, label: label || value, count })),
+    })),
   };
 }

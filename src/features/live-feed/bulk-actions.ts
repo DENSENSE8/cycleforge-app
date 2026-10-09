@@ -4,11 +4,13 @@
  * Assign picker → `POST /api/orders/assign` (via `useOrderAssignment`),
  * Print labels / documents → the Labels & docs packets (`PrintPacketsDialog`),
  * Scan out → `POST /api/shipped/scan-out`
- * (`postScanOut`, the dock's own writer — it still refuses a cancelled box).
+ * (`postScanOut`, the dock's own writer — it still refuses a cancelled box),
+ * Flag → `live_feed_flags`, Remove from list → `order_list_removals` for
+ * orders, `live_feed_dismissals` for the cards no order owns.
  * Client-safe.
  */
 
-import type { PackageCard } from '@/lib/live-feed/types';
+import type { PackageCard, PackageLink } from '@/lib/live-feed/types';
 import type { PackageStage } from '@/lib/live-feed/stages';
 import type { ScanOutResult } from '@/lib/outbound/scan-out-client';
 
@@ -25,6 +27,39 @@ export function selectedOrderRowIds(cards: readonly (Pick<PackageCard, 'orderRow
  */
 export function removableOrderRowIds(cards: readonly Pick<PackageCard, 'orderRowId' | 'link' | 'stage'>[]): number[] {
   return [...new Set(cards.filter((card) => card.link === 'order' && card.stage !== 'scanned_out').map((card) => card.orderRowId))];
+}
+
+/** Distinct card ids of the selection (an unlinked card's id is negative) — what a Flag writes. */
+export function selectedCardIds(cards: readonly Pick<PackageCard, 'orderRowId'>[]): number[] {
+  return [...new Set(cards.map((card) => card.orderRowId))];
+}
+
+/** The distinct kinds of card selected — a Flag offers only the reasons that fit all of them. */
+export function selectedLinks(cards: readonly Pick<PackageCard, 'link'>[]): PackageLink[] {
+  return [...new Set(cards.map((card) => card.link))];
+}
+
+export const MIXED_REMOVAL_REASON = 'Select only orders or only unlinked packages';
+
+/**
+ * What a Remove from list takes: the orders still in the building
+ * (`order_list_removals`), or the cards no order owns (`live_feed_dismissals`).
+ * The two ask different reasons, so a selection holding both is `mixed` — the
+ * verb stays disabled with {@link MIXED_REMOVAL_REASON}.
+ */
+export type RemovalPlan =
+  | { kind: 'orders'; ids: number[] }
+  | { kind: 'unlinked'; ids: number[] }
+  | { kind: 'mixed' }
+  | { kind: 'none' };
+
+export function planRemoval(cards: readonly Pick<PackageCard, 'orderRowId' | 'link' | 'stage'>[]): RemovalPlan {
+  const orders = removableOrderRowIds(cards);
+  const unlinked = selectedCardIds(cards.filter((card) => card.link !== 'order'));
+  if (orders.length > 0 && unlinked.length > 0) return { kind: 'mixed' };
+  if (orders.length > 0) return { kind: 'orders', ids: orders };
+  if (unlinked.length > 0) return { kind: 'unlinked', ids: unlinked };
+  return { kind: 'none' };
 }
 
 /**

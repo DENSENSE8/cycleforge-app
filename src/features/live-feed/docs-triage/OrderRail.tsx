@@ -3,24 +3,24 @@
 /**
  * The docs sheet's left rail — the selected orders (two or more), full
  * numbers, three marks each (label · slip · paperwork). Its head counts the
- * selection's progress ("12 of 31 complete") and filters the rail by what is
- * owed (anything, or one tab). It folds to a narrow strip of marks. Rows
- * reflow with a layout animation when the list changes (a filter, a re-sort
- * after a link). The filter lives here, not in the page sidebar: the sheet is
- * a modal over the Live feed and its rail is its own list.
+ * selection's progress ("12 of 31 complete") and carries the owed filter
+ * (`OwedFilter`, shared with the grid). It folds to a narrow strip of marks.
+ * Rows reflow with a layout animation when the list changes (a filter, a
+ * re-sort after a link); J / K keep the active row in view.
  */
 
+import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { motionPresence } from '@/design-system/foundations/motion-presets';
 import { springSnappy } from '@/design-system/motion/tokens';
-import { FilterDropdownSelect } from '@/design-system/components/FilterDropdownSelect';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import type { OrderPacket } from '@/lib/label-prints/order-packet-contracts';
 import { cn } from '@/utils/_cn';
 import { DOC_TAB_LABEL, DOC_TABS, docTabState } from './doc-tabs';
+import { OwedFilter, RAIL_FILTER_LABEL } from './OwedFilter';
 import type { RailFilter } from './sheet-model';
 import { DocMark } from './DocMark';
 
@@ -34,35 +34,36 @@ function Marks({ packet }: { packet: OrderPacket }) {
   );
 }
 
-const FILTER_OPTIONS: Array<{ value: RailFilter; label: string }> = [
-  { value: 'owed', label: 'Owing anything' },
-  ...DOC_TABS.map((tab) => ({ value: tab, label: `Owing ${DOC_TAB_LABEL[tab].toLowerCase()}` })),
-];
-
 export function OrderRail({
   rows,
+  all,
   activeId,
   onPick,
   filter,
   onFilter,
   complete,
-  total,
   folded,
   onFolded,
 }: {
   /** The rail's rows (already filtered). */
   rows: readonly OrderPacket[];
+  /** Every order of the selection — the progress and the filter's counts. */
+  all: readonly OrderPacket[];
   activeId: number;
   onPick: (orderId: number) => void;
   filter: RailFilter;
   onFilter: (next: RailFilter) => void;
   /** Orders of the whole selection with nothing owed. */
   complete: number;
-  total: number;
   folded: boolean;
   onFolded: (next: boolean) => void;
 }) {
   const layout = useMotionTransition(springSnappy);
+  const list = useRef<HTMLUListElement>(null);
+  const total = all.length;
+  useEffect(() => {
+    list.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [activeId]);
   return (
     <aside
       className={cn('flex min-h-0 shrink-0 flex-col border-r border-border-soft', folded ? 'w-16' : 'w-72')}
@@ -87,18 +88,14 @@ export function OrderRail({
             data-testid="docs-rail-fold"
           />
         </div>
-        {folded ? null : (
-          <FilterDropdownSelect
-            label="Show"
-            value={filter === 'all' ? null : filter}
-            onChange={(next) => onFilter(FILTER_OPTIONS.find((option) => option.value === next)?.value ?? 'all')}
-            options={FILTER_OPTIONS}
-            emptyOption={{ value: '', label: 'Every order' }}
-            ariaLabel="Show orders"
-          />
-        )}
+        {folded ? null : <OwedFilter rows={all} value={filter} onChange={onFilter} />}
       </div>
-      <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden p-2">
+      <ul ref={list} className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden p-2">
+        {rows.length === 0 && !folded ? (
+          <li className="px-2 py-3 text-role-caption text-text-muted" data-testid="docs-rail-empty">
+            No order here is {RAIL_FILTER_LABEL[filter].toLowerCase()}.
+          </li>
+        ) : null}
         <AnimatePresence initial={false}>
           {rows.map((packet) => {
             const active = packet.orderId === activeId;

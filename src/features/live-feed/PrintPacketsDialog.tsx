@@ -8,31 +8,37 @@
  * Near full-viewport.
  *
  *   header   title · order count · Orders | Grid (two or more orders) · Close
- *   orders   rail (two or more orders; folds; "12 of 31 complete"; filter by
- *            what is owed) | work column (~40%: identity strip, the three
- *            tabs, the tab's rows, suggestions, search, verbs) | the viewer
- *            (full height, portrait: the selected document — on file, or a
- *            library document before it is linked) — `OrderSheet`, keyed by
- *            order
- *   grid     orders × the three tabs, full width (`DocsMatrix`); a cell peeks
- *            its document on hover and opens that order on that tab
- *   footer   where Print sends what (count, paper, station), then Print
+ *   orders   rail (two or more orders; folds; "12 of 31 complete"; the owed
+ *            filter with a count per option) | work column (~40%: identity
+ *            strip, the three tabs, the tab's rows, suggestions, search,
+ *            verbs) | the viewer (full height, portrait: the selected
+ *            document — on file, or a library document before it is linked;
+ *            or the detailed label-buy form while Buy label is open) —
+ *            `OrderSheet`, keyed by order
+ *   grid     the owed filter, then the orders it shows × the three tabs, full
+ *            width (`DocsMatrix`); a cell peeks its document on hover and
+ *            opens that order on that tab
+ *   footer   where Print sends what (count, paper, station), Keys, then Print
  *            (bottom right): the open tab's documents for every selected
  *            order through the desk press, the reprint question first
  *
- * Keys (never while typing): 1 2 3 tabs · J / K orders · ⌘↵ / Ctrl+Enter
- * links the previewed document · P prints the open tab · Esc clears the
- * viewer's selection, then closes. The rail's fold and the last tab are
+ * Keys (`docs-triage/sheet-keys.ts`; `?` lists them): 1 2 3 tabs · J / K
+ * orders within the filter · Enter opens the grid's row · N next owed · G
+ * Orders / Grid · F the owed filter · B buy label · O open in a new tab ·
+ * ⌘↵ link · P print · Esc closes a label buy, then clears the viewer's
+ * selection, then closes. Nothing pressed here reaches the Live feed board
+ * behind it. The rail's fold, the last tab and the owed filter are
  * remembered per staffer. Another station's change re-reads the sheet.
  *
  * Packets come from `/api/shipping/label-intake/orders?ids=` — the Orders
  * desk's read; every write is that desk's writer.
  */
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LayoutGrid, PanelLeft, Printer, X } from 'lucide-react';
+import { Keyboard, LayoutGrid, PanelLeft, Printer, X } from 'lucide-react';
 import { motion } from 'motion/react';
+import type { LabelBuyPurpose } from '@/components/outbound/labels/replacement/ReplacementForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/design-system/components/Dialog';
 import { SegmentedGlyphSwitch } from '@/design-system/components/SegmentedGlyphSwitch';
@@ -42,24 +48,23 @@ import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { Spinner } from '@/design-system/primitives/Spinner';
 import { usePrintStations } from '@/hooks/usePrintStations';
-import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
-import { hotkeyMatches } from '@/lib/keyboard/key-registry';
-import { isPacketGap } from '@/lib/label-prints/order-packet-contracts';
+import { openShortcutOverview } from '@/lib/keyboard/shortcut-overview';
+import { isPacketGap, type OrderPacket } from '@/lib/label-prints/order-packet-contracts';
 import { fetchOrderPackets, ORDER_PACKETS_KEY_ROOT, orderPacketsKey } from '@/lib/label-prints/order-packets-client';
 import type { DeskDocument } from '@/lib/label-prints/print-labels';
 import { marryByCardOrder } from '@/features/labels-docs/desk-press';
+import { labelBuyPurpose } from '@/features/labels-docs/orders/pane/label-buy-purpose';
 import { packetDocuments, packetReprintWarning } from '@/features/labels-docs/orders/pane/packet-press';
 import { useDeskPress } from '@/features/labels-docs/use-desk-press';
 import { usePrintRoutes } from '@/features/labels-docs/use-print-routes';
-import { DOC_TAB_LABEL, DOC_TABS, docTabState, type DocTab } from './docs-triage/doc-tabs';
+import { DOC_TAB_LABEL, docTabState, type DocTab } from './docs-triage/doc-tabs';
 import { DocsMatrix } from './docs-triage/DocsMatrix';
 import { OrderRail } from './docs-triage/OrderRail';
-import { OrderSheet, type SheetKeys } from './docs-triage/OrderSheet';
+import { IDLE_SHEET_KEYS, OrderSheet, type SheetKeys } from './docs-triage/OrderSheet';
 import { isPacketComplete, printPreview, railRowsFor, type RailFilter, type SheetPlace } from './docs-triage/sheet-model';
+import { onSheetKeyDown, useSheetKeyboard, type SheetView } from './docs-triage/sheet-keys';
 import { readSheetPrefs, writeSheetPrefs } from './docs-triage/sheet-prefs';
 import { useSheetRealtime } from './docs-triage/use-sheet-realtime';
-
-type View = 'rail' | 'grid';
 
 const VIEW_OPTIONS = [
   { value: 'rail', label: 'Orders', Glyph: PanelLeft, testId: 'docs-view-rail' },
@@ -68,8 +73,6 @@ const VIEW_OPTIONS = [
 
 /** The sheet's arrival: a short scale + fade (reduced motion: the fade). */
 const SHEET_OPEN = { initial: { opacity: 0, scale: 0.985 }, animate: { opacity: 1, scale: 1 } };
-
-const LINK_HOTKEY = 'mod+enter';
 
 /** A desk document belongs to a tab by its kind. */
 function inTab(doc: DeskDocument, tab: DocTab): boolean {
@@ -105,40 +108,79 @@ export function PrintPacketsDialog({
     enabled: open && orderRowIds.length > 0,
   });
   useSheetRealtime(open);
+  useSheetKeyboard(open);
   const rows = useMemo(() => packets.data?.rows ?? [], [packets.data]);
   const [activeId, setActiveId] = useState<number | null>(null);
+  // The grid's highlighted row (J / K there; Enter opens it).
+  const [gridId, setGridId] = useState<number | null>(null);
   const [tab, setTab] = useState<DocTab>(initialTab ?? 'label');
-  const [view, setView] = useState<View>('rail');
+  const [view, setView] = useState<SheetView>('rail');
   const [railFilter, setRailFilter] = useState<RailFilter>('all');
   const [railFolded, setRailFolded] = useState(false);
-  const keys = useRef<SheetKeys>({ link: null, clearSelection: () => false });
+  // The label buy open in the viewer column — one order's, at a time.
+  const [buy, setBuy] = useState<{ orderId: number; purpose: LabelBuyPurpose } | null>(null);
+  const keys = useRef<SheetKeys>({ ...IDLE_SHEET_KEYS });
   useEffect(() => {
     if (!open) return;
     const prefs = readSheetPrefs(staffId);
     setActiveId(null);
+    setGridId(null);
+    setBuy(null);
     setTab(initialTab ?? prefs.tab ?? 'label');
     setRailFolded(prefs.railFolded);
+    setRailFilter(prefs.filter);
     setView('rail');
-    setRailFilter('all');
   }, [open, initialTab, staffId]);
-
-  const chooseTab = (next: DocTab) => {
-    setTab(next);
-    writeSheetPrefs(staffId, { railFolded, tab: next });
-  };
-  const foldRail = (next: boolean) => {
-    setRailFolded(next);
-    writeSheetPrefs(staffId, { railFolded: next, tab });
-  };
-  const goTo = ({ orderId, tab: next }: SheetPlace) => {
-    setActiveId(orderId);
-    chooseTab(next);
-    setView('rail');
-  };
 
   const railRows = railRowsFor(rows, railFilter);
   const active = rows.find((packet) => packet.orderId === activeId) ?? railRows[0] ?? rows[0] ?? null;
+  const highlighted = railRows.find((packet) => packet.orderId === gridId) ?? railRows[0] ?? null;
+  // Where the keys act: the rail's open order, or the grid's highlighted row.
+  const here = view === 'grid' ? highlighted : active;
   const complete = rows.filter(isPacketComplete).length;
+
+  const pick = (orderId: number) => {
+    setActiveId(orderId);
+    setBuy(null);
+  };
+  const chooseTab = (next: DocTab) => {
+    setTab(next);
+    if (next !== 'label') setBuy(null);
+    writeSheetPrefs(staffId, { tab: next });
+  };
+  const foldRail = (next: boolean) => {
+    setRailFolded(next);
+    writeSheetPrefs(staffId, { railFolded: next });
+  };
+  const chooseFilter = (next: RailFilter) => {
+    setRailFilter(next);
+    writeSheetPrefs(staffId, { filter: next });
+    // The open order leaves with the filter: the first order it shows takes over.
+    const shown = railRowsFor(rows, next);
+    if (active && shown.length > 0 && !shown.some((packet) => packet.orderId === active.orderId)) pick(shown[0]!.orderId);
+  };
+  const goTo = ({ orderId, tab: next }: SheetPlace) => {
+    pick(orderId);
+    chooseTab(next);
+    setView('rail');
+  };
+  const switchView = (next: SheetView) => {
+    if (next === 'grid') setGridId(active?.orderId ?? null);
+    else if (highlighted) pick(highlighted.orderId);
+    setView(next);
+  };
+  const step = (delta: 1 | -1) => {
+    if (!here || railRows.length === 0) return;
+    const at = railRows.findIndex((packet) => packet.orderId === here.orderId);
+    const next = railRows[at < 0 ? 0 : Math.min(railRows.length - 1, Math.max(0, at + delta))]!.orderId;
+    if (view === 'grid') setGridId(next);
+    else if (next !== here.orderId) pick(next);
+  };
+  const openBuy = (packet: OrderPacket) => {
+    if (!isPacketGap(docTabState(packet, 'label'))) return;
+    goTo({ orderId: packet.orderId, tab: 'label' });
+    setBuy({ orderId: packet.orderId, purpose: labelBuyPurpose(packet) });
+  };
 
   const { routes, refresh: refreshRoutes } = usePrintRoutes();
   const stations = usePrintStations();
@@ -170,40 +212,30 @@ export function PrintPacketsDialog({
     );
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.defaultPrevented || event.repeat || isEditableKeyTarget(event.target)) return;
-    if (hotkeyMatches(LINK_HOTKEY, event)) {
-      const link = keys.current.link;
-      if (!link) return;
-      event.preventDefault();
-      link();
-      return;
-    }
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
-    const key = event.key.toLowerCase();
-    const digit = ['1', '2', '3'].indexOf(key);
-    if (digit >= 0 && view === 'rail' && active) {
-      event.preventDefault();
-      chooseTab(DOC_TABS[digit]!);
-    } else if ((key === 'j' || key === 'k') && view === 'rail' && active && railRows.length > 0) {
-      event.preventDefault();
-      const at = railRows.findIndex((packet) => packet.orderId === active.orderId);
-      const next = at < 0 ? 0 : Math.min(railRows.length - 1, Math.max(0, at + (key === 'j' ? 1 : -1)));
-      setActiveId(railRows[next]!.orderId);
-    } else if (key === 'p') {
-      event.preventDefault();
-      printAll();
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
         className="flex h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0"
-        onKeyDown={onKeyDown}
+        onKeyDown={(event) =>
+          onSheetKeyDown(event, {
+            view,
+            tab,
+            rows,
+            filter: railFilter,
+            here,
+            keys,
+            chooseTab,
+            step,
+            goTo,
+            switchView,
+            chooseFilter,
+            openBuy,
+            print: printAll,
+          })
+        }
         onEscapeKeyDown={(event) => {
-          // Esc first clears what the viewer shows; the next Esc closes the sheet.
+          // Esc first closes a label buy, then clears what the viewer shows; the next Esc closes the sheet.
           if (keys.current.clearSelection()) event.preventDefault();
         }}
         data-testid="live-feed-print-dialog"
@@ -222,7 +254,7 @@ export function PrintPacketsDialog({
             </DialogDescription>
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {rows.length > 1 ? (
-                <SegmentedGlyphSwitch options={VIEW_OPTIONS} value={view} onChange={setView} ariaLabel="View" testId="docs-view" />
+                <SegmentedGlyphSwitch options={VIEW_OPTIONS} value={view} onChange={switchView} ariaLabel="View" testId="docs-view" />
               ) : null}
               <IconButton
                 icon={<X />}
@@ -244,23 +276,41 @@ export function PrintPacketsDialog({
           ) : !active ? (
             <p className="p-6 text-sm text-text-muted">No open order in this selection has documents to show.</p>
           ) : view === 'grid' ? (
-            <DocsMatrix packets={rows} onOpen={(orderId, next) => goTo({ orderId, tab: next })} />
+            <DocsMatrix
+              packets={railRows}
+              all={rows}
+              filter={railFilter}
+              onFilter={chooseFilter}
+              highlightId={highlighted?.orderId ?? null}
+              onOpen={(orderId, next) => goTo({ orderId, tab: next })}
+            />
           ) : (
             <div className="flex min-h-0 flex-1">
               {rows.length > 1 ? (
                 <OrderRail
                   rows={railRows}
+                  all={rows}
                   activeId={active.orderId}
-                  onPick={setActiveId}
+                  onPick={pick}
                   filter={railFilter}
-                  onFilter={setRailFilter}
+                  onFilter={chooseFilter}
                   complete={complete}
-                  total={rows.length}
                   folded={railFolded}
                   onFolded={foldRail}
                 />
               ) : null}
-              <OrderSheet key={active.orderId} packet={active} rows={rows} tab={tab} onTab={chooseTab} onGo={goTo} keys={keys} />
+              <OrderSheet
+                key={active.orderId}
+                packet={active}
+                rows={rows}
+                filter={railFilter}
+                tab={tab}
+                onTab={chooseTab}
+                onGo={goTo}
+                buying={buy?.orderId === active.orderId ? buy.purpose : null}
+                onBuy={(purpose) => setBuy(purpose ? { orderId: active.orderId, purpose } : null)}
+                keys={keys}
+              />
             </div>
           )}
 
@@ -279,6 +329,19 @@ export function PrintPacketsDialog({
                 </p>
               ) : null}
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              radius="control"
+              icon={<Keyboard className="size-4" />}
+              aria-keyshortcuts="?"
+              title="Keys (?)"
+              onClick={openShortcutOverview}
+              data-testid="docs-sheet-keys"
+            >
+              Keys
+            </Button>
             <Button
               type="button"
               variant="primary"

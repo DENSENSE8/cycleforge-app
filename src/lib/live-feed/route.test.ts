@@ -5,9 +5,16 @@ import { resolvePackageSorts } from './stages';
 import { normalizePackageTag, PACKAGE_TAG_MAX } from './tags';
 
 test('filters read the SQL keys: carriers upper-cased, channels lower-cased, deduped; a bad staff id is no filter', () => {
-  const filters = readLiveFeedFilters(new URLSearchParams('carrier= usps,UPS,usps,&channel=Amazon,ebay&staff=abc'));
-  assert.deepEqual(filters, { carriers: ['USPS', 'UPS'], channels: ['amazon', 'ebay'], staffId: null, sorts: null });
-  assert.deepEqual(readLiveFeedFilters(new URLSearchParams('carrier=&staff=12')), { carriers: null, channels: null, staffId: 12, sorts: null });
+  const filters = readLiveFeedFilters(new URLSearchParams('carrier= usps,UPS,usps,&channel=Amazon,ebay&staff=abc&docs=Label,nope,slip&flag=damaged,Bad Id'));
+  assert.deepEqual(filters, {
+    carriers: ['USPS', 'UPS'],
+    channels: ['amazon', 'ebay'],
+    docs: ['label', 'slip'],
+    flags: ['damaged'],
+    staffId: null,
+    sorts: null,
+  });
+  assert.deepEqual(readLiveFeedFilters(new URLSearchParams('carrier=&staff=12')), { carriers: null, channels: null, docs: null, flags: null, staffId: 12, sorts: null });
   // Round trip: the API query the client sends reads back the same filters.
   assert.deepEqual(readLiveFeedFilters(liveFeedFilterParams(filters)), filters);
 });

@@ -993,9 +993,14 @@ test('/operations/live-feed is one root row under the Operations band: Find, Car
   assert.equal(feed.page.id, 'live-feed');
   assert.equal(feed.search?.param, 'q');
   assert.equal(feed.filters?.facetContext, 'live-feed');
-  assert.deepEqual(feed.filters?.groups.map((group) => [group.id, group.param, group.multi]), [['carrier', 'carrier', true], ['channel', 'channel', true]]);
+  assert.deepEqual(feed.filters?.groups.map((group) => [group.id, group.param, group.multi]), [
+    ['carrier', 'carrier', true],
+    ['channel', 'channel', true],
+    ['docs', 'docs', true],
+    ['flag', 'flag', true],
+  ]);
   assert.deepEqual(feed.controls?.staff?.map((staff) => [staff.param, staff.label]), [['staff', 'Staff']]);
-  assert.deepEqual([...feed.params].sort(), ['carrier', 'channel', 'open', 'q', 'staff']);
+  assert.deepEqual([...feed.params].sort(), ['carrier', 'channel', 'docs', 'flag', 'open', 'q', 'sort', 'staff']);
   assert.deepEqual(parityGaps('live-feed'), []);
 });
 

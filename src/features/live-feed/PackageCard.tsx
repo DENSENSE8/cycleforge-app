@@ -5,7 +5,7 @@
  * # + the order number's last 8 top left, the platform top middle, the
  * tracking's last 8 top right), WHAT (photo + product title), then one row
  * with the PRESSURE on the left (the ship-by SLA, stalled, out of stock, its
- * box, its tags) and the line's facts on the right (`PackageFacts`: quantity
+ * box, its flags — two and a `+N` — its tags) and the line's facts on the right (`PackageFacts`: quantity
  * above one, grade, price), then WHERE (the stage track, how long it has sat
  * there, comments, who touched it last).
  *
@@ -35,6 +35,7 @@ import { Pill, ShipByPill, TagPill } from './pills';
 import { STAGE_LOOK } from './stage-look';
 import { StageTrack } from './StageTrack';
 import { CardDocs } from './card-docs';
+import { FlagPills } from './flag-pills';
 
 /** The step that put the package in its stage — its staffer is the card's last hand. */
 function lastStep(card: PackageCardData): PackageStep | null {
@@ -179,6 +180,7 @@ export const PackageCard = memo(function PackageCard({
               Box of {card.boxMates.length + 1}
             </Pill>
           ) : null}
+          <FlagPills flags={card.flags} now={now} />
           {card.tags.map((tag) => (
             <TagPill key={tag} tag={tag} />
           ))}

@@ -11,14 +11,16 @@
  * `shipment_id` or a `shipment_links` ORDER row), else ONE card for the box
  * itself (`link = 'package'`), else — a scan that never resolved to a package
  * — one card for the scan (`link = 'scan'`). Unlinked cards carry a negative
- * synthetic id ({@link unlinkedPackageId} / {@link unlinkedScanId}).
+ * synthetic id (`src/lib/live-feed/subjects.ts`). A box or scan an operator
+ * removed from the list (`live_feed_dismissals`) is left out.
  *
  * The board is counts for every stage plus the first page of each; a column's
  * later pages come one at a time (`loadLiveFeedLane`). Cards carry their
- * comment count, tags, box mates and stall flag (`order_notes`, `order_tags`,
- * shared `shipment_id`, `PACKAGE_STALL_HOURS`). The sidebar's carrier /
- * channel facets and staff filter narrow every read through ONE member set
- * (`MEMBERS_SQL`), which also counts the facets (`loadLiveFeedFacets`).
+ * comment count, tags, flags, box mates and stall flag (`order_notes`,
+ * `order_tags`, `live_feed_flags`, shared `shipment_id`, `PACKAGE_STALL_HOURS`).
+ * The sidebar's carrier / channel / documents / flag facets and staff filter
+ * narrow every read through ONE member set (`MEMBERS_SQL`), which also counts
+ * the facets (`loadLiveFeedFacets`).
  * `loadLiveFeedPackages` / `findLiveFeedPackages` open what a deep link or a
  * scan names, inside the board's scope.
  */
@@ -51,7 +53,8 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
 import { addDaysToDateKey, getCurrentPSTDateKey, WAREHOUSE_TIME_ZONE, warehouseDayUtcBounds } from '@/utils/date';
 import { loadPickupCutoffsForDay } from '@/lib/live-feed/pickup-cutoffs';
-import { LIVE_FEED_PAGE_SIZE, type LiveFeedFilters } from '@/lib/live-feed/route';
+import { liveFeedFlagReason } from '@/lib/live-feed/flags';
+import { LIVE_FEED_DOCS_OWED_LABEL, LIVE_FEED_PAGE_SIZE, type LiveFeedDocOwed, type LiveFeedFilters } from '@/lib/live-feed/route';
 import {
   PACKAGE_STAGES,
   PACKAGE_STALL_HOURS,
@@ -60,6 +63,7 @@ import {
   type PackageSorts,
   type PackageStage,
 } from '@/lib/live-feed/stages';
+import { UNLINKED_SCAN_ID_BASE } from '@/lib/live-feed/subjects';
 import type {
   CarrierLoad,
   LiveFeedFacets,
@@ -67,6 +71,7 @@ import type {
   PackageCard,
   PackageColumn,
   PackageLanePage,
+  LiveFeedSidebarFacets,
   PackageLink,
   PackagePaperwork,
   PackageUrgency,
@@ -79,7 +84,8 @@ import { placedElseImportedSql } from '@/lib/orders/order-dates';
  * fine): `$1` org; `$2`/`$3` today `[from, to)`; `$4` yesterday's start;
  * `$5` page size + 1; `$6` page offset; `$7` carrier keys / `$8` channel
  * keys (text[], NULL = all); `$9` staff id (NULL = everyone); `$10` order
- * row ids (int[], NULL = the whole board).
+ * row ids (int[], NULL = the whole board); `$11` documents owed / `$12` flag
+ * reasons (text[], NULL = all).
  */
 const ORG = '$1';
 const FROM = '$2';
@@ -91,6 +97,8 @@ const CARRIERS = '$7';
 const CHANNELS = '$8';
 const STAFF = '$9';
 const IDS = '$10';
+const DOCS = '$11';
+const FLAGS = '$12';
 
 /** A counter pickup or a Square walk-in sale — handed over in person, never scanned out. Null-safe, so `NOT` of it keeps a NULL channel. */
 const IN_PERSON_SQL = `(COALESCE(o.fulfillment_channel, '') = '${PICKUP_FULFILLMENT_CHANNEL}' OR LOWER(BTRIM(COALESCE(o.account_source, ''))) = 'square')`;
@@ -216,13 +224,15 @@ const OPEN_MEMBERS_CTE = `m_open AS MATERIALIZED (
             AND sout.activity_type = 'SHIP_CONFIRM'
             AND sout.shipment_id = ps.shipment_id
        )
+       AND NOT EXISTS (
+         SELECT 1 FROM live_feed_dismissals d
+          WHERE d.organization_id = ${ORG} AND d.restored_at IS NULL AND d.shipment_id = ps.shipment_id
+       )
        AND (${IDS}::int[] IS NULL OR -ps.shipment_id = ANY(${IDS}::int[]))
   )`;
 
-/** Synthetic card ids for a scan-out no order owns — negative, so they never collide with `orders.id`. */
-const UNLINKED_SCAN_ID_BASE = 1_000_000_000;
-export const unlinkedPackageId = (shipmentId: number): number => -shipmentId;
-export const unlinkedScanId = (scanId: number): number => -(UNLINKED_SCAN_ID_BASE + scanId);
+/** A member's unmatched-scan key — the scan text upper-cased, `#<scan id>` without text (`card-writes.ts` SCAN_KEY_SQL, per scan row). */
+const memberScanKeySql = (m: string) => `COALESCE(UPPER(${m}.scan_ref), '#' || (-${m}.order_row_id - ${UNLINKED_SCAN_ID_BASE})::text)`;
 
 /**
  * Packages whose FIRST dock scan-out falls in `[fromRef, toRef)` — a re-scan
@@ -320,6 +330,10 @@ function scannedOutMembersSql(shipmentsCte: string): string {
          SELECT 1 FROM shipment_links sl
           WHERE sl.organization_id = ${ORG} AND sl.owner_type = 'ORDER' AND sl.shipment_id = so.shipment_id
        )
+       AND NOT EXISTS (
+         SELECT 1 FROM live_feed_dismissals d
+          WHERE d.organization_id = ${ORG} AND d.restored_at IS NULL AND d.shipment_id = so.shipment_id
+       )
        AND (${IDS}::int[] IS NULL OR -so.shipment_id = ANY(${IDS}::int[]))
     UNION ALL
     SELECT (-(${UNLINKED_SCAN_ID_BASE} + so.scan_id))::bigint,
@@ -336,14 +350,54 @@ function scannedOutMembersSql(shipmentsCte: string): string {
            'scan'::text
       FROM ${shipmentsCte} so
      WHERE so.shipment_id IS NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM live_feed_dismissals d
+          WHERE d.organization_id = ${ORG} AND d.restored_at IS NULL
+            AND d.scan_key = COALESCE(UPPER(so.scan_ref), '#' || so.scan_id::text)
+       )
        AND (${IDS}::int[] IS NULL OR -(${UNLINKED_SCAN_ID_BASE} + so.scan_id) = ANY(${IDS}::int[]))`;
 }
 
+/** Order alias `o` still owes document `$doc` (a text literal or column) — the card's own `docs` facts, inverted. */
+function owesDocSql(doc: string): string {
+  return `CASE ${doc}
+            WHEN 'label' THEN NOT ${CARD_LABEL_LINKED_SQL}
+            WHEN 'slip' THEN NOT (${G2_LINKED_DOCUMENT_EXISTS_SQL}) AND NOT COALESCE(o.docs_not_required, false)
+            WHEN 'paperwork' THEN NOT (${G2_PRODUCT_PAPERWORK_EXISTS_SQL})
+                              AND NOT (COALESCE(o.docs_not_required, false) OR ${G2_SKU_PAPERWORK_NOT_REQUIRED_SQL})
+            ELSE false
+          END`;
+}
+
+/** Flag alias `f` stands on member `m` — an order by its row, a box by its shipment, a scan by its key. */
+function flagOnMemberSql(m: string): string {
+  return `CASE ${m}.link
+            WHEN 'order' THEN f.order_id = ${m}.order_row_id
+            WHEN 'package' THEN f.shipment_id = ${m}.shipment_id
+            ELSE f.scan_key = ${memberScanKeySql(m)}
+          END`;
+}
+
+type FacetDimension = 'carrier' | 'channel' | 'docs' | 'flag';
+
 /** The sidebar filters over member alias `m`; a facet's own dimension is left out of its counts. */
-function filterSql(m: string, skip?: 'carrier' | 'channel'): string {
+function filterSql(m: string, skip?: FacetDimension): string {
   return [
     skip === 'carrier' ? null : `(${CARRIERS}::text[] IS NULL OR ${m}.carrier_key = ANY(${CARRIERS}::text[]))`,
     skip === 'channel' ? null : `(${CHANNELS}::text[] IS NULL OR ${m}.channel_key = ANY(${CHANNELS}::text[]))`,
+    skip === 'docs'
+      ? null
+      : `(${DOCS}::text[] IS NULL OR (${m}.link = 'order' AND EXISTS (
+           SELECT 1 FROM orders o, unnest(${DOCS}::text[]) owed(doc)
+            WHERE o.organization_id = ${ORG} AND o.id = ${m}.order_row_id AND ${owesDocSql('owed.doc')}
+         )))`,
+    skip === 'flag'
+      ? null
+      : `(${FLAGS}::text[] IS NULL OR EXISTS (
+           SELECT 1 FROM live_feed_flags f
+            WHERE f.organization_id = ${ORG} AND f.cleared_at IS NULL AND f.reason = ANY(${FLAGS}::text[])
+              AND ${flagOnMemberSql(m)}
+         ))`,
     `${m}.staff_ok`,
   ]
     .filter(Boolean)
@@ -455,9 +509,24 @@ const boardSql = (sorts: PackageSorts) => `${MEMBERS_SQL},
     ${FACETS_SELECT_SQL},
     (SELECT COALESCE(json_agg(cards ORDER BY cards.stage, cards.ord), '[]'::json) FROM cards) AS cards`;
 
-/** Facet counts alone (the sidebar's own read). */
+/** Facet counts alone (the sidebar's own read) — plus what a board read does not count: documents owed (order cards) and flag reasons. */
 const FACETS_SQL = `${MEMBERS_SQL}
-  SELECT ${FACETS_SELECT_SQL}`;
+  SELECT ${FACETS_SELECT_SQL},
+    (SELECT COALESCE(json_agg(t ORDER BY array_position(ARRAY['label', 'slip', 'paperwork'], t.value)), '[]'::json) FROM (
+       SELECT owed.doc AS value, count(*)::int AS count
+         FROM m_all
+         JOIN orders o ON m_all.link = 'order' AND o.id = m_all.order_row_id AND o.organization_id = ${ORG}
+         CROSS JOIN unnest(ARRAY['label', 'slip', 'paperwork']) owed(doc)
+        WHERE ${filterSql('m_all', 'docs')} AND ${owesDocSql('owed.doc')}
+        GROUP BY owed.doc
+    ) t) AS facet_docs,
+    (SELECT COALESCE(json_agg(t ORDER BY t.count DESC, t.value), '[]'::json) FROM (
+       SELECT f.reason AS value, count(DISTINCT m_all.order_row_id)::int AS count
+         FROM m_all
+         JOIN live_feed_flags f ON f.organization_id = ${ORG} AND f.cleared_at IS NULL AND ${flagOnMemberSql('m_all')}
+        WHERE ${filterSql('m_all', 'flag')}
+        GROUP BY f.reason
+    ) t) AS facet_flag`;
 
 /** One page of `stage`: cards `$6 + 1 … $6 + $5`, in the column's order, filters applied. */
 function lanePageSql(stage: PackageStage, sorts: PackageSorts): string {
@@ -518,6 +587,7 @@ function dressedCardsSql(src: string): string {
          COALESCE(nt.n, 0) AS note_count,
          nt.latest AS latest_note,
          COALESCE(tg.tags, ARRAY[]::text[]) AS tags,
+         COALESCE(fl.flags, '[]'::json) AS flags,
          COALESCE(bx.ids, ARRAY[]::int[]) AS box_mates,
          ${CARD_LABEL_LINKED_SQL} AS label_linked,
          CASE
@@ -567,11 +637,23 @@ function dressedCardsSql(src: string): string {
          AND o2.organization_id = o.organization_id
          AND o2.shipment_id = o.shipment_id
          AND o2.id <> o.id
-    ) bx ON TRUE`;
+    ) bx ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT json_agg(json_build_object(
+               'reason', f.reason, 'note', f.note, 'byStaffId', f.flagged_by_staff_id, 'by', s_f.name, 'at', f.flagged_at
+             ) ORDER BY f.flagged_at, f.id) AS flags
+        FROM live_feed_flags f
+        LEFT JOIN staff s_f ON s_f.id = f.flagged_by_staff_id
+       WHERE f.organization_id = ${ORG} AND f.cleared_at IS NULL AND ${flagOnMemberSql('pg')}
+    ) fl ON TRUE`;
 }
 
+/** Find's own binds, after the shared list: text, ILIKE pattern, canonical tracking, key-18, digits last-8 ('' = off). */
+const FIND_TEXT = '$13';
+const FIND_TRACKING = { likeParam: '$14', canonicalParam: '$15', key18Param: '$16', last8Param: '$17' } as const;
+
 /**
- * Shipments whose tracking matches the Find keys (`$12`–`$15`), whatever day
+ * Shipments whose tracking matches the Find keys (`FIND_TRACKING`), whatever day
  * they left — the integrity fallback: a tracking search always resolves its
  * box, even after the board's today-window stopped carrying it.
  */
@@ -588,7 +670,7 @@ function trackedShipmentsCte(name: string): string {
      WHERE sal.organization_id = ${ORG}
        AND sal.activity_type = 'SHIP_CONFIRM'
        AND sal.shipment_id IS NOT NULL
-       AND ${sqlTrackingNumberMatches({ stnAlias: 'stn', likeParam: '$12', canonicalParam: '$13', key18Param: '$14', last8Param: '$15' })}
+       AND ${sqlTrackingNumberMatches({ stnAlias: 'stn', ...FIND_TRACKING })}
      GROUP BY 1
   )`;
 }
@@ -598,9 +680,8 @@ function trackedShipmentsCte(name: string): string {
  * own shipment) matches — matched over the ~board-sized member set only, never
  * the org's whole order history; plus one integrity fallback: a tracking that
  * names a box an earlier day carried (it already left) resolves to that box's
- * member row, so nothing a scan touched is ever unfindable. Binds `$11` text,
- * `$12` ILIKE pattern, `$13` canonical tracking, `$14` key-18, `$15` digits
- * last-8 ('' = off).
+ * member row, so nothing a scan touched is ever unfindable. Binds
+ * `FIND_TEXT` and `FIND_TRACKING`.
  */
 const FIND_SQL = `${MEMBERS_SQL},
   ${trackedShipmentsCte('so_tracked')},
@@ -614,10 +695,10 @@ const FIND_SQL = `${MEMBERS_SQL},
       FROM m_find
       LEFT JOIN orders o ON m_find.link = 'order' AND o.id = m_find.order_row_id AND o.organization_id = ${ORG}
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = COALESCE(m_find.shipment_id, o.shipment_id)
-     WHERE ${sqlIdentifierEqualsQuery('o.order_id', '$11')}
-        OR UPPER(BTRIM(COALESCE(o.sku, ''))) = UPPER(BTRIM($11))
-        OR (stn.id IS NOT NULL AND ${sqlTrackingNumberMatches({ stnAlias: 'stn', likeParam: '$12', canonicalParam: '$13', key18Param: '$14', last8Param: '$15' })})
-        OR UPPER(m_find.scan_ref) LIKE '%' || UPPER(BTRIM($11)) || '%'
+     WHERE ${sqlIdentifierEqualsQuery('o.order_id', FIND_TEXT)}
+        OR UPPER(BTRIM(COALESCE(o.sku, ''))) = UPPER(BTRIM(${FIND_TEXT}))
+        OR (stn.id IS NOT NULL AND ${sqlTrackingNumberMatches({ stnAlias: 'stn', ...FIND_TRACKING })})
+        OR UPPER(m_find.scan_ref) LIKE '%' || UPPER(BTRIM(${FIND_TEXT})) || '%'
   ),
   pg AS (
     SELECT m_find.*, row_number() OVER (ORDER BY ${laneOrderSql('m_find')}) AS ord
@@ -679,6 +760,7 @@ interface CardRow {
   note_count: number;
   latest_note: string | null;
   tags: string[];
+  flags: Array<{ reason: string; note: string | null; byStaffId: number | null; by: string | null; at: string }>;
   stalled: boolean;
   box_mates: number[];
   label_linked: boolean;
@@ -741,6 +823,13 @@ function toCard(row: CardRow, todayStart: string): PackageCard {
     noteCount: Number(row.note_count) || 0,
     latestNote: row.latest_note?.trim() || null,
     tags: row.tags ?? [],
+    flags: (row.flags ?? []).map((flag) => ({
+      reason: flag.reason,
+      note: flag.note?.trim() || null,
+      byStaffId: flag.byStaffId,
+      by: flag.by?.trim() || null,
+      at: new Date(flag.at).toISOString(),
+    })),
     // An unlinked scan-out has no order to hold documents.
     docs: row.link === 'order' ? { label: row.label_linked === true, slip: row.slip ?? 'missing', paperwork: row.paperwork ?? 'missing' } : null,
   };
@@ -765,6 +854,8 @@ function binds(filters: LiveFeedFilters | null, extra: { offset?: number; ids?: 
     filters?.channels ?? null,
     filters?.staffId ?? null,
     extra.ids ?? null,
+    filters?.docs ?? null,
+    filters?.flags ?? null,
   ];
 }
 
@@ -856,12 +947,19 @@ export async function loadLiveFeedLane(
   };
 }
 
-/** The sidebar's facet counts (carrier, channel), each with every other filter applied. */
-export async function loadLiveFeedFacets(orgId: OrgId, filters: LiveFeedFilters | null): Promise<LiveFeedFacets> {
+/** The sidebar's facet counts (carrier, channel, documents owed, flag reasons), each with every other filter applied. */
+export async function loadLiveFeedFacets(orgId: OrgId, filters: LiveFeedFilters | null): Promise<LiveFeedSidebarFacets> {
   const values = binds(filters);
   values[0] = orgId;
-  const { rows } = await tenantQueryOneTrip<FacetRows>(orgId, FACETS_SQL, values);
-  return toFacets(rows[0]!);
+  const { rows } = await tenantQueryOneTrip<
+    FacetRows & { facet_docs: Array<{ value: string; count: number }>; facet_flag: Array<{ value: string; count: number }> }
+  >(orgId, FACETS_SQL, values);
+  const row = rows[0]!;
+  return {
+    ...toFacets(row),
+    docs: row.facet_docs.map(({ value, count }) => ({ value, label: LIVE_FEED_DOCS_OWED_LABEL[value as LiveFeedDocOwed] ?? value, count })),
+    flag: row.facet_flag.map(({ value, count }) => ({ value, label: liveFeedFlagReason(value).label, count })),
+  };
 }
 
 /** Packages by order row id, inside the board's scope (in the building or scanned out today), in lane order. */

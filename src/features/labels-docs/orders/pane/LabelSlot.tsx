@@ -8,18 +8,22 @@
  * suggested unpaired labels (buyer-name / reference matches, one-click
  * Accept), Pair an uploaded label (search the quarantined uploads), Upload (a
  * PDF batch through the label upload writer, filed onto THIS order), Buy
- * label (the one order-bound buy flow, `BuyLabelSection`). Pickup orders need
- * no label. Every write files through `fileLabelOnOrderHttp` (confirm, then
- * apply) and re-reads the Orders view. In the docs sheet the sheet lists the
- * labels itself and lends the slot its upload intake (`sheet`).
+ * label — the one detailed label-buy form (`ReplacementForm`; operator
+ * 2026-10-08: no purpose switcher), as `OrderLabelBuyDialog` here or in the
+ * docs sheet's viewer column. An order that already shipped on a label buys
+ * a replacement (`labelBuyPurpose`). Pickup orders need no label. Every write
+ * files through `fileLabelOnOrderHttp` (confirm, then apply) and re-reads the
+ * Orders view. In the docs sheet the sheet lists the labels itself, lends the
+ * slot its upload intake and hosts the buy (`sheet`).
  */
 
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link2, ShoppingCart, Upload, X } from '@/components/Icons';
-import { BuyLabelSection } from '@/components/outbound/labels/BuyLabelSection';
+import { Link2, Repeat, ShoppingCart, Upload } from '@/components/Icons';
+import { LABEL_BUY_TITLE, OrderLabelBuyDialog } from '@/components/outbound/labels/OrderLabelBuyDialog';
+import type { LabelBuyPurpose } from '@/components/outbound/labels/replacement/ReplacementForm';
 import { RecordFullId } from '@/design-system/components/record-ledger/RecordFullId';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { fileLabelOnOrderHttp } from '@/lib/label-ingestions/http-client';
 import type { LabelPrintRow } from '@/lib/label-prints/contracts';
 import { labelPdfSrc } from '@/lib/label-prints/http-client';
@@ -28,6 +32,7 @@ import { toast } from '@/lib/toast';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { LabelUploadTray } from '../../upload/LabelUploadTray';
 import { useLabelUploads, type LabelPageUploads } from '../../upload/use-label-uploads';
+import { labelBuyPurpose } from './label-buy-purpose';
 import { LABEL_DROP_TYPES, printedFace } from './slot-faces';
 import { SlotDocument, SlotFrame, SlotHeading, useFilePicker } from './SlotFrame';
 import { UnpairedLabelPicker } from './pane-parts';
@@ -63,9 +68,14 @@ export function LabelSlot({
    * The docs sheet: it lists the order's labels itself (selectable, with their
    * verbs) and owns the order's one label intake, so an owed label opens with
    * the uploaded-label search already showing and every upload lands in the
-   * sheet's tray.
+   * sheet's tray. Buy label paints in the sheet's viewer column: `buying` is
+   * the form open there, `onBuy` opens (or, with null, closes) it.
    */
-  sheet?: { uploads: LabelPageUploads };
+  sheet?: {
+    uploads: LabelPageUploads;
+    buying: LabelBuyPurpose | null;
+    onBuy: (purpose: LabelBuyPurpose | null) => void;
+  };
 }) {
   const refresh = usePacketRefresh();
   const slot = packet.label;
@@ -75,6 +85,12 @@ export function LabelSlot({
   const uploads = sheet?.uploads ?? own;
   const picker = useFilePicker(LABEL_DROP_TYPES, uploads.submit);
   const several = slot.labels.length + slot.documents.length > 1;
+  const purpose = labelBuyPurpose(packet);
+  const buyOpen = sheet ? sheet.buying != null : panel === 'buy';
+  const toggleBuy = () => {
+    if (sheet) sheet.onBuy(buyOpen ? null : purpose);
+    else setPanel(buyOpen ? null : 'buy');
+  };
 
   const file = useMutation({
     mutationFn: (label: { id: number; rowVersion: number; matchedOrderId: number | null }) => fileLabelOnOrderHttp(label, packet.orderId),
@@ -196,42 +212,47 @@ export function LabelSlot({
         </div>
       ) : null}
 
-      {gap ? (
+      {gap || sheet ? (
         <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
-          <Button
-            variant="secondary"
-            size="sm"
-            radius="control"
-            icon={<Link2 />}
-            aria-expanded={panel === 'pair'}
-            aria-keyshortcuts="P"
-            onClick={() => setPanel((open) => (open === 'pair' ? null : 'pair'))}
-            data-testid="order-pane-label-pair"
-          >
-            Pair an uploaded label
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            radius="control"
-            icon={<Upload />}
-            aria-keyshortcuts="U"
-            loading={uploads.pending}
-            onClick={picker.open}
-            data-testid="order-pane-label-upload"
-          >
-            Upload
-          </Button>
+          {gap ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                radius="control"
+                icon={<Link2 />}
+                aria-expanded={panel === 'pair'}
+                aria-keyshortcuts="P"
+                onClick={() => setPanel((open) => (open === 'pair' ? null : 'pair'))}
+                data-testid="order-pane-label-pair"
+              >
+                Pair an uploaded label
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                radius="control"
+                icon={<Upload />}
+                aria-keyshortcuts="U"
+                loading={uploads.pending}
+                onClick={picker.open}
+                data-testid="order-pane-label-upload"
+              >
+                Upload
+              </Button>
+            </>
+          ) : null}
           <Button
             variant="ghost"
             size="sm"
             radius="control"
-            icon={<ShoppingCart />}
-            aria-expanded={panel === 'buy'}
-            onClick={() => setPanel((open) => (open === 'buy' ? null : 'buy'))}
+            icon={purpose === 'replacement' ? <Repeat /> : <ShoppingCart />}
+            aria-expanded={buyOpen}
+            aria-keyshortcuts={sheet && gap ? 'B' : undefined}
+            onClick={toggleBuy}
             data-testid="order-pane-label-buy"
           >
-            Buy label
+            {LABEL_BUY_TITLE[purpose]}
           </Button>
         </div>
       ) : null}
@@ -244,15 +265,20 @@ export function LabelSlot({
           autoFocus={!sheet}
         />
       ) : null}
-      {panel === 'buy' ? (
-        <div className="mt-2 flex min-w-0 flex-col gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-muted">Buy a label for {packet.orderRef}</p>
-            <IconButton icon={<X />} size="sm" ariaLabel="Close the label buy" onClick={() => setPanel(null)} />
-          </div>
-          <BuyLabelSection orderId={packet.orderId} orderRef={packet.orderRef} onChange={() => void refresh()} />
-        </div>
-      ) : null}
+      {sheet ? null : (
+        <OrderLabelBuyDialog
+          purpose={purpose}
+          order={{
+            orderRowId: packet.orderId,
+            orderNumber: packet.orderRef,
+            title: packet.lines[0]?.title ?? '',
+            tracking: packet.shipment?.trackingNumber ?? null,
+          }}
+          open={panel === 'buy'}
+          onOpenChange={(open) => setPanel(open ? 'buy' : null)}
+          onChange={() => void refresh()}
+        />
+      )}
       <div className="mt-2 min-w-0">
         <LabelUploadTray uploads={uploads} />
       </div>

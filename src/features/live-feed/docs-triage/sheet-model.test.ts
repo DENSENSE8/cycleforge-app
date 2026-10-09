@@ -4,7 +4,7 @@ import type { PaperworkDocumentRow } from '@/lib/label-prints/contracts';
 import type { OrderPacket, OrderPacketLine, PacketSlotState } from '@/lib/label-prints/order-packet-contracts';
 import type { DeskDocument } from '@/lib/label-prints/print-labels';
 import type { LabelPrintRoute } from '@/lib/label-prints/print-route';
-import { isPacketComplete, nextOwed, printPreview, railRowsFor, sameSkuOwing } from './sheet-model';
+import { isPacketComplete, nextOwed, nextRailFilter, printPreview, railFilterCounts, railRowsFor, sameSkuOwing } from './sheet-model';
 import { parseSheetPrefs } from './sheet-prefs';
 
 const line = (orderLineId: number, state: PacketSlotState, sku: string | null = 'A-1', manualIds: number[] = []): OrderPacketLine =>
@@ -36,6 +36,25 @@ test('the rail filters by anything owed, or by one owed tab', () => {
   assert.deepEqual(railRowsFor(rows, 'all').map((p) => p.orderId), [1, 2, 3]);
   assert.deepEqual(railRowsFor(rows, 'owed').map((p) => p.orderId), [1, 2]);
   assert.deepEqual(railRowsFor(rows, 'slip').map((p) => p.orderId), [2]);
+});
+
+test('each filter counts its orders, and f cycles past the empty ones', () => {
+  const rows = [packet(1, 'missing', 'filled'), packet(2, 'filled', 'missing'), packet(3, 'filled', 'filled')];
+  assert.deepEqual(railFilterCounts(rows), { all: 3, owed: 2, label: 1, slip: 1, paperwork: 0 });
+  assert.equal(nextRailFilter(rows, 'all'), 'owed');
+  assert.equal(nextRailFilter(rows, 'slip'), 'all');
+  assert.equal(nextRailFilter([packet(1, 'filled', 'filled')], 'all'), 'all');
+});
+
+test('next owed walks only what the filter shows', () => {
+  const rows = [packet(1, 'missing', 'missing'), packet(2, 'filled', 'filled'), packet(3, 'missing', 'filled')];
+  // A one-tab filter stays on that tab.
+  assert.deepEqual(nextOwed(rows, { orderId: 1, tab: 'label' }, 'label'), { orderId: 3, tab: 'label' });
+  // Off the filter's tab: this order's own place on it comes first.
+  assert.deepEqual(nextOwed(rows, { orderId: 1, tab: 'paperwork' }, 'slip'), { orderId: 1, tab: 'slip' });
+  // An order the filter hides starts the walk at the top.
+  assert.deepEqual(nextOwed(rows, { orderId: 2, tab: 'label' }, 'owed'), { orderId: 1, tab: 'label' });
+  assert.equal(nextOwed(rows, { orderId: 1, tab: 'label' }, 'paperwork'), null);
 });
 
 test('also-link offers only other orders owing paperwork on the same SKU key and lacking the manual', () => {
@@ -71,9 +90,9 @@ test('the print preview names count, paper and destination per stock', () => {
   assert.deepEqual(blocked, [{ stock: 'paper', count: 1, blocked: true, text: '1 paperwork doc → not sent — Packing is paused' }]);
 });
 
-test('sheet prefs read garbage, missing and unknown tabs as defaults', () => {
-  assert.deepEqual(parseSheetPrefs(null), { railFolded: false, tab: null });
-  assert.deepEqual(parseSheetPrefs('{not json'), { railFolded: false, tab: null });
-  assert.deepEqual(parseSheetPrefs('{"railFolded":true,"tab":"slip"}'), { railFolded: true, tab: 'slip' });
-  assert.deepEqual(parseSheetPrefs('{"railFolded":"yes","tab":"invoice"}'), { railFolded: false, tab: null });
+test('sheet prefs read garbage, missing and unknown values as defaults', () => {
+  assert.deepEqual(parseSheetPrefs(null), { railFolded: false, tab: null, filter: 'all' });
+  assert.deepEqual(parseSheetPrefs('{not json'), { railFolded: false, tab: null, filter: 'all' });
+  assert.deepEqual(parseSheetPrefs('{"railFolded":true,"tab":"slip","filter":"label"}'), { railFolded: true, tab: 'slip', filter: 'label' });
+  assert.deepEqual(parseSheetPrefs('{"railFolded":"yes","tab":"invoice","filter":"missing"}'), { railFolded: false, tab: null, filter: 'all' });
 });

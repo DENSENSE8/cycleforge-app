@@ -1,8 +1,9 @@
 /**
  * The docs sheet's selection-wide answers (operator 2026-10-06, quality of
  * life): which order or tab is owed next, how many orders are complete, which
- * rows the rail shows, which other orders in the selection share a SKU that
- * just got its paperwork, and where Print will send what. Pure.
+ * rows the rail shows (and how many each filter shows), which other orders
+ * in the selection share a SKU that just got its paperwork, and where Print
+ * will send what. Pure.
  */
 
 import { isPacketGap, type OrderPacket, type OrderPacketLine } from '@/lib/label-prints/order-packet-contracts';
@@ -18,15 +19,52 @@ export interface SheetPlace {
   tab: DocTab;
 }
 
+/** The rail's filter: every order, orders owing anything, or orders owing one tab. */
+export type RailFilter = 'all' | 'owed' | DocTab;
+
+/** Every filter, in the order `f` cycles them. */
+export const RAIL_FILTERS: readonly RailFilter[] = ['all', 'owed', ...DOC_TABS];
+
+export function isRailFilter(value: unknown): value is RailFilter {
+  return RAIL_FILTERS.some((filter) => filter === value);
+}
+
+export function railRowsFor(rows: readonly OrderPacket[], filter: RailFilter): OrderPacket[] {
+  if (filter === 'all') return [...rows];
+  if (filter === 'owed') return rows.filter((packet) => !isPacketComplete(packet));
+  return rows.filter((packet) => isPacketGap(docTabState(packet, filter)));
+}
+
+/** How many orders each filter shows. */
+export function railFilterCounts(rows: readonly OrderPacket[]): Record<RailFilter, number> {
+  return Object.fromEntries(RAIL_FILTERS.map((filter) => [filter, railRowsFor(rows, filter).length])) as Record<RailFilter, number>;
+}
+
+/** The filter after `current` that shows at least one order (every order always does). */
+export function nextRailFilter(rows: readonly OrderPacket[], current: RailFilter): RailFilter {
+  const counts = railFilterCounts(rows);
+  const at = RAIL_FILTERS.indexOf(current);
+  for (let step = 1; step <= RAIL_FILTERS.length; step += 1) {
+    const next = RAIL_FILTERS[(at + step) % RAIL_FILTERS.length]!;
+    if (next === 'all' || counts[next] > 0) return next;
+  }
+  return 'all';
+}
+
 /**
- * The next order × tab still owed, walking the selection in rail order
+ * The next order × tab still owed, walking the filter's rows in rail order
  * (this order's later tabs, then the next orders, wrapping round); the
- * current place counts last. Null = the selection is complete.
+ * current place counts last. A one-tab filter walks that tab only. Null =
+ * nothing the filter shows is owed.
  */
-export function nextOwed(rows: readonly OrderPacket[], from: SheetPlace): SheetPlace | null {
-  const places = rows.flatMap((packet) => DOC_TABS.map((tab) => ({ packet, tab })));
+export function nextOwed(rows: readonly OrderPacket[], from: SheetPlace, filter: RailFilter = 'all'): SheetPlace | null {
+  const tabs: readonly DocTab[] = filter === 'all' || filter === 'owed' ? DOC_TABS : [filter];
+  const places = railRowsFor(rows, filter).flatMap((packet) => tabs.map((tab) => ({ packet, tab })));
   if (places.length === 0) return null;
-  const start = places.findIndex(({ packet, tab }) => packet.orderId === from.orderId && tab === from.tab);
+  const exact = places.findIndex(({ packet, tab }) => packet.orderId === from.orderId && tab === from.tab);
+  const order = places.findIndex(({ packet }) => packet.orderId === from.orderId);
+  // Off the filter's tabs (or rows): start at this order's first place, else at the top.
+  const start = exact >= 0 ? exact : order >= 0 ? order - 1 : -1;
   for (let step = 1; step <= places.length; step += 1) {
     const { packet, tab } = places[(start + step + places.length) % places.length]!;
     if (isPacketGap(docTabState(packet, tab))) return { orderId: packet.orderId, tab };
@@ -37,15 +75,6 @@ export function nextOwed(rows: readonly OrderPacket[], from: SheetPlace): SheetP
 /** An order is complete when no tab of it is owed. */
 export function isPacketComplete(packet: OrderPacket): boolean {
   return DOC_TABS.every((tab) => !isPacketGap(docTabState(packet, tab)));
-}
-
-/** The rail's filter: every order, orders owing anything, or orders owing one tab. */
-export type RailFilter = 'all' | 'owed' | DocTab;
-
-export function railRowsFor(rows: readonly OrderPacket[], filter: RailFilter): OrderPacket[] {
-  if (filter === 'all') return [...rows];
-  if (filter === 'owed') return rows.filter((packet) => !isPacketComplete(packet));
-  return rows.filter((packet) => isPacketGap(docTabState(packet, filter)));
 }
 
 /**

@@ -21,27 +21,31 @@ function deps(seen: LiveFeedFilters[]): NavFacetsDeps {
       return {
         carrier: [{ value: 'USPS', label: 'USPS', count: 7 }, { value: 'UPS', label: 'UPS', count: 3 }],
         channel: [{ value: 'ebay', label: 'eBay', count: 4 }, { value: 'amazon', label: 'Amazon', count: 2 }],
+        docs: [{ value: 'label', label: 'Owes shipping label', count: 5 }],
+        flag: [{ value: 'damaged', label: 'Damaged', count: 1 }],
       };
     },
   };
 }
 
-test('live-feed facets: the board loader answers with the URL filters; Carrier · Channel groups, labels from the loader', async () => {
+test('live-feed facets: the board loader answers with the URL filters; Carrier · Platform · Documents owed · Flagged groups, labels from the loader', async () => {
   const seen: LiveFeedFilters[] = [];
   const result = await getNavFacets(
     { orgId: ORG, permissions: new Set(['packing.view']) },
     'live-feed',
-    new URLSearchParams({ carrier: 'usps', staff: '4' }),
+    new URLSearchParams({ carrier: 'usps', staff: '4', docs: 'label,bogus', flag: 'Damaged' }),
     deps(seen),
   );
   assert.ok(result.ok);
-  assert.deepEqual(seen[0], { carriers: ['USPS'], channels: null, staffId: 4, sorts: null });
+  assert.deepEqual(seen[0], { carriers: ['USPS'], channels: null, docs: ['label'], flags: ['damaged'], staffId: 4, sorts: null });
   assert.equal(result.body.context, 'live-feed');
   assert.deepEqual(
     result.body.groups.map((group) => [group.id, group.param, group.options.map((o) => [o.value, o.label, o.count])]),
     [
       ['carrier', 'carrier', [['USPS', 'USPS', 7], ['UPS', 'UPS', 3]]],
       ['channel', 'channel', [['ebay', 'eBay', 4], ['amazon', 'Amazon', 2]]],
+      ['docs', 'docs', [['label', 'Owes shipping label', 5]]],
+      ['flag', 'flag', [['damaged', 'Damaged', 1]]],
     ],
   );
   // Carrier filtered → the selected carriers' members.
